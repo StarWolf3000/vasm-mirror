@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.4b (c) 2014-2017 Frank Wille";
+char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.4c (c) 2014-2017 Frank Wille";
 char *cpuname = "jagrisc";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -373,6 +373,9 @@ static int32_t eval_oper(instruction *ip,operand *op,section *sec,
   taddr val,loval,hival,mask;
 
   switch (optype) {
+    case PC:
+      return 0;
+
     case REG:
     case IREG:
     case IR14R:

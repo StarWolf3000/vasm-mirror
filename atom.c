@@ -459,7 +459,7 @@ static atom *new_atom(int type,taddr align)
 
 atom *new_inst_atom(instruction *p)
 {
-  atom *new = new_atom(INSTRUCTION,INST_ALIGN);
+  atom *new = new_atom(INSTRUCTION,inst_alignment);
 
   new->content.inst = p;
   return new;

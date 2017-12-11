@@ -7,7 +7,7 @@
 #include "vasm.h"
 #include "stabs.h"
 
-#define _VER "vasm 1.8a"
+#define _VER "vasm 1.8b"
 char *copyright = _VER " (c) in 2002-2017 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
@@ -28,6 +28,7 @@ source *cur_src=NULL;
 char *filename,*debug_filename;
 section *current_section;
 char *inname,*outname,*listname;
+taddr inst_alignment=INST_ALIGN;
 int secname_attr;
 int unnamed_sections;
 int ignore_multinc;
@@ -738,6 +739,10 @@ int main(int argc,char **argv)
     }
     else if(!strcmp("-chklabels",argv[i])){
       chklabels=1;
+      continue;
+    }
+    else if(!strcmp("-noialign",argv[i])) {
+      inst_alignment=1;
       continue;
     }
     if(cpu_args(argv[i]))

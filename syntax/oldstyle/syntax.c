@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm oldstyle syntax module 0.13b (c) 2002-2017 Frank Wille";
+char *syntax_copyright="vasm oldstyle syntax module 0.13c (c) 2002-2017 Frank Wille";
 hashtable *dirhash;
 
 static char textname[]=".text",textattr[]="acrx";
@@ -1439,6 +1439,29 @@ int expand_macro(source *src,char **line,char *d,int dlen)
       nc = 0;
       s += 2;
     }
+    else if (*s == '<') {
+      /* \<symbol> : insert absolute unsigned symbol value */
+      char *name;
+      symbol *sym;
+      taddr val;
+
+      s++;
+      if (name = parse_symbol(&s)) {
+        if ((sym = find_symbol(name)) && sym->type==EXPRESSION) {
+          if (eval_expr(sym->expr,&val,NULL,0))
+            nc = sprintf(d,"%lu",(unsigned long)(uint32_t)val);
+        }
+        myfree(name);
+        if (*s++!='>' || nc<0) {
+          syntax_error(11);  /* invalid numeric expansion */
+          return 0;
+        }
+      }
+      else {
+        syntax_error(10);  /* identifier expected */
+        return 0;
+      }
+    }
     else if (isdigit((unsigned char)*s)) {
       /* \1..\9,\0 : insert macro parameter 1..9,10 */
       nc = copy_macro_param(src,*s=='0'?0:*s-'1',d,dlen);
@@ -1620,8 +1643,11 @@ int init_syntax()
     data.idx = i;
     add_hashentry(dirhash,directives[i].name,data);
   }
+
   cond_init();
+  set_internal_abs(REPTNSYM,-1); /* reserve the REPTN symbol */
   current_pc_char = '*';
+
   if (orgmode != ~0)
     set_section(new_org(orgmode));
   return 1;

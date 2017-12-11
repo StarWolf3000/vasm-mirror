@@ -22,6 +22,9 @@ char *exp_skip(char *);
 #define OPERSEP_BLANK 0
 #endif
 
+/* symbol which contains the current rept-endr iteration count */
+#define REPTNSYM "__RPTCNT"
+
 /* overwrite macro defaults */
 #define MAXMACPARAMS 35
 char *my_skip_macro_arg(char *);

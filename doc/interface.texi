@@ -376,7 +376,7 @@ the modules:
         while traversing through the section. Has to be updated by a
         module using it. Is set to @code{org} at the beginning.
 
-@item   uint32_t idx;
+@item   unsigned long idx;
         A member usable by the output module for private purposes.
 
 @end table
@@ -501,7 +501,7 @@ expects a pointer to a symbol as argument.
 @item  taddr align;
         The alignment of the symbol in bytes.
 
-@item  uint32_t idx;
+@item  unsigned long idx;
         A member usable by the output module for private purposes.
 
 @end table

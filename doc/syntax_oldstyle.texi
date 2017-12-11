@@ -367,6 +367,8 @@ CPU- and output-module allow it):
       a six-digit unique id, useful for defining labels.
       @code{\()} may be used as a separator between the name of a macro
       argument and the subsequent text.
+      @code{\<symbolname>} inserts the current decimal value of the absolute
+      symbol @code{symbolname}.
 
 @item mdat <file>
       Equivalent to @code{incbin <file>}.

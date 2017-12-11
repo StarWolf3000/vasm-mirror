@@ -91,6 +91,11 @@ or additional options.
         escape character \ as any other character. Might be useful for
         compatibility.
 
+@item -noialign
+        Perform no automatic alignment for instructions. Note that
+        unaligned instructions make your code crash when executed!
+        Only set when you know what you do!
+
 @item -nosym
         Strips all local symbols from the output file and doesn't include
         any other symbols than those which are required for external

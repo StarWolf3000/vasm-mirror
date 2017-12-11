@@ -127,7 +127,7 @@ struct section {
   uint32_t memattr;  /* type of memory, used by some object formats */
   taddr org;
   taddr pc;
-  uint32_t idx; /* usable by output module */
+  unsigned long idx; /* usable by output module */
 };
 
 /* mnemonic description */
@@ -166,6 +166,7 @@ extern int warn_unalloc_ini_dat;
 extern int listena,listformfeed,listlinesperpage,listnosyms;
 extern int mnemonic_cnt;
 extern int nocase,no_symbols,pic_check,secname_attr,exec_out,chklabels;
+extern taddr inst_alignment;
 extern hashtable *mnemohash;
 extern source *cur_src;
 extern section *current_section;

@@ -44,7 +44,7 @@ struct symbol {
   section *sec;
   taddr pc;
   taddr align;
-  uint32_t idx; /* usable by output module */
+  unsigned long idx; /* usable by output module */
 };
 
 /* type of symbol references */

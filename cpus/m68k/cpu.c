@@ -24,7 +24,7 @@ struct cpu_models models[] = {
 int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3a (c) 2002-2017 Frank Wille";
+char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3b (c) 2002-2017 Frank Wille";
 char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -2111,7 +2111,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
       int pcdisp8 = (op->base[0]) ?
                     ((pcdisp>=-0x80 && pcdisp<=0x7f) || undef) :
                     (op->extval[0]>=-0x80 && op->extval[0]<=0x7f);
-  
+
       if ((cpu_type & (m68020up|cpu32)) && !pcdisp8) {
         /* (d8,PC,Rn) --> (bd,PC,Rn) */
         op->format &= 0xff00;
@@ -2130,19 +2130,18 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
         if (final && warn_opts>1)
           cpu_error(50,"abs.w->abs.l");
       }
-      else if (op->base[0]) {
-        if (typechk && LOCREF(op->base[0])) {
-          /* label.w --> label.l */
-          op->reg = REG_AbsLong;
-          if (final)
-            cpu_error(22);  /* need 32 bits to reference a program label */
-        }
+      else if (op->base[0] && typechk && LOCREF(op->base[0]) &&
+               !(op->base[0]->flags & ABSLABEL)) {
+        /* label.w --> label.l */
+        op->reg = REG_AbsLong;
+        if (final)
+          cpu_error(22);  /* need 32 bits to reference a program label */
       }
     }
 
     else if (op->mode==MODE_Extended && op->reg==REG_AbsLong) {
-      if (opt_abs && !op->base[0] && size16[0] &&
-          (ot->modes & (1<<AM_AbsShort))) {
+      if (opt_abs && (!op->base[0] || (op->base[0]->flags & ABSLABEL)) &&
+          size16[0] && (ot->modes & (1<<AM_AbsShort))) {
         /* absval.l --> absval.w */
         op->reg = REG_AbsShort;
         if (final && warn_opts>1)

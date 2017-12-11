@@ -1,6 +1,21 @@
 vasm history
 =============
 
+- 1.8b (NO-RELEASE)
+o Option -noialign disables the automatic instruction alignment.
+o m68k: New Apollo Core instructions (core >=4035.jic), provided by
+  Henryk Richter.
+o m68k: Referencing absolute-short labels and optimizing labels into
+  absolute short addressing mode is allowed, when the label resides in
+  an absolute ORG section.
+o jagrisc: Fixed MOVE PC,Rn instruction.
+o oldstyle-syntax: Internal symbol __RPTCNT can be used as iteration counter
+  in the inner repeat loop.
+o oldstyle-syntax: Numeric absolute symbol expansion is supported for macro
+  parameters of the form \<symbol>.
+o vobj-output: Ignoring internal/local symbols does not work. Now we
+  create and use section symbols as a relocation reference.
+
 - 1.8a (13.08.17)
 o Increased number of fast-optimization passes from 50 to 200, as
   very large sources (> 60000 lines), with lots of branches to optimize,
