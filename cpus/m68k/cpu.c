@@ -1,10 +1,11 @@
 /*
 ** cpu.c Motorola M68k, CPU32 and ColdFire cpu-description file
-** (c) in 2002-2017 by Frank Wille
+** (c) in 2002-2019 by Frank Wille
 */
 
 #include <math.h>
 #include "vasm.h"
+#include "error.h"
 
 #include "operands.h"
 
@@ -24,7 +25,7 @@ struct cpu_models models[] = {
 int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3b (c) 2002-2017 Frank Wille";
+char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3e (c) 2002-2019 Frank Wille";
 char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -75,6 +76,7 @@ static unsigned char ign_unambig_ext = 0;  /* don't check unambig. size ext. */
 static unsigned char regsymredef = 0; /* allow redefinition of reg. symbols */
 static unsigned char phxass_compat = 0;
 static unsigned char devpac_compat = 0;
+static unsigned char kick1hunks = 0;
 static char current_ext;              /* extension of current parsed inst. */
 
 static char b_str[] = "b";
@@ -1706,6 +1708,11 @@ int parse_operand(char *p,int len,operand *op,int required)
                   check_basereg(op);
                 }
               }
+              else if (REGisPC(reg)) {
+                op->mode = MODE_Extended;             /* (PC) -> (0,PC) */
+                op->reg = REG_PC16Disp;
+                op->value[0] = number_expr(0);
+              }
               else {
                 if (*p == '+') {
                   op->mode = MODE_AnPostInc;          /* (An)+ */
@@ -2033,6 +2040,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
   taddr pcdisp;  /* calculated pc displacement = (label - current_pc) */
   int pcdisp16;  /* true, when pcdisp fits into 16 bits */
   int undef;     /* true, when base-symbol is still undefined */
+  int secrel;    /* pc-relative reference in current section */
   int bdopt;     /* true, when base-displacement optimization allowed */
   int odopt;     /* true, when outer-displacement optimization allowed */
 
@@ -2051,6 +2059,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
   pcdisp = op->extval[0] - cpc;
   pcdisp16 = (op->base[0]==NULL) ? 0 : (pcdisp>=-0x8000 && pcdisp<=0x7fff);
   undef = (op->base[0]==NULL) ? 0 : EXTREF(op->base[0]);
+  secrel = op->base[0]!=NULL && LOCREF(op->base[0]) && op->base[0]->sec==sec;
 
   if (bdopt) {  /* base displacement optimizations allowed */
 
@@ -2082,7 +2091,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
              (cpu_type & (m68020up|cpu32)) &&
              (ot->modes & (1<<AM_PC8Format))) {
       if ((!op->base[0] && !size16[0]) ||
-          (op->base[0] && !pcdisp16 && !undef)) {
+          (op->base[0] && !pcdisp16 && !undef && secrel)) {
         /* (d16,PC) --> (bd32,PC,ZDn.w) for 020+ only */
         op->reg = REG_PC8Format;
         op->format = FW_FullFormat | FW_IndexSuppress | FW_BDSize(FW_Long);
@@ -2151,7 +2160,8 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
                (ot->modes & (1<<AM_An16Disp)) &&
                ((opt_gen && (op->base[0]->flags&NEAR)) ||
                 (opt_sd && op->base[0]->type==LABSYM && op->base[0]->sec!=NULL
-                 && (op->base[0]->sec->flags&NEAR_ADDRESSING)))) {
+                 && (op->base[0]->sec->flags&NEAR_ADDRESSING))) &&
+               op->extval[0]>=0 && op->extval[0]<=0xffff) {
         /* label.l --> label(An) base relative near addressing */
         op->mode = MODE_An16Disp;
         op->reg = sdreg;
@@ -2159,7 +2169,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
 	  cpu_error(49,"label->(label,An)");
       }
       else if (opt_pc && op->base[0] && (ot->modes & (1<<AM_PC16Disp))) {
-        if (!undef && pcdisp16 && op->base[0]->sec==sec) {
+        if (!undef && pcdisp16 && secrel) {
           /* label.l --> d16(PC) */
           op->reg = REG_PC16Disp;
           if (final && warn_opts>1)
@@ -2289,7 +2299,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
           if (final && warn_opts>1)
              cpu_error(49,"(0,PC,...)->(PC,...)");
         }
-        else if (bdopt && ((op->base[0] && !pcdisp16 && !undef) ||
+        else if (bdopt && ((op->base[0] && !pcdisp16 && !undef && secrel) ||
                   (!op->base[0] && !size16[0]))
                  && FW_getBDSize(op->format)==FW_Word) {
           /* (bd16,PC,...) --> (bd32,PC,...) */
@@ -2299,7 +2309,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
              cpu_error(50,"(bd16,PC,...)->(bd32,PC,...)");
         }
         else if (opt_bdisp && bdopt &&
-                 ((op->base[0] && pcdisp16 && !undef) ||
+                 ((op->base[0] && pcdisp16 && !undef && secrel) ||
                   (!op->base[0] && size16[0]))
                  && FW_getBDSize(op->format)==FW_Long) {
           if ((op->format & FW_IndexSuppress) &&
@@ -2332,7 +2342,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
         if (final && warn_opts>1)
             cpu_error(49,"([0,PC,...],...)->([PC,...],...)");
       }
-      else if (bdopt && ((op->base[0] && !pcdisp16 && !undef) ||
+      else if (bdopt && ((op->base[0] && !pcdisp16 && !undef && secrel) ||
                (!op->base[0] && !size16[0])) &&
                FW_getBDSize(op->format)==FW_Word) {
         /* ([bd16,PC,...],...) --> ([bd32,PC,...],...) */
@@ -2342,7 +2352,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
             cpu_error(50,"([bd16,PC,...],...)->([bd32,PC,...],...)");
       }
       else if (opt_bdisp && bdopt &&
-               ((op->base[0] && pcdisp16 && !undef) ||
+               ((op->base[0] && pcdisp16 && !undef && secrel) ||
                 (!op->base[0] && size16[0])) &&
                FW_getBDSize(op->format)==FW_Long) {
         /* ([bd32,PC,...],...) --> ([bd16,PC,...],...) */
@@ -3454,54 +3464,60 @@ dontswap:
     }
   }
 
-  else if (oc==0x4c40 && abs &&
-           ip->op[0]->mode==MODE_Extended && ip->op[0]->reg==REG_Immediate) {
-    /* DIVU.L/DIVS.L #x,Dn */
+  else if (oc == 0x4c40) {
+    if (abs &&
+        ip->op[0]->mode==MODE_Extended && ip->op[0]->reg==REG_Immediate) {
+      /* DIVU.L/DIVS.L #x,Dn */
 
-    if (val == 0) {
-      /* divu.l/divs.l #0,Dn */
-      if (final)
-        cpu_error(60);  /* division by zero */
+      if (val == 0) {
+        /* divu.l/divs.l #0,Dn */
+        if (final)
+          cpu_error(60);  /* division by zero */
+      }
+      else if (opt_div && mnemo->operand_type[1]==D_) {
+        if (val == 1) {
+          /* divu.l/divs.l #1,Dn -> tst.l Dn */
+          ip->code = OC_TST;
+          if (final) {
+            free_operand(ip->op[0]);
+            if (warn_opts)
+              cpu_error(51,"divu/divs.l #1,Dn -> tst.l Dn");
+          }
+          ip->op[0] = ip->op[1];
+          ip->op[1] = NULL;
+        }
+        else if (val==-1 && (mnemo->ext.opcode[1] & 0x0800)) {
+          /* divs.l #-1,Dn -> neg.l Dn */
+          ip->code = OC_NEG;
+          if (final) {
+            free_operand(ip->op[0]);
+            if (warn_opts)
+              cpu_error(51,"divs.l #-1,Dn -> neg.l Dn");
+          }
+          ip->op[0] = ip->op[1];
+          ip->op[1] = NULL;
+        }
+        else if (val>=2 && val<=0x100 && (mnemo->ext.opcode[1] & 0x0800)==0 &&
+                 cntones(val,9)==1) {
+          /* divu.l #x,Dn -> lsr.l #x,Dn */
+          ip->code = OC_LSRI;
+          val = bfffo(val,1,9);
+          if (final) {
+            free_expr(ip->op[0]->value[0]);
+            ip->op[0]->value[0] = number_expr(val);
+            if (warn_opts)
+              cpu_error(51,"divu.l #x,Dn -> lsr.l #x,Dn");
+          }
+          else
+            ip->op[0]->flags |= FL_DoNotEval;
+          ip->op[0]->extval[0] = val;
+        }
+      }
     }
-    else if (opt_div && mnemo->operand_type[1]==D_) {
-      if (val == 1) {
-        /* divu.l/divs.l #1,Dn -> tst.l Dn */
-        ip->code = OC_TST;
-        if (final) {
-          free_operand(ip->op[0]);
-          if (warn_opts)
-            cpu_error(51,"divu/divs.l #1,Dn -> tst.l Dn");
-        }
-        ip->op[0] = ip->op[1];
-        ip->op[1] = NULL;
-      }
-      else if (val==-1 && (mnemo->ext.opcode[1] & 0x0800)) {
-        /* divs.l #-1,Dn -> neg.l Dn */
-        ip->code = OC_NEG;
-        if (final) {
-          free_operand(ip->op[0]);
-          if (warn_opts)
-            cpu_error(51,"divs.l #-1,Dn -> neg.l Dn");
-        }
-        ip->op[0] = ip->op[1];
-        ip->op[1] = NULL;
-      }
-      else if (val>=2 && val<=0x100 && (mnemo->ext.opcode[1] & 0x0800)==0 &&
-               cntones(val,9)==1) {
-        /* divu.l #x,Dn -> lsr.l #x,Dn */
-        ip->code = OC_LSRI;
-        val = bfffo(val,1,9);
-        if (final) {
-          free_expr(ip->op[0]->value[0]);
-          ip->op[0]->value[0] = number_expr(val);
-          if (warn_opts)
-            cpu_error(51,"divu.l #x,Dn -> lsr.l #x,Dn");
-        }
-        else
-          ip->op[0]->flags |= FL_DoNotEval;
-        ip->op[0]->extval[0] = val;
-      }
-    }
+    else if (mnemo->operand_type[1]==DD && !(mnemo->ext.opcode[1]&0x0400) &&
+             ((ip->op[1]->reg>>4) & 0xf) == (ip->op[1]->reg & 0xf))
+      /* DIVxL.L <ea>,Dn:Dn is DIVx.L <ea>,Dn */
+      cpu_error(65);  /* Dr and Dq are identical! */
   }
 
   else if ((oc==0x4ec0 || oc==0x4e80) && !abs) {
@@ -3545,7 +3561,7 @@ dontswap:
         if (final && warn_opts>1)
           cpu_error(51,"jmp/jsr -> jmp/jsr (PC)");
       }
-      else if (opt_jbra && (cpu_type & (m68020up|cpu32))) {
+      else if (opt_jbra && !kick1hunks && (cpu_type & (m68020up|cpu32))) {
         /* JMP/JSR extlabel -> BRA.L/BSR.L extlabel (68020+, CPU32) */
         ip->qualifiers[0] = l_str;
         ip->code = (oc & 0x40) ? OC_BRA : OC_BSR;
@@ -3871,6 +3887,10 @@ size_t instruction_size(instruction *realip,section *sec,taddr pc)
 
   extsize = mnemo->ext.size;
 
+  /* remember the instruction's original extension, before optimizations */
+  if (realip->ext.un.real.orig_ext < 0)
+    realip->ext.un.real.orig_ext = (signed char)ext;
+
   if (opt_allbra && ign_unambig_ext) {
     /* Strip the size extension from branch instructions, no matter if
        illegal or not. The optimizer will find the best size. */
@@ -3965,10 +3985,6 @@ size_t instruction_size(instruction *realip,section *sec,taddr pc)
     if (!(mnemo->ext.available & cpu_type))
       cpu_error(0);  /* instruction not supported */
   }
-
-  /* remember the instruction's original extension, before optimizations */
-  if (realip->ext.un.real.orig_ext < 0)
-    realip->ext.un.real.orig_ext = (signed char)ext;
 
   /* check if we are uncertain about the side of a register list operand */
 #if 0
@@ -5025,6 +5041,11 @@ int cpu_args(char *arg)
     return 0;  /* leave option visible for syntax modules */
   }
 
+  if (!strcmp(p,"-kick1hunks")) {
+    kick1hunks = 1;
+    return  0;  /* leave option visible for syntax modules */
+  }
+
   if (!strncmp(p,"-m",2)) {
     uint32_t cpu;
 
@@ -5683,7 +5704,7 @@ char *parse_cpu_special(char *start)
       s = skip(s);
       if (validchar(s))
         id = parse_constexpr(&s);
-      if (id && !no_fpu) {
+      if (id>0 && id<8 && !no_fpu) {
         fpu_id = (unsigned char)id;
         add_cpu_opt(0,OCMD_FPU,fpu_id);
         cpu_type |= m68881|m68882;

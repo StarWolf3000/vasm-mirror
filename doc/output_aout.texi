@@ -6,7 +6,7 @@ selected with the @option{-Faout} option.
     This module is written in 2008-2012 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
-@section Additional options for this version
+@section Additional options for this module
  
 @table @option
     @item -mid=<machine id>
@@ -56,7 +56,7 @@ are not suitable for most RISC CPUs. The extended relocations format occupies
 This module has the following error messages:
 
 @itemize @minus
-@item 3004: section attributes <attr> not suppported
+@item 3004: section attributes <attr> not supported
 @item 3008: output module doesn't allow multiple sections of the same type
 @item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
 @end itemize

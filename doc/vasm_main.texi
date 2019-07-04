@@ -41,6 +41,21 @@ or additional options.
         Prints dependencies in the same way as @option{-depend}, but
         will also print all include files with absolute paths.
 
+@item -dwarf[=<version>]
+        Automatically generate DWARF debugging sections, suitable for
+        source level debugging. When the version specification is missing
+        DWARF V3 will be generated. The only difference to V2 is that it
+        creates a @code{.debug_ranges} section, with address ranges for all
+        sections, instead of a bad workaround by specifying
+        @code{DW_AT_low_pc=0} and @code{DW_AT_high_pc=~0}.
+        Note that when you build vasm from source, you may have to specify
+        your host operating system with @code{-Dname} in the Makefile to
+        include the appropriate code which can determine the current
+        work directory. Otherwise, the default would be to set the current
+        work directory to an empty string. Currently supported are:
+        @code{UNIX}, @code{AMIGA}, @code{ATARI}, @code{MSDOS},
+        @code{_WIN32}.
+
 @item -esc
         Enable escape character sequences. This will make vasm treat the
         escape character \ in string constants similar as in the C language.
@@ -130,6 +145,10 @@ or additional options.
 
 @item -w
         Hide all warning messages.
+
+@item -wfail
+        The return code of vasm will no longer be 0 (success), when there
+        was a warning. Errors always make the return code fail.
 
 @item -x
         Show an error message, when referencing an undefined symbol.
@@ -332,6 +351,7 @@ Has to be provided completely by the syntax module.
     under work, not complete):
 
 @itemize
+    @item Jordan Zebor
     @item Joseph Zatarski
     @item Frank Wille
     @item Henryk Richter
@@ -342,6 +362,7 @@ Has to be provided completely by the syntax module.
     @item Timm S. Mueller
     @item Gareth Morris
     @item Dominic Morris
+    @item Jean-Paul Mari
     @item Mauricio Mu@~noz Lucero
     @item J@"org van de Loo
     @item Robert Leffmann
@@ -406,6 +427,7 @@ The frontend has the following error messages:
 @item 43: illegal macro argument
 @item 44: reloc org is already set
 @item 45: reloc org was not set
+@item 46: address space overflow
 @item 47: bad file-offset argument
 @item 48: assertion "%s" failed: %s
 @item 49: cannot declare structure within structure
@@ -434,5 +456,6 @@ The frontend has the following error messages:
 @item 72: cannot mix positional and keyword arguments
 @item 73: undefined macro argument name
 @item 74: required macro argument %d was left out
+@item 75: label <%s> redefined
 
 @end itemize

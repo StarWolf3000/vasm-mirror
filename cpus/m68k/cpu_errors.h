@@ -64,3 +64,5 @@
   "register list on both sides",ERROR,
   "\"%s\" directive was replaced by an instruction with the same name",NOLINE|WARNING,
   "Addr.reg. operand at level #0 causes F-line exception",WARNING,
+  "Dr and Dq are identical, transforming DIVxL.L effectively into "
+    "DIVx.L",WARNING,                                                /* 65 */

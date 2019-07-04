@@ -4,10 +4,10 @@ M68k and ColdFire families of CPUs, which is available with the extension
 
 @section Legal
 
-    This module is written in 2002-2017 by Frank Wille and
+    This module is written in 2002-2019 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
-@section Additional options for this version
+@section Additional options for this module
  
 This syntax module provides the following additional options:
  
@@ -22,6 +22,10 @@ This syntax module provides the following additional options:
  @code{\9}). More arguments can be accessed through @code{\a} to
  @code{\z}) which may conflict with escape characters or named arguments,
  therefore they are not enabled by default.
+
+@item -cnop=<code>
+ Sets a two-byte code used for alignment padding with CNOP.
+ Defaults to 0x4e71 on M68k.
 
 @item -devpac
  Devpac-compatibility mode. Only directives known to Devpac are recognized.
@@ -59,7 +63,8 @@ This syntax module provides the following additional options:
 @end itemize
 
 @item -spaces
- Allow blanks in operands.
+ Allow blanks in the operand field. Otherwise a blank would start the
+ comment field there.
 
 @item -warncomm
  Warn about all lines, which have comments in the operand field, introduced
@@ -69,13 +74,11 @@ This syntax module provides the following additional options:
 
 @section General Syntax
 
-Labels must either start at the first column of a line or need to be
+Labels must either start at the first column of a line or have to be
 terminated by a colon (@code{:}). In the first case the mnemonic
 has to be separated from the label by whitespace (not required in any case,
-e.g. with a @code{=} directive). Qualifiers are appended to the mnemonic,
-separated by a dot (if the CPU-module supports qualifiers). The
-operands are separated from the mnemonic by whitespace. Multiple
-operands are separated by comma (@code{,}).
+e.g. with the @code{=} directive). A double colon (@code{::})
+automatically makes the label externally visible (refer to @code{xdef}).
 
 Local labels are preceded by '@code{.}' or terminated by '@code{$}'.
 For the rest, any alphanumeric character including '@code{_}' is allowed.
@@ -94,10 +97,15 @@ with macro arguments.
 Make sure that you don't define a label on the same line as a
 directive for conditional assembly (if, else, endif)! This is not supported.
 
+Qualifiers are appended to the mnemonic,
+separated by a dot (if the CPU-module supports qualifiers). The
+operands are separated from the mnemonic by whitespace. Multiple
+operands are separated by comma (@code{,}).
+
 In this syntax module, the operand field must not contain any whitespace
 characters, as long as the option @option{-spaces} was not specified.
 
-Comments are introduced by the comment character @code{;} or @code{*}.
+Comments can be introduced everywhere by the characters @code{;} or @code{*}.
 The rest of the line will be ignored. Also everything following the operand
 field, separated by a whitespace, will be regarded as comment (unless
 @option{-spaces}). Be careful with @code{*}, which is recognized as the
@@ -187,7 +195,7 @@ CPU- and output-module support them):
 @item cnop <offset>,<alignment>
       Insert as much zero bytes as required to reach an address which
       can be divided by <alignment>. Then add <offset> zero bytes.
-      May fill the pad-bytes with no-operation instructions for certain
+      May fill the padding-bytes with no-operation instructions for certain
       cpus.
 
 @item code
@@ -313,6 +321,34 @@ CPU- and output-module support them):
 
 @item dseg
       Equivalent to @code{section data,data}.
+
+@item dx.b <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.b <exp>,0}.
+
+@item dx.d <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.d <exp>,0}.
+
+@item dx.l <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.l <exp>,0}.
+
+@item dx.q <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.q <exp>,0}.
+
+@item dx.s <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.s <exp>,0}.
+
+@item dx.w <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.w <exp>,0}.
+
+@item dx.x <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.x <exp>,0}.
 
 @item echo <string>
       Prints <string> to stdout.
@@ -506,7 +542,7 @@ CPU- and output-module support them):
       macro's current unique id is not affected by this operation.
 @item \#
       Insert the number of arguments that have been passed to this macro.
-      Equivalent to the conents of @code{NARG}.
+      Equivalent to the contents of @code{NARG}.
 @item \?n
       Insert the length of the @code{n}'th macro argument.
 @item \.
@@ -519,18 +555,18 @@ CPU- and output-module support them):
       Works like @code{\.}, but decrements the value of @code{CARG} after
       that.
 @item \<symbolname>
-      inserts the current decimal value of the absolute
+      Inserts the current decimal value of the absolute
       symbol @code{symbolname}.
-@item \<$symbolname>
-      inserts the current hexadecimal value of the absolute
+@item \$<symbolname>
+      Inserts the current hexadecimal value of the absolute
       symbol @code{symbolname}, without leading @code{$}.
 @end table
 
 @item mexit
       Leave the current macro and continue with assembling the parent
       context. Note that this directive also resets the level of conditional
-      assembly to a state before the macro was invoked (which means that
-      it works as a 'break' command on all new @code{if} directives).
+      assembly to a state before the macro was invoked; which means that
+      it also works as a 'break' command on all new @code{if} directives.
 
 @item nolist
       The following lines will not be visible in a listing file.
@@ -547,6 +583,8 @@ CPU- and output-module support them):
 
 @item odd
       Aligns to an odd address. Equivalent to @code{cnop 1,2}.
+      Bugs: Note that this is not a real @code{odd} instruction, as it
+      wastes two bytes when the address is already odd.
 
 @item offset [<expression>]
       Switches to a special offset-section. The contents of such a section
@@ -624,7 +662,7 @@ CPU- and output-module support them):
       @code{<sec_type>} defaults to @code{code} in Phxass mode. Otherwise
       a single argument will start a section with the type and name of
       @code{<sec_type>}. When @code{<mem_type>} is given
-      it defines a 32-bit memory attribute, which defines where to load
+      it defines a 32-bit memory attribute, which specifies where to load
       the section.
       @code{<mem_type>} is either a numerical constant or one of the
       keywords @code{chip} (for Chip-RAM) or @code{fast} (for Fast-RAM).
@@ -675,7 +713,7 @@ CPU- and output-module support them):
       When a weak symbol remains undefined its value defaults to 0.
 
 @item xdef <symbol>[,<symbol>...]
-      Flag <symbol> as an global symbol, which means that
+      Flag <symbol> as a global symbol, which means that
       <symbol> is visible to all modules in the linking process.
       See also @code{public}.
 
@@ -692,7 +730,8 @@ CPU- and output-module support them):
 
 @itemize @minus
 
-@item None?
+@item @code{odd} directive wastes two bytes, when address is already odd.
+@item Some listing file directives have no effect.
 
 @end itemize
 

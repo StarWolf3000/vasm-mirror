@@ -17,7 +17,7 @@ nreloc *new_nreloc(void)
 rlist *add_extnreloc(rlist **relocs,symbol *sym,taddr addend,int type,
                      size_t bitoffs,size_t size,size_t byteoffs)
 /* add_extnreloc() can specify byteoffset and bitoffset directly.
-   Use add_nreloc_masked() for the old interface, which calculates
+   Use add_nreloc() for the old interface, which calculates
    byteoffset and bitoffset from offset. */
 {
   rlist *rl;

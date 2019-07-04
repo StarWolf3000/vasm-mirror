@@ -1,7 +1,8 @@
 /* parse.c - global parser support functions */
-/* (c) in 2009-2017 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2018 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
+#include "osdep.h"
 
 int esc_sequences = 0;  /* do not handle escape sequences by default */
 int nocase_macros = 0;  /* macro names are case-insensitive */
@@ -25,6 +26,8 @@ static size_t enddir_minlen;
 static struct namelen *reptdir_list;
 
 static int rept_cnt = -1;
+static source *rept_defsrc;
+static int rept_defline;
 static char *rept_start,*rept_name,*rept_vals;
 
 static section *cur_struct;
@@ -369,7 +372,7 @@ void include_binary_file(char *inname,long nbskip,unsigned long nbkeep)
   FILE *f;
 
   filename = convert_path(inname);
-  if (f = locate_file(filename,"rb")) {
+  if (f = locate_file(filename,"rb",NULL)) {
     size_t size = filesize(f);
 
     if (size > 0) {
@@ -400,14 +403,19 @@ void include_binary_file(char *inname,long nbskip,unsigned long nbkeep)
 static struct namelen *dirlist_match(char *s,char *e,struct namelen *list)
 /* check if a directive from the list matches the current source location */
 {
+  char *name;
   size_t len;
-  size_t maxlen = e - s;
+
+  if (!ISIDSTART(*s))
+    return NULL;
+
+  name = s;
+  while (s<e && ISIDCHAR(*s))
+    s++;
 
   while (len = list->len) {
-    if (len <= maxlen) {
-      if (!strnicmp(s,list->name,len) && isspace((unsigned char)*(s + len)))
+    if (s-name==len && !strnicmp(name,list->name,len))
         return list;
-    }
     list++;
   }
   return NULL;
@@ -456,6 +464,16 @@ void new_repeat(int rcnt,char *name,char *vals,
     rept_name = name;
     rept_vals = vals;
     rept_cnt = rcnt;  /* also REPT_IRP or REPT_IRPC */
+
+    /* get start-line of repetition in the last real source text */
+    if (cur_src->defsrc) {
+      rept_defsrc = cur_src->defsrc;
+      rept_defline = cur_src->defline + cur_src->line;
+    }
+    else {
+      rept_defsrc = cur_src;
+      rept_defline = cur_src->line;
+    }
   }
   else
     ierror(0);
@@ -536,6 +554,13 @@ macro *new_macro(char *name,struct namelen *endmlist,char *args)
     m->recursions = 0;
     m->vararg = -1;
 
+    /* remember the start-line of this macro definition in the real source */
+    if (cur_src->defsrc)
+      ierror(0); /* macro can't be defined in a repetition of another macro */
+    m->defsrc = cur_src;
+    m->defline = cur_src->line;
+
+    /* looking for name conflicts */
     if (find_name_nc(mnemohash,name,&data)) {
       int idx;
 
@@ -648,7 +673,10 @@ int execute_macro(char *name,int name_len,char **q,int *q_len,int nq,
     return 0;
   }
   m->recursions++;
-  src = new_source(m->name,m->text,m->size);
+
+  src = new_source(m->name,NULL,m->text,m->size);
+  src->defsrc = m->defsrc;
+  src->defline = m->defline;
   src->argnames = m->argnames;
 
 #if MAX_QUALIFIERS>0
@@ -796,9 +824,11 @@ static void start_repeat(char *rept_end)
 
   if (rept_cnt != 0) {
     sprintf(buf,"REPEAT:%s:line %d",cur_src->name,cur_src->line);
-    src = new_source(mystrdup(buf),rept_start,rept_end-rept_start);
+    src = new_source(buf,NULL,rept_start,rept_end-rept_start);
     src->irpname = rept_name;
     src->irpvals = NULL;
+    src->defsrc = rept_defsrc;
+    src->defline = rept_defline;
 #ifdef REPTNSYM
     src->reptn = 0;
     set_internal_abs(REPTNSYM,0);

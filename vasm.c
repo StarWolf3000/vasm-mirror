@@ -1,14 +1,17 @@
 /* vasm.c  main module for vasm */
-/* (c) in 2002-2017 by Volker Barthelmann */
+/* (c) in 2002-2019 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "vasm.h"
+#include "osdep.h"
 #include "stabs.h"
+#include "dwarf.h"
 
-#define _VER "vasm 1.8b"
-char *copyright = _VER " (c) in 2002-2017 Volker Barthelmann";
+#define _VER "vasm 1.8f"
+char *copyright = _VER " (c) in 2002-2019 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 #endif
@@ -24,26 +27,20 @@ static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 #define MAXPASSES 1000
 #define FASTOPTPHASE 200
 
-source *cur_src=NULL;
+source *cur_src;
 char *filename,*debug_filename;
 section *current_section;
 char *inname,*outname,*listname;
-taddr inst_alignment=INST_ALIGN;
-int secname_attr;
-int unnamed_sections;
-int ignore_multinc;
-int nocase;
-int no_symbols;
-int pic_check;
-int done,final_pass,debug;
-int exec_out;
-int chklabels;
-int warn_unalloc_ini_dat;
+taddr inst_alignment;
+int done,secname_attr,unnamed_sections,ignore_multinc,nocase,no_symbols;
+int pic_check,final_pass,debug,exec_out,chklabels,warn_unalloc_ini_dat;
+int dwarf;
 int listena,listformfeed=1,listlinesperpage=40,listnosyms;
 listing *first_listing,*last_listing,*cur_listing;
 struct stabdef *first_nlist,*last_nlist;
 char *output_format="test";
 unsigned long long taddrmask;
+taddr taddrmin,taddrmax;
 char emptystr[]="";
 char vasmsym_name[]="__VASM";
 
@@ -52,7 +49,8 @@ static char **listtitles;
 static int *listtitlelines;
 static int listtitlecnt;
 
-static FILE *outfile=NULL;
+static char *compile_dir;
+static FILE *outfile;
 
 static int depend,depend_all;
 #define DEPEND_LIST     1
@@ -65,7 +63,7 @@ static struct deplist *first_depend,*last_depend;
 
 static section *first_section,*last_section;
 #if NOT_NEEDED
-static section *prev_sec=NULL,*prev_org=NULL;
+static section *prev_sec,*prev_org;
 #endif
 
 /* MNEMOHTABSIZE should be defined by cpu module */
@@ -75,8 +73,9 @@ static section *prev_sec=NULL,*prev_org=NULL;
 hashtable *mnemohash;
 
 static int verbose=1,auto_import=1;
-static struct include_path *first_incpath=NULL;
-static struct include_path *first_source=NULL;
+static int fail_on_warning;
+static struct include_path *first_incpath;
+static struct source_file *first_source;
 
 static char *output_copyright;
 static void (*write_object)(FILE *,section *,symbol *);
@@ -106,7 +105,7 @@ void leave(void)
     }
   }
 
-  if(errors)
+  if(errors||(fail_on_warning&&warnings))
     exit(EXIT_FAILURE);
   else
     exit(EXIT_SUCCESS);
@@ -141,6 +140,7 @@ static void remove_unalloc_sects(void)
     else
       prev = sec;
   }
+  last_section = prev;
 }
 
 /* append a new stabs (nlist) symbol/debugging definition */
@@ -171,19 +171,18 @@ static void new_stabdef(aoutnlist *nlist,section *sec)
     first_nlist = last_nlist = new;
 }
 
-
 static void resolve_section(section *sec)
 {
   taddr rorg_pc,org_pc;
   int fastphase=FASTOPTPHASE;
   int pass=0;
-  int extrapass;
+  int extrapass,rorg;
   size_t size;
   atom *p;
 
   do{
     done=1;
-    rorg_pc=0;
+    rorg=0;
     if (++pass>=MAXPASSES){
       general_error(7,sec->name);
       break;
@@ -195,8 +194,8 @@ static void resolve_section(section *sec)
     sec->pc=sec->org;
     for(p=sec->first;p;p=p->next){
       sec->pc=pcalign(p,sec->pc);
-      cur_src=p->src;
-      cur_src->line=p->line;
+      if(cur_src=p->src)
+        cur_src->line=p->line;
 #if HAVE_CPU_OPTS
       if(p->type==OPTS){
         cpu_opts(p->content.opts);
@@ -204,17 +203,19 @@ static void resolve_section(section *sec)
       else
 #endif
       if(p->type==RORG){
-        if(rorg_pc!=0)
+        if(rorg)
           general_error(43);  /* reloc org is already set */
         rorg_pc=*p->content.rorg;
         org_pc=sec->pc;
         sec->pc=rorg_pc;
         sec->flags|=ABSOLUTE;
+        rorg=1;
       }
-      else if(p->type==RORGEND&&rorg_pc!=0){
+      else if(p->type==RORGEND&&rorg){
         sec->pc=org_pc+(sec->pc-rorg_pc);
         rorg_pc=0;
         sec->flags&=~ABSOLUTE;
+        rorg=0;
       }
       else if(p->type==LABEL){
         symbol *label=p->content.label;
@@ -258,7 +259,7 @@ static void resolve_section(section *sec)
       }
       sec->pc+=size;
     }
-    if(rorg_pc!=0){
+    if(rorg){
       sec->pc=org_pc+(sec->pc-rorg_pc);
       sec->flags&=~ABSOLUTE;  /* workaround for misssing RORGEND */
     }
@@ -280,25 +281,31 @@ static void resolve(void)
 
 static void assemble(void)
 {
+  taddr basepc,rorg_pc,org_pc;
+  struct dwarf_info dinfo;
+  int bss,rorg;
   section *sec;
-  taddr basepc;
-  taddr rorg_pc=0;
-  taddr org_pc;
   atom *p;
-  int bss;
 
   convert_offset_labels();
+  if(dwarf){
+    dinfo.version=dwarf;
+    dinfo.producer=cnvstr(copyright,strchr(copyright,'(')-copyright-1);
+    dwarf_init(&dinfo,compile_dir,first_incpath,first_source);
+  }
   final_pass=1;
+  rorg=0;
   for(sec=first_section;sec;sec=sec->next){
     source *lasterrsrc=NULL;
-    int lasterrline=0;
+    utaddr oldpc;
+    int lasterrline=0,ovflw=0;
     sec->pc=sec->org;
     bss=strchr(sec->attr,'u')!=NULL;
     for(p=sec->first;p;p=p->next){
       basepc=sec->pc;
       sec->pc=pcalign(p,sec->pc);
-      cur_src=p->src;
-      cur_src->line=p->line;
+      if(cur_src=p->src)
+        cur_src->line=p->line;
       if(p->list&&p->list->atom==p){
         p->list->sec=sec;
         p->list->pc=sec->pc;
@@ -322,12 +329,14 @@ static void assemble(void)
         org_pc=sec->pc;
         sec->pc=rorg_pc;
         sec->flags|=ABSOLUTE;
+        rorg=1;
       }
       else if(p->type==RORGEND){
-        if(rorg_pc!=0){
+        if(rorg){
           sec->pc=org_pc+(sec->pc-rorg_pc);
           rorg_pc=0;
           sec->flags&=~ABSOLUTE;
+          rorg=0;
         }
         else
           general_error(44);  /* reloc org was not set */
@@ -343,6 +352,13 @@ static void assemble(void)
           if(db->size!=(p->content.inst->code>=0?
                         instruction_size(p->content.inst,sec,sec->pc):0))
             ierror(0);
+        }
+        if(dwarf){
+          if(cur_src->defsrc)
+            dwarf_line(&dinfo,sec,cur_src->defsrc->srcfile->index,
+                       cur_src->defline+cur_src->line);
+          else
+            dwarf_line(&dinfo,sec,cur_src->srcfile->index,cur_src->line);
         }
         /*FIXME: sauber freigeben */
         myfree(p->content.inst);
@@ -410,17 +426,28 @@ static void assemble(void)
           lasterrline=p->line;
         }
       }
+      oldpc=sec->pc;
       sec->pc+=atom_size(p,sec,sec->pc);
+      if((utaddr)sec->pc!=oldpc){
+        if((utaddr)(sec->pc-1)<oldpc||ovflw)
+          general_error(45);  /* address space overflow */
+        ovflw=sec->pc==0;
+      }
       sec->flags&=~RESOLVE_WARN;
     }
     /* leave RORG-mode, when section ends */
-    if(rorg_pc!=0){
+    if(rorg){
       sec->pc=org_pc+(sec->pc-rorg_pc);
       rorg_pc=0;
       sec->flags&=~ABSOLUTE;
+      rorg=0;
     }
+    if(dwarf)
+      dwarf_end_sequence(&dinfo,sec);
   }
   remove_unalloc_sects();
+  if(dwarf)
+    dwarf_finish(&dinfo);
 }
 
 static void undef_syms(void)
@@ -503,6 +530,10 @@ static int init_output(char *fmt)
     exec_out=1;  /* executable format */
     return init_output_tos(&output_copyright,&write_object,&output_args);
   }
+  if(!strcmp(fmt,"xfile")){
+    exec_out=1;  /* executable format */
+    return init_output_xfile(&output_copyright,&write_object,&output_args);
+  }
   return 0;
 }
 
@@ -525,8 +556,11 @@ static int init_main(void)
     if(mnemohash->collisions)
       printf("*** %d mnemonic collisions!!\n",mnemohash->collisions);
   }
-  new_include_path(".");
+  new_include_path("");  /* index 0: current work directory */
   taddrmask=MAKEMASK(bytespertaddr<<3);
+  taddrmax=((utaddr)~0)>>1;
+  taddrmin=~taddrmax;
+  inst_alignment=INST_ALIGN;
   return 1;
 }
 
@@ -535,24 +569,25 @@ void set_default_output_format(char *fmt)
   output_format=fmt;
 }
 
-static void set_input_name(void)
+static void include_main_source(void)
 {
-  if(inname){
-    char *p,c;
-    if((p=strrchr(inname,'/'))!=NULL||
-       (p=strrchr(inname,'\\'))!=NULL||
-       (p=strrchr(inname,':'))!=NULL){
-      /* source text not in current dir., add an include path for it */
-      p++;
-      c=*p;
-      *p='\0';
-      new_include_path(inname);
-      *p=c;
+  if (inname) {
+    char *filepart;
+
+    if ((filepart = get_filepart(inname)) != inname) {
+      /* main source is not in current dir., set compile-directory path */
+      compile_dir = cnvstr(inname,filepart-inname);
+      new_include_path(compile_dir);
     }
-    setfilename(inname);
-    setdebugname(inname);
-    include_source(inname);
-  }else
+    else
+      compile_dir = NULL;
+
+    if (include_source(filepart)) {
+      setfilename(filepart);
+      setdebugname(inname);
+    }
+  }
+  else
     general_error(15);
 }
 
@@ -696,7 +731,6 @@ int main(int argc,char **argv)
     }
     if(!strcmp("-unnamed-sections",argv[i])){
       unnamed_sections=1;
-
       continue;
     }
     if(!strcmp("-ignore-mult-inc",argv[i])){
@@ -721,6 +755,10 @@ int main(int argc,char **argv)
       no_warn=1;
       continue;
     }
+    else if(!strcmp("-wfail",argv[i])){
+      fail_on_warning=1;
+      continue;
+    }
     if(!strncmp("-maxerrors=",argv[i],11)){
       sscanf(argv[i]+11,"%i",&max_errors);
       continue;
@@ -729,7 +767,7 @@ int main(int argc,char **argv)
       pic_check=1;
       continue;
     }
-    else if(!strncmp("-maxmacrecurs=",argv[i],14)) {
+    else if(!strncmp("-maxmacrecurs=",argv[i],14)){
       sscanf(argv[i]+14,"%i",&maxmacrecurs);
       continue;
     }
@@ -741,8 +779,15 @@ int main(int argc,char **argv)
       chklabels=1;
       continue;
     }
-    else if(!strcmp("-noialign",argv[i])) {
+    else if(!strcmp("-noialign",argv[i])){
       inst_alignment=1;
+      continue;
+    }
+    else if(!strncmp("-dwarf",argv[i],6)){
+      if(argv[i][6]=='=')
+        sscanf(argv[i]+7,"%i",&dwarf);  /* get DWARF version */
+      else
+        dwarf=3;  /* default to DWARF3 */
       continue;
     }
     if(cpu_args(argv[i]))
@@ -765,7 +810,7 @@ int main(int argc,char **argv)
     }
     general_error(14,argv[i]);
   }
-  set_input_name();
+  include_main_source();
   internal_abs(vasmsym_name);
   if(!init_parse())
     general_error(10,"parse");
@@ -774,6 +819,7 @@ int main(int argc,char **argv)
   if(!init_cpu())
     general_error(10,"cpu");
   parse();
+  listena=0;
   if(errors==0||produce_listing)
     resolve();
   if(errors==0||produce_listing)
@@ -830,32 +876,52 @@ static void add_depend(char *name)
   }
 }
 
-FILE *locate_file(char *filename,char *mode)
+static FILE *open_path(char *compdir,char *path,char *name,char *mode)
 {
   char pathbuf[MAXPATHLEN];
+  FILE *f;
+
+  if (strlen(compdir) + strlen(path) + strlen(name) + 1 <= MAXPATHLEN) {
+    strcpy(pathbuf,compdir);
+    strcat(pathbuf,path);
+    strcat(pathbuf,name);
+
+    if (f = fopen(pathbuf,mode)) {
+      if (depend_all || !abs_path(pathbuf))
+        add_depend(pathbuf);
+      return f;
+    }
+  }
+  return NULL;
+}
+
+FILE *locate_file(char *filename,char *mode,struct include_path **ipath_used)
+{
   struct include_path *ipath;
   FILE *f;
 
-  if (*filename=='.' || abs_path(filename)) {
+  if (abs_path(filename)) {
     /* file name is absolute, then don't use any include paths */
-    /* @@@ FIXME: '.' is currently stripped by convert_path() */
     if (f = fopen(filename,mode)) {
       if (depend_all)
-        add_depend(pathbuf);
+        add_depend(filename);
+      if (ipath_used)
+        *ipath_used = NULL;  /* no path used, file name was absolute */
       return f;
     }
   }
   else {
     /* locate file name in all known include paths */
     for (ipath=first_incpath; ipath; ipath=ipath->next) {
-      if (strlen(ipath->path) + strlen(filename) + 1 <= MAXPATHLEN) {
-        strcpy(pathbuf,ipath->path);
-        strcat(pathbuf,filename);
-        if (f = fopen(pathbuf,mode)) {
-          if (depend_all || !abs_path(pathbuf))
-            add_depend(pathbuf);
-          return f;
-        }
+      if ((f = open_path("",ipath->path,filename,mode)) == NULL) {
+        if (compile_dir && !abs_path(ipath->path) &&
+            (f = open_path(compile_dir,ipath->path,filename,mode)))
+          ipath->compdir_based = 1;
+      }
+      if (f != NULL) {
+        if (ipath_used)
+          *ipath_used = ipath;
+        return f;
       }
     }
   }
@@ -863,69 +929,81 @@ FILE *locate_file(char *filename,char *mode)
   return NULL;
 }
 
-void include_source(char *inname)
+source *include_source(char *inc_name)
 {
-  char *filename;
-  struct include_path **nptr = &first_source;
-  struct include_path *name;
+  static int srcfileidx;
+  char *filename,*pathpart,*filepart;
+  struct source_file **nptr = &first_source;
+  struct source_file *srcfile;
+  source *newsrc = NULL;
   FILE *f;
 
-  filename = convert_path(inname);
+  filename = convert_path(inc_name);
 
-  /* check whether this source was already included */
-  while (name = *nptr) {
-#if defined(AMIGA) || defined(MSDOS) || defined(ATARI) || defined(_WIN32)
-    if (!stricmp(name->path,filename)) {
-#else
-    if (!strcmp(name->path,filename)) {
-#endif
+  /* check whether this source file name was already included */
+  while (srcfile = *nptr) {
+    if (!filenamecmp(srcfile->name,filename)) {
       myfree(filename);
-      if (!ignore_multinc) {
-        filename = name->path;
-        /* reuse already read file from cache? */
-      }
-      nptr = NULL;  /* ignore including this source */
+      nptr = NULL;  /* reuse existing source in memory */
       break;
     }
-    nptr = &name->next;
+    nptr = &srcfile->next;
   }
-  if (nptr) {
-    name = mymalloc(sizeof(struct include_path));
-    name->next = NULL;
-    name->path = filename;
-    *nptr = name;
-  }
-  else if (ignore_multinc)
-    return;  /* ignore multiple inclusion of this source completely */
 
-  if (f = locate_file(filename,"r")) {
-    char *text;
-    size_t size;
+  if (nptr != NULL) {
+    /* allocate, locate and read a new source file */
+    struct include_path *ipath;
 
-    for (text=NULL,size=0; ; size+=SRCREADINC) {
-      size_t nchar;
-      text = myrealloc(text,size+SRCREADINC);
-      nchar = fread(text+size,1,SRCREADINC,f);
-      if (nchar < SRCREADINC) {
-        size += nchar;
-        break;
+    if (f = locate_file(filename,"r",&ipath)) {
+      char *text;
+      size_t size;
+
+      for (text=NULL,size=0; ; size+=SRCREADINC) {
+        size_t nchar;
+        text = myrealloc(text,size+SRCREADINC);
+        nchar = fread(text+size,1,SRCREADINC,f);
+        if (nchar < SRCREADINC) {
+          size += nchar;
+          break;
+        }
       }
+      if (feof(f)) {
+        if (size > 0) {
+          text = myrealloc(text,size+2);
+          *(text+size) = '\n';
+          *(text+size+1) = '\0';
+          size++;
+        }
+        else {
+          myfree(text);
+          text = "\n";
+          size = 1;
+        }
+        srcfile = mymalloc(sizeof(struct source_file));
+        srcfile->next = NULL;
+        srcfile->name = filename;
+        srcfile->incpath = ipath;
+        srcfile->text = text;
+        srcfile->size = size;
+        srcfile->index = ++srcfileidx;
+        *nptr = srcfile;
+        cur_src = newsrc = new_source(filename,srcfile,text,size);
+      }
+      else
+        general_error(29,filename);
+      fclose(f);
     }
-    if (feof(f)) {
-      if (size > 0) {
-        cur_src = new_source(filename,myrealloc(text,size+2),size+1);
-        *(cur_src->text+size) = '\n';
-        *(cur_src->text+size+1) = '\0';
-      }
-      else {
-        myfree(text);
-        cur_src = new_source(filename,"\n",1);
-      }
-    }
-    else
-      general_error(29,filename);
-    fclose(f);
   }
+  else {
+    /* same source was already loaded before, source_file node exists */
+    if (ignore_multinc)
+      return NULL;  /* ignore multiple inclusion of this source completely */
+
+    /* new source instance from existing source file */
+    cur_src = newsrc = new_source(srcfile->name,srcfile,srcfile->text,
+                                  srcfile->size);
+  }
+  return newsrc;
 }
 
 /* searches a section by name and attr (if secname_attr set) */
@@ -948,14 +1026,15 @@ section *find_section(char *name,char *attr)
 }
 
 /* create a new source text instance, which has cur_src as parent */
-source *new_source(char *filename,char *text,size_t size)
+source *new_source(char *srcname,struct source_file *srcfile,
+                   char *text,size_t size)
 {
   static unsigned long id = 0;
   source *s = mymalloc(sizeof(source));
-  char *p;
   size_t i;
+  char *p;
 
-  /* scan source for strange characters */
+  /* scan the source for strange characters */
   for (p=text,i=0; i<size; i++,p++) {
     if (*p == 0x1a) {
       /* EOF character - replace by newline and ignore rest of source */
@@ -967,9 +1046,12 @@ source *new_source(char *filename,char *text,size_t size)
 
   s->parent = cur_src;
   s->parent_line = cur_src ? cur_src->line : 0;
-  s->name = mystrdup(filename);
+  s->srcfile = srcfile; /* NULL for macros and repetitions */
+  s->name = mystrdup(srcname);
   s->text = text;
   s->size = size;
+  s->defsrc = NULL;
+  s->defline = 0;
   s->macro = NULL;
   s->repeat = 1;        /* read just once */
   s->irpname = NULL;
@@ -1015,7 +1097,7 @@ void set_section(section *s)
   }
 #endif
 #if HAVE_CPU_OPTS
-  if (!(s->flags & UNALLOCATED))
+  if (s!=NULL && !(s->flags & UNALLOCATED))
     cpu_opts_init(s);  /* set initial cpu opts before the first atom */
 #endif
   current_section = s;
@@ -1193,48 +1275,34 @@ void print_section(FILE *f,section *sec)
   }
 }
 
-void new_include_path(char *pathname)
+static struct include_path *new_ipath_node(char *pathname)
 {
   struct include_path *new = mymalloc(sizeof(struct include_path));
-  struct include_path *ipath;
-  char *newpath = convert_path(pathname);
-  int len = strlen(newpath);
 
-#if defined(AMIGA)
-  if (len>0 && newpath[len-1]!='/' && newpath[len-1]!=':') {
-    pathname = mymalloc(len+2);
-    strcpy(pathname,newpath);
-    pathname[len] = '/';
-    pathname[len+1] = '\0';
-  }
-#elif defined(MSDOS) || defined(ATARI) || defined(_WIN32)
-  if (len>0 && newpath[len-1]!='\\' && newpath[len-1]!=':') {
-    pathname = mymalloc(len+2);
-    strcpy(pathname,newpath);
-    pathname[len] = '\\';
-    pathname[len+1] = '\0';
-  }
-#else
-  if (len>0 && newpath[len-1] != '/') {
-    pathname = mymalloc(len+2);
-    strcpy(pathname,newpath);
-    pathname[len] = '/';
-    pathname[len+1] = '\0';
-  }
-#endif
-  else
-    pathname = mystrdup(newpath);
-  myfree(newpath);
   new->next = NULL;
   new->path = pathname;
+  new->compdir_based = 0;
+  return new;
+}
 
-  if (ipath = first_incpath) {
-    while (ipath->next)
-      ipath = ipath->next;
-    ipath->next = new;
+struct include_path *new_include_path(char *pathname)
+{
+  struct include_path *ipath;
+  char *newpath = convert_path(pathname);
+
+  pathname = append_path_delimiter(newpath);  /* append '/', when needed */
+  myfree(newpath);
+
+  /* check if path already exists, otherwise append new node */
+  for (ipath=first_incpath; ipath; ipath=ipath->next) {
+    if (!filenamecmp(pathname,ipath->path)) {
+      myfree(pathname);
+      return ipath;
+    }
+    if (ipath->next == NULL)
+      return ipath->next = new_ipath_node(pathname);
   }
-  else
-    first_incpath = new;
+  return first_incpath = new_ipath_node(pathname);
 }
 
 void set_listing(int on)
@@ -1470,7 +1538,7 @@ void write_listing(char *listname)
         if(a->content.db->relocs)
           fprintf(f," [R]");
       }
-      if(a->next&&a->next->line==a->line&&a->next->src==a->src){
+      if(a->next&&a->next->list==a->list){
         a=a->next;
         pc=pcalign(a,pc);
       }else

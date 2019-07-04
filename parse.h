@@ -1,5 +1,5 @@
 /* parse.h - global parser support functions */
-/* (c) in 2009-2017 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2018 by Volker Barthelmann and Frank Wille */
 
 #ifndef PARSE_H
 #define PARSE_H 
@@ -26,6 +26,8 @@ struct macro {
   char *name;
   char *text;
   size_t size;
+  source *defsrc;
+  int defline;
   int num_argnames;		/* -1 for no named arguments used */
   struct macarg *argnames;
   struct macarg *defaults;

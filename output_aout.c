@@ -42,7 +42,7 @@ static int get_sec_type(section *s)
         return _BSS;
     }
   }
-  output_error(3,s->attr);  /* section attributes not suppported */
+  output_error(3,s->attr);  /* section attributes not supported */
   return 0;
 }
 

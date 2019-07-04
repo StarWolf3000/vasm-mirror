@@ -1,20 +1,18 @@
-/* output_tos.c Atari TOS executable output driver for vasm */
-/* (c) in 2009-2016 by Frank Wille */
+/* output_xfile.c Sharp X68000 Xfile output driver for vasm */
+/* (c) in 2018 by Frank Wille */
 
 #include "vasm.h"
-#include "output_tos.h"
-#if defined(OUTTOS) && defined(VASM_CPU_M68K)
-static char *copyright="vasm tos output module 1.0a (c) 2009-2016 Frank Wille";
-int tos_hisoft_dri = 1;
+#include "output_xfile.h"
+#if defined(OUTXFIL) && defined(VASM_CPU_M68K)
+static char *copyright="vasm xfile output module 0.1 (c) 2018 Frank Wille";
 
-static int tosflags,textbasedsyms;
 static int max_relocs_per_atom;
 static section *sections[3];
 static utaddr secsize[3];
 static utaddr secoffs[3];
 static utaddr sdabase,lastoffs;
 
-#define SECT_ALIGN 2  /* TOS sections have to be aligned to 16 bits */
+#define SECT_ALIGN 2  /* Xfile sections have to be aligned to 16 bits */
 
 
 static int get_sec_type(section *s)
@@ -37,12 +35,12 @@ static int get_sec_type(section *s)
 }
 
 
-static int tos_initwrite(section *sec,symbol *sym)
+static void xfile_initwrite(section *sec,symbol *sym)
 {
   int nsyms = 0;
   int i;
 
-  /* find exactly one .text, .data and .bss section for a.out */
+  /* find exactly one .text, .data and .bss section for xfile */
   sections[_TEXT] = sections[_DATA] = sections[_BSS] = NULL;
   secsize[_TEXT] = secsize[_DATA] = secsize[_BSS] = 0;
 
@@ -62,51 +60,27 @@ static int tos_initwrite(section *sec,symbol *sym)
     }
   }
 
-  max_relocs_per_atom = 1;
   secoffs[_TEXT] = 0;
   secoffs[_DATA] = secsize[_TEXT] + balign(secsize[_TEXT],SECT_ALIGN);
   secoffs[_BSS] = secoffs[_DATA] + secsize[_DATA] +
                   balign(secsize[_DATA],SECT_ALIGN);
   /* define small data base as .data+32768 @@@FIXME! */
   sdabase = secoffs[_DATA] + 0x8000;
-
-  /* count symbols */
-  for (; sym; sym=sym->next) {
-    /* ignore symbols preceded by a '.' and internal symbols */
-    if (*sym->name!='.' && *sym->name!=' ') {
-      if (!(sym->flags & (VASMINTERN|COMMON)) && sym->type == LABSYM) {
-        nsyms++;
-        if ((strlen(sym->name) > DRI_NAMELEN) && tos_hisoft_dri)
-          nsyms++;  /* extra symbol for long name */
-      }
-    }
-    else {
-      if (!strcmp(sym->name," TOSFLAGS")) {
-        if (tosflags == 0)  /* not defined by command line? */
-          tosflags = (int)get_sym_value(sym);
-      }
-      sym->flags |= VASMINTERN;
-    }
-  }
-  return no_symbols ? 0 : nsyms;
 }
 
 
-static void tos_header(FILE *f,unsigned long tsize,unsigned long dsize,
-                        unsigned long bsize,unsigned long ssize,
-                        unsigned long flags)
+static void xfile_header(FILE *f,unsigned long tsize,unsigned long dsize,
+                         unsigned long bsize)
 {
-  PH hdr;
+  XFILE hdr;
 
-  setval(1,hdr.ph_branch,2,0x601a);
-  setval(1,hdr.ph_tlen,4,tsize);
-  setval(1,hdr.ph_dlen,4,dsize);
-  setval(1,hdr.ph_blen,4,bsize);
-  setval(1,hdr.ph_slen,4,ssize);
-  setval(1,hdr.ph_magic,4,0);
-  setval(1,hdr.ph_flags,4,flags);
-  setval(1,hdr.ph_abs,2,0);
-  fwdata(f,&hdr,sizeof(PH));
+  memset(&hdr,0,sizeof(XFILE));
+  setval(1,hdr.x_id,2,0x4855);  /* "HU" ID for Human68k */
+  setval(1,hdr.x_textsz,4,tsize);
+  setval(1,hdr.x_datasz,4,dsize);
+  setval(1,hdr.x_heapsz,4,bsize);
+  /* x_relocsz and x_syminfsz will be patched later */
+  fwdata(f,&hdr,sizeof(XFILE));
 }
 
 
@@ -117,12 +91,12 @@ static void checkdefined(symbol *sym)
 }
 
 
-static taddr tos_sym_value(symbol *sym,int textbased)
+static taddr xfile_sym_value(symbol *sym)
 {
   taddr val = get_sym_value(sym);
 
   /* all sections form a contiguous block, so add section offset */
-  if (textbased && sym->type==LABSYM && sym->sec!=NULL)
+  if (sym->type==LABSYM && sym->sec!=NULL)
     val += secoffs[sym->sec->idx];
 
   return val;
@@ -178,17 +152,18 @@ static void do_relocs(taddr pc,atom *a)
       case REL_SD:
         checkdefined(((nreloc *)rl->reloc)->sym);
         write_reloc68k(a,rl,1,
-                       (tos_sym_value(((nreloc *)rl->reloc)->sym,1)
+                       (xfile_sym_value(((nreloc *)rl->reloc)->sym)
                         + nreloc_real_addend(rl->reloc)) - sdabase);
         break;
       case REL_PC:
         checkdefined(((nreloc *)rl->reloc)->sym);
         write_reloc68k(a,rl,1,
-                       (tos_sym_value(((nreloc *)rl->reloc)->sym,1)
+                       (xfile_sym_value(((nreloc *)rl->reloc)->sym)
                         + nreloc_real_addend(rl->reloc)) -
                        (pc + ((nreloc *)rl->reloc)->byteoffset));
         break;
       case REL_ABS:
+        rcnt++;
         checkdefined(((nreloc *)rl->reloc)->sym);
         sec = ((nreloc *)rl->reloc)->sym->sec;
         if (!write_reloc68k(a,rl,0,
@@ -201,7 +176,6 @@ static void do_relocs(taddr pc,atom *a)
         unsupp_reloc_error(rl);
         break;
     }
-    rcnt++;
     if (a->type == SPACE)
       break;  /* all SPACE relocs are identical, one is enough */
     rl = rl->next;
@@ -212,7 +186,7 @@ static void do_relocs(taddr pc,atom *a)
 }
 
 
-static void tos_writesection(FILE *f,section *sec,taddr sec_align)
+static void xfile_writesection(FILE *f,section *sec,taddr sec_align)
 {
   if (sec) {
     utaddr pc = secoffs[sec->idx];
@@ -233,41 +207,44 @@ static void tos_writesection(FILE *f,section *sec,taddr sec_align)
 }
 
 
-static void write_dri_sym(FILE *f,char *name,int type,taddr value)
+static size_t xfile_symboltable(FILE *f,symbol *sym)
+/* The symbol table only contains expression (absolute) and label symbols,
+   but doesn't differentiate between local and global scope. */
 {
-  struct DRIsym stab;
-  int longname = (strlen(name) > DRI_NAMELEN) && tos_hisoft_dri;
-
-  strncpy(stab.name,name,DRI_NAMELEN);
-  setval(1,stab.type,sizeof(stab.type),longname?(type|STYP_LONGNAME):type);
-  setval(1,stab.value,sizeof(stab.value),value);
-  fwdata(f,&stab,sizeof(struct DRIsym));
-
-  if (longname) {
-    char rest_of_name[sizeof(struct DRIsym)];
-
-    memset(rest_of_name,0,sizeof(struct DRIsym));
-    strncpy(rest_of_name,name+DRI_NAMELEN,sizeof(struct DRIsym));
-    fwdata(f,rest_of_name,sizeof(struct DRIsym));
-  }
-}
-
-
-static void tos_symboltable(FILE *f,symbol *sym)
-{
-  static int labtype[] = { STYP_TEXT,STYP_DATA,STYP_BSS };
-  int t;
+  static int labtype[] = { XSYM_TEXT,XSYM_DATA,XSYM_BSS };
+  size_t len = 0;
+  char *p;
 
   for (; sym; sym=sym->next) {
-    /* The Devpac DRI symbol table in executables contains all labels,
-       no matter if global or local. But no equates or other types. */
-    if (!(sym->flags & (VASMINTERN|COMMON)) && sym->type == LABSYM) {
+    if (!(sym->flags & VASMINTERN)
+        && (sym->type==LABSYM || sym->type==EXPRESSION)) {
+
       if (sym->flags & WEAK)
         output_error(10,sym->name);  /* weak symbol not supported */
-      t = labtype[sym->sec->idx] | STYP_DEFINED | STYP_GLOBAL;
-      write_dri_sym(f,sym->name,t,tos_sym_value(sym,textbasedsyms));
+
+      /* symbol type */
+      if (sym->type == LABSYM)
+        fw16(f,labtype[sym->sec->idx],1);
+      else /* EXPRESSION */
+      	fw16(f,XSYM_ABS,1);
+
+      /* symbol value */
+      fw32(f,xfile_sym_value(sym),1);
+      len += 6;  /* 2 bytes type, 4 bytes value */
+
+      /* symbol name - 16-bit aligned */
+      p = sym->name;
+      do {
+        fw8(f,*p);
+        len++;
+      } while (*p++);
+      if (len & 1) {
+        fw8(f,0);
+        len++;
+      }
     }
   }
+  return len;
 }
 
 
@@ -277,10 +254,10 @@ static int offscmp(const void *offs1,const void *offs2)
 }
 
 
-static int tos_writerelocs(FILE *f,section *sec)
+static size_t xfile_writerelocs(FILE *f,section *sec)
 {
-  int n = 0;
   int *sortoffs = mymalloc(max_relocs_per_atom*sizeof(int));
+  size_t sz = 0;
 
   if (sec) {
     utaddr pc = secoffs[sec->idx];
@@ -289,7 +266,7 @@ static int tos_writerelocs(FILE *f,section *sec)
     rlist *rl;
 
     for (a=sec->first; a; a=a->next) {
-      int nrel=0;
+      int nrel = 0;
 
       npc = pcalign(a,pc);
 
@@ -313,25 +290,25 @@ static int tos_writerelocs(FILE *f,section *sec)
         if (nrel > 1)
           qsort(sortoffs,nrel,sizeof(int),offscmp);
 
-        /* write differences between them */
-        n += nrel;
+        /* write distances in bytes between them */
         for (i=0; i<nrel; i++) {
+          /* determine 16bit distance to next relocation */
           utaddr newoffs = npc + sortoffs[i];
+          taddr diff = newoffs - lastoffs;
 
-          if (lastoffs) {
-            /* determine 8bit difference to next relocation */
-            taddr diff = newoffs - lastoffs;
-
-            if (diff < 0)
-              ierror(0);
-            while (diff > 254) {
-              fw8(f,1);
-              diff -= 254;
-            }
-            fw8(f,(uint8_t)diff);
+          if (diff < 0) {
+            ierror(0);
           }
-          else  /* first entry is a 32 bits offset */
-            fw32(f,newoffs,1);
+          else if (diff > 0xffff) {
+            /* write a large distance >= 64K */
+            fw16(f,1,1);
+            fw32(f,diff,1);
+            sz += 6;
+          }
+          else {
+            fw16(f,diff,1);
+            sz += 2;
+          }
           lastoffs = newoffs;
         }
       }
@@ -340,46 +317,46 @@ static int tos_writerelocs(FILE *f,section *sec)
   }
 
   myfree(sortoffs);
-  return n;
+  return sz;
 }
 
 
 static void write_output(FILE *f,section *sec,symbol *sym)
 {
-  int nsyms = tos_initwrite(sec,sym);
-  int nrelocs = 0;
+  size_t relocsz,syminfsz;
 
-  tos_header(f,secsize[_TEXT],secsize[_DATA],secsize[_BSS],
-             nsyms*sizeof(struct DRIsym),tosflags);
-  tos_writesection(f,sections[_TEXT],SECT_ALIGN);
-  tos_writesection(f,sections[_DATA],SECT_ALIGN);
-  if (nsyms)
-    tos_symboltable(f,sym);
-  nrelocs += tos_writerelocs(f,sections[_TEXT]);
-  nrelocs += tos_writerelocs(f,sections[_DATA]);
-  if (nrelocs)
-    fw8(f,0);
-  else
-    fw32(f,0,1);
+  xfile_initwrite(sec,sym);
+  max_relocs_per_atom = 1;
+
+  xfile_header(f,secsize[_TEXT],secsize[_DATA],secsize[_BSS]);
+  xfile_writesection(f,sections[_TEXT],SECT_ALIGN);
+  xfile_writesection(f,sections[_DATA],SECT_ALIGN);
+  relocsz = xfile_writerelocs(f,sections[_TEXT]);
+  relocsz += xfile_writerelocs(f,sections[_DATA]);
+  syminfsz = no_symbols ? 0 : xfile_symboltable(f,sym);
+
+  /* finally patch reloc- and symbol-table size into the header */
+  fseek(f,offsetof(XFILE,x_relocsz),SEEK_SET);
+  fw32(f,relocsz,1);
+  fseek(f,offsetof(XFILE,x_syminfsz),SEEK_SET);
+  fw32(f,syminfsz,1);
 }
 
 
 static int output_args(char *p)
 {
-  if (!strncmp(p,"-tos-flags=",11)) {
-    tosflags = atoi(p+11);
+#if 0
+  if (!strncmp(p,"-startoffs=",11)) {
+    startoffs = atoi(p+11);
     return 1;
   }
-  else if (!strcmp(p,"-monst")) {
-    textbasedsyms = 1;
-    return 1;
-  }
+#endif
   return 0;
 }
 
 
-int init_output_tos(char **cp,void (**wo)(FILE *,section *,symbol *),
-                    int (**oa)(char *))
+int init_output_xfile(char **cp,void (**wo)(FILE *,section *,symbol *),
+                      int (**oa)(char *))
 {
   *cp = copyright;
   *wo = write_output;
@@ -389,8 +366,8 @@ int init_output_tos(char **cp,void (**wo)(FILE *,section *,symbol *),
 
 #else
 
-int init_output_tos(char **cp,void (**wo)(FILE *,section *,symbol *),
-                    int (**oa)(char *))
+int init_output_xfile(char **cp,void (**wo)(FILE *,section *,symbol *),
+                      int (**oa)(char *))
 {
   return 0;
 }

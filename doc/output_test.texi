@@ -6,7 +6,7 @@ selected with the @option{-Ftest} option.
     This module is written in 2002 by Volker Barthelmann and
     is covered by the vasm copyright without modifications.
 
-@section Additional options for this version
+@section Additional options for this module
  
 This output module provides no additional options.
  

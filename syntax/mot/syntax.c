@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2017 by Frank Wille */
+/* (c) in 2002-2019 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm motorola syntax module 3.11b (c) 2002-2017 Frank Wille";
+char *syntax_copyright="vasm motorola syntax module 3.12c (c) 2002-2019 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 
@@ -51,6 +51,13 @@ static int allow_spaces;
 static int check_comm;
 static int dot_idchar;
 static char local_char = '.';
+
+/* (currenty two-byte only) padding value for CNOPs */
+#ifdef VASM_CPU_M68K
+static taddr cnop_pad = 0x4e71;
+#else
+static taddr cnop_pad = 0;
+#endif
 
 /* unique macro IDs */
 #define IDSTACKSIZE 100
@@ -125,6 +132,8 @@ int isidchar(char c)
   if (dot_idchar && c=='.')
     return 1;
   if (phxass_compat && (unsigned char)c>=0x80)
+    return 1;
+  if (devpac_compat && c=='?')
     return 1;
   return 0;
 }
@@ -226,8 +235,11 @@ static symbol *new_setoffset_size(char *equname,char *symname,
 
     new = make_expr(dir>0?ADD:SUB,old,new);
   }
-  else
+  else {
     new = old = sym->expr;
+    if (devpac_compat)
+      general_error(9);  /* Devpac requires an expression here */
+  }
 
   /* assign expression to equ-symbol and change exp. of the offset-symbol */
   if (equname)
@@ -284,19 +296,27 @@ static symbol *new_setoffset(char *equname,char **s,char *symname,int dir)
 }
 
 
-static void do_space(int size,expr *cnt,expr *fill)
+static atom *do_space(int size,expr *cnt,expr *fill)
 {
   atom *a;
 
   a = new_space_atom(cnt,size>>3,fill);
   a->align = align_data ? DATA_ALIGN(size) : 1;
   add_atom(0,a);
+  return a;
 }
 
 
 static void handle_space(char *s,int size)
 {
   do_space(size,parse_expr_tmplab(&s),0);
+}
+
+
+static void handle_xspace(char *s,int size)
+{
+  atom *a = do_space(size,parse_expr_tmplab(&s),0);
+  a->content.sb->flags |= SPC_DATABSS;
 }
 
 
@@ -627,8 +647,10 @@ static void handle_data(char *s,int size)
     s = skip(s);
     if (*s == ',')
       s = skip(s+1);
-    else
+    else {
+      eol(s);
       break;
+    }
   }
 }
 
@@ -698,13 +720,12 @@ static void handle_cnop(char *s)
   else
     syntax_error(9);  /* , expected */
 
-#ifdef VASM_CPU_M68K
-  /* align with NOP instructions in an M68k code section */
+  /* align with cnop_pad in a code section, otherwise with zero */
+  /* @@@ number of padding bytes should be variable for different archs. ? */
   if (!devpac_compat && align>3 &&
       (current_section==NULL || strchr(current_section->attr,'c')!=NULL))
-    do_alignment(align,offset,2,number_expr(0x4e71));
+    do_alignment(align,offset,2,number_expr(cnop_pad));
   else
-#endif
     do_alignment(align,offset,1,NULL);
 }
 
@@ -738,6 +759,36 @@ static void handle_block(char *s,int size)
     fill = parse_expr_tmplab(&s);
   }
   do_space(size,cnt,fill);
+}
+
+
+static void handle_xspc8(char *s)
+{
+  handle_xspace(s,8);
+}
+
+
+static void handle_xspc16(char *s)
+{
+  handle_xspace(s,16);
+}
+
+
+static void handle_xspc32(char *s)
+{
+  handle_xspace(s,32);
+}
+
+
+static void handle_xspc64(char *s)
+{
+  handle_xspace(s,64);
+}
+
+
+static void handle_xspc96(char *s)
+{
+  handle_xspace(s,96);
 }
 
 
@@ -1014,7 +1065,7 @@ static void handle_incbin(char *s)
 
 static void handle_rept(char *s)
 {
-  new_repeat((int)parse_constexpr(&s),NULL,NULL,rept_dirlist,endr_dirlist);
+  new_repeat((utaddr)parse_constexpr(&s),NULL,NULL,rept_dirlist,endr_dirlist);
 }
 
 
@@ -1043,6 +1094,39 @@ static void handle_mexit(char *s)
 {
   leave_macro();
 }
+
+
+#if STRUCT
+static void handle_struct(char *s)
+{
+  char *name;
+
+  if (name = parse_identifier(&s)) {
+    s = skip(s);
+    if (new_structure(name))
+      current_section->flags |= LABELS_ARE_LOCAL;
+    myfree(name);
+  }
+  else
+    syntax_error(10);  /* identifier expected */
+}
+
+
+static void handle_endstruct(char *s)
+{
+  section *prevsec;
+  symbol *szlabel;
+
+  if (end_structure(&prevsec)) {
+    /* create the structure name as label defining the structure size */
+    current_section->flags &= ~LABELS_ARE_LOCAL;
+    szlabel = new_labsym(0,current_section->name);
+    add_atom(0,new_label_atom(szlabel));
+    /* end structure declaration by switching to previous section */
+    set_section(prevsec);
+  }
+}
+#endif
 
 
 static void handle_rem(char *s)
@@ -1507,6 +1591,14 @@ struct {
   "ds.s",P|D,handle_spc32,
   "ds.d",P|D,handle_spc64,
   "ds.x",P|D,handle_spc96,
+  "dx",P,handle_xspc16,
+  "dx.b",P,handle_xspc8,
+  "dx.w",P,handle_xspc16,
+  "dx.l",P,handle_xspc32,
+  "dx.q",P,handle_xspc64,
+  "dx.s",P,handle_xspc32,
+  "dx.d",P,handle_xspc64,
+  "dx.x",P,handle_xspc96,
   "dcb",P|D,handle_blk16,
   "dcb.b",P|D,handle_blk8,
   "dcb.w",P|D,handle_blk16,
@@ -1615,6 +1707,10 @@ struct {
   "auto",0,handle_noop,
   "inline",P,handle_inline,
   "einline",P,handle_einline,
+#if STRUCT
+  "struct",0,handle_struct,
+  "estruct",0,handle_endstruct,
+#endif
 };
 #undef P
 #undef D
@@ -1718,6 +1814,107 @@ static char *parse_local_label(char **start)
 }
 
 
+/* When a structure with this name exists, insert its atoms and either
+   initialize with new values or accept its default values. */
+static int execute_struct(char *name,int name_len,char *s)
+{
+  section *str;
+  atom *p;
+
+  str = find_structure(name,name_len);
+  if (str == NULL)
+    return 0;
+
+  for (p=str->first; p; p=p->next) {
+    atom *new;
+    char *opp;
+    int opl;
+
+    if (p->type==DATA || p->type==SPACE || p->type==DATADEF) {
+      opp = s = skip(s);
+      s = skip_operand(s);
+      opl = s - opp;
+
+      if (opl > 0) {
+        /* initialize this atom with a new expression */
+
+        if (p->type == DATADEF) {
+          /* parse a new data operand of the declared bitsize */
+          operand *op;
+
+          op = new_operand();
+          if (parse_operand(opp,opl,op,
+                            DATA_OPERAND(p->content.defb->bitsize))) {
+            new = new_datadef_atom(p->content.defb->bitsize,op);
+            new->align = p->align;
+            add_atom(0,new);
+          }
+          else
+            syntax_error(8);  /* invalid data operand */
+        }
+        else if (p->type == SPACE) {
+          /* parse the fill expression for this space */
+          new = clone_atom(p);
+          new->content.sb = new_sblock(p->content.sb->space_exp,
+                                       p->content.sb->size,
+                                       parse_expr_tmplab(&opp));
+          new->content.sb->space = p->content.sb->space;
+          add_atom(0,new);
+        }
+        else {
+          /* parse constant data - probably a string, or a single constant */
+          dblock *db;
+
+          db = new_dblock();
+          db->size = p->content.db->size;
+          db->data = db->size ? mycalloc(db->size) : NULL;
+          if (db->data) {
+            if (*opp=='\"' || *opp=='\'') {
+              dblock *strdb;
+
+              strdb = parse_string(&opp,*opp,8);
+              if (strdb->size) {
+                if (strdb->size > db->size)
+                  syntax_error(24,strdb->size-db->size);  /* cut last chars */
+                memcpy(db->data,strdb->data,
+                       strdb->size > db->size ? db->size : strdb->size);
+                myfree(strdb->data);
+              }
+              myfree(strdb);
+            }
+            else {
+              taddr val = parse_constexpr(&opp);
+              void *p;
+
+              if (db->size > sizeof(taddr) && BIGENDIAN)
+                p = db->data + db->size - sizeof(taddr);
+              else
+                p = db->data;
+              setval(BIGENDIAN,p,sizeof(taddr),val);
+            }
+          }
+          add_atom(0,new_data_atom(db,p->align));
+        }
+      }
+      else {
+        /* empty: use default values from original atom */
+        add_atom(0,clone_atom(p));
+      }
+
+      s = skip(s);
+      if (*s == ',')
+        s++;
+    }
+    else if (p->type == INSTRUCTION)
+      syntax_error(23);  /* skipping instruction in struct init */
+
+    /* other atoms are silently ignored */
+  }
+
+  return 1;
+}
+
+
 void parse(void)
 {
   char *s,*line,*inst,*labname;
@@ -1740,9 +1937,11 @@ void parse(void)
       int idx;
 
       /* skip label, when present */
-      if (labname = parse_labeldef(&s,0))
+      if (labname = parse_labeldef(&s,0)) {
+        if (*s == ':')
+          s++;  /* skip double-colon */
         myfree(labname);
-
+      }
       /* advance to directive */
       s = skip(s);
       idx = check_directive(&s);
@@ -1759,9 +1958,15 @@ void parse(void)
 
     if (labname = parse_labeldef(&s,0)) {
       /* we have found a global or local label */
-      symbol *label;
       int lablen = strlen(labname);
+      uint32_t symflags = 0;
+      symbol *label;
 
+      if (*s == ':') {
+        /* double colon automatically declares label as exported */
+        symflags |= EXPORT;
+        s++;
+      }
       s = skip(s);
       if (!strnicmp(s,"equ",3) && isspace((unsigned char)*(s+3))) {
         s = skip(s+3);
@@ -1819,6 +2024,7 @@ void parse(void)
       else {
 #endif
         label = new_labsym(0,labname);
+        label->flags |= symflags;
         add_atom(0,new_label_atom(label));
       }
       myfree(labname);
@@ -1860,6 +2066,10 @@ void parse(void)
 
     if (execute_macro(inst,inst_len,ext,ext_len,ext_cnt,s))
       continue;
+#if STRUCT
+    if (execute_struct(inst,inst_len,s))
+      continue;
+#endif
 
     /* read operands, terminated by comma (unless in parentheses)  */
     op_cnt = 0;
@@ -2193,7 +2403,6 @@ char *get_local_label(char **start)
 /* Motorola local labels start with a '.' or end with '$': "1234$", ".1" */
 {
   char *s,*p,*name;
-  int globlen = 0;
 
   name = NULL;
   s = *start;
@@ -2201,20 +2410,20 @@ char *get_local_label(char **start)
 
   if (p!=NULL && *p=='\\' && ISIDSTART(*s) && *s!=local_char && *(p-1)!='$') {
     /* skip local part of global\local label */
-    globlen = p - s;
     s = p + 1;
     p = skip_local(s);
+    name = make_local_label(*start,(s-1)-*start,s,*(p-1)=='$'?(p-1)-s:p-s);
+    *start = skip(p);
   }
-
-  if (p!=NULL && p>(s+1)) {  /* identifier with at least 2 characters */
+  else if (p!=NULL && p>(s+1)) {  /* identifier with at least 2 characters */
     if (*s == local_char) {
       /* .label */
-      name = make_local_label(*start,globlen,s,p-s);
+      name = make_local_label(NULL,0,s,p-s);
       *start = skip(p);
     }
     else if (*(p-1) == '$') {
       /* label$ */
-      name = make_local_label(*start,globlen,s,(p-1)-s);
+      name = make_local_label(NULL,0,s,(p-1)-s);
       *start = skip(p);
     }
   }
@@ -2321,6 +2530,13 @@ int syntax_args(char *p)
   }
   else if (!strcmp(p,"-warncomm")) {
     check_comm = 1;
+    return 1;
+  }
+  else if (!strncmp(p,"-cnop=",6)) {
+    int pad_code;
+
+    sscanf(p+6,"%i",&pad_code);
+    cnop_pad = (uint16_t)pad_code;
     return 1;
   }
   return 0;

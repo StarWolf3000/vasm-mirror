@@ -6,7 +6,7 @@ selected with the @option{-Fbin} option.
     This module is written in 2002-2009,2013 by Volker Barthelmann and
     is covered by the vasm copyright without modifications.
 
-@section Additional options for this version
+@section Additional options for this module
  
 @table @option
     @item -cbm-prg

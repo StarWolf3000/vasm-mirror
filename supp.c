@@ -1,5 +1,5 @@
 /* supp.c miscellaneous support routines */
-/* (c) in 2008-2017 by Frank Wille */
+/* (c) in 2008-2018 by Frank Wille */
 
 #include <math.h>
 #include "vasm.h"
@@ -518,59 +518,6 @@ int abs_path(char *path)
 /* return true, when path is absolute */
 {
   return *path=='/' || *path=='\\' || strchr(path,':')!=NULL;
-}
-
-
-char *convert_path(char *path)
-{
-  char *newpath;
-
-#if defined(AMIGA)
-  char *p = newpath = mymalloc(strlen(path)+1);
-
-  while (*path) {
-    if (*path=='.') {
-      if (*(path+1)=='\0') {
-        path++;
-        continue;
-      }
-      else if (*(path+1)=='/' || *(path+1)=='\\') {
-        path += 2;
-        continue;
-      }
-      else if (*(path+1)=='.' &&
-               (*(path+2)=='/' || *(path+2)=='\\'))
-        path += 2;
-    }
-    if (*path == '\\') {
-      *p++ = '/';
-      path++;
-    }
-    else
-      *p++ = *path++;
-  }
-  *p = '\0';
-
-#elif defined(MSDOS) || defined(ATARI) || defined(_WIN32)
-  char *p;
-
-  newpath = mystrdup(path);
-  for (p=newpath; *p; p++) {
-    if (*p == '/')
-      *p = '\\';
-  }
-
-#else /* Unixish */
-  char *p;
-
-  newpath = mystrdup(path);
-  for (p=newpath; *p; p++) {
-    if (*p == '\\')
-      *p = '/';
-  }
-#endif
-
-  return newpath;
 }
 
 

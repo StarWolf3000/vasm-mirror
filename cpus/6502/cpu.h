@@ -1,6 +1,6 @@
 /*
-** cpu.h 650x/651x cpu-description header-file
-** (c) in 2002,2008,2009,2014 by Frank Wille
+** cpu.h 650x/65C02/6510/6280 cpu-description header-file
+** (c) in 2002,2008,2009,2014,2018 by Frank Wille
 */
 
 #define BIGENDIAN 0
@@ -8,7 +8,7 @@
 #define VASM_CPU_650X 1
 
 /* maximum number of operands for one mnemonic */
-#define MAX_OPERANDS 2
+#define MAX_OPERANDS 3
 
 /* maximum number of mnemonic-qualifiers per mnemonic */
 #define MAX_QUALIFIERS 0
@@ -43,6 +43,7 @@ int ext_find_base(symbol **,expr *,section *,taddr);
 typedef struct {
   int type;
   expr *value;
+  utaddr dp;
 } operand;
 
 
@@ -57,7 +58,10 @@ typedef struct {
 #define M6502    1       /* standard 6502 instruction set */
 #define ILL      2       /* illegal 6502 instructions */
 #define DTV      4       /* C64 DTV instruction set extension */
-#define M65C02   8       /* 65C02 instruction set */
+#define M65C02   8       /* basic 65C02 extensions on 6502 instruction set */
+#define WDC02    16      /* WDC65C02 extensions on 65C02 instruction set */
+#define CSGCE02  32      /* CSG65CE02 extensions on WDC65C02 instruction set */
+#define HU6280   64      /* HuC6280 extensions on WDC65C02 instruction set */
 
 
 /* adressing modes */
@@ -69,17 +73,18 @@ typedef struct {
 #define INDX     5       /* ($12,X) */
 #define INDY     6       /* ($12),Y */
 #define DPINDIR  7       /* ($12) */
-#define INDIRX   8       /* ($1234,X) */
+#define INDIRX   8       /* ($1234,X) - JMP only */
 #define ZPAGE    9       /* add ZPAGE-ABS to optimize ABS/ABSX/ABSY */
 #define ZPAGEX   10
 #define ZPAGEY   11
 #define RELJMP   12      /* B!cc/JMP construction */
-#define REL      13      /* $1234 - relative branch */
+#define REL      13      /* $1234 - 8-bit signed relative branch */
 #define IMMED    14      /* #$12 */
-#define DATAOP   15      /* data operand */
-#define ACCU     16      /* A */
-#define DUMX     17      /* dummy X as 'second' operand */
-#define DUMY     18      /* dummy Y as 'second' operand */
+#define WBIT     15      /* bit-number (WDC65C02) */
+#define DATAOP   16      /* data operand */
+#define ACCU     17      /* A */
+#define DUMX     18      /* dummy X as 'second' operand */
+#define DUMY     19      /* dummy Y as 'second' operand */
 
 
 /* exported by cpu.c */

@@ -1,5 +1,5 @@
 /* vasm.h  main header file for vasm */
-/* (c) in 2002-2017 by Volker Barthelmann */
+/* (c) in 2002-2019 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -28,7 +28,6 @@ typedef struct regsym regsym;
 #include "expr.h"
 #include "parse.h"
 #include "atom.h"
-#include "error.h"
 #include "cond.h"
 #include "supp.h"
 
@@ -66,15 +65,29 @@ typedef struct regsym regsym;
 struct include_path {
   struct include_path *next;
   char *path;
+  int compdir_based;
+};
+
+/* source files */
+struct source_file {
+  struct source_file *next;
+  struct include_path *incpath;
+  int index;
+  char *name;
+  char *text;
+  size_t size;
 };
 
 /* source texts (main file, include files or macros) */
 struct source {
   struct source *parent;
   int parent_line;
+  struct source_file *srcfile;
   char *name;
   char *text;
   size_t size;
+  struct source *defsrc;
+  int defline;
   macro *macro;
   unsigned long repeat;
   char *irpname;
@@ -179,15 +192,16 @@ extern char vasmsym_name[];
 
 extern unsigned long long taddrmask;
 #define ULLTADDR(x) (((unsigned long long)x)&taddrmask)
+extern taddr taddrmin,taddrmax;
 
 /* provided by main assembler module */
 extern int debug;
 
 void leave(void);
 void set_default_output_format(char *);
-FILE *locate_file(char *,char *);
-void include_source(char *);
-source *new_source(char *,char *,size_t);
+FILE *locate_file(char *,char *,struct include_path **);
+source *include_source(char *);
+source *new_source(char *,struct source_file *,char *,size_t);
 void end_source(source *);
 void set_section(section *);
 section *new_section(char *,char *,int);
@@ -205,7 +219,7 @@ int end_rorg(void);
 void try_end_rorg(void);
 void start_rorg(taddr);
 void print_section(FILE *,section *);
-void new_include_path(char *);
+struct include_path *new_include_path(char *);
 void set_listing(int);
 void set_list_title(char *,int);
 void write_listing(char *);
@@ -214,6 +228,23 @@ void write_listing(char *);
 #define getfilename() filename
 #define setdebugname(x) debug_filename=(x)
 #define getdebugname() debug_filename
+
+/* provided by error.c */
+extern int errors,warnings;
+extern int max_errors;
+extern int no_warn;
+
+void general_error(int,...);
+void syntax_error(int,...);
+void cpu_error(int,...);
+void output_error(int,...);
+void output_atom_error(int,atom *,...);
+void modify_gen_err(int,...);
+void modify_syntax_err(int,...);
+void modify_cpu_err(int,...);
+void disable_warning(int);
+
+#define ierror(x) general_error(4,(x),__LINE__,__FILE__)
 
 /* provided by cpu.c */
 extern int bitsperbyte;
@@ -283,3 +314,4 @@ int init_output_vobj(char **,void (**)(FILE *,section *,symbol *),int (**)(char 
 int init_output_hunk(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_aout(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_tos(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
+int init_output_xfile(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));

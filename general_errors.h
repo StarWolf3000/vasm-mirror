@@ -10,7 +10,7 @@
   "number or identifier expected",ERROR,
   "could not initialize %s module",NOLINE|ERROR|FATAL,          /* 10 */
   "multiple input files",NOLINE|ERROR,
-  "could not open <%s> for input",NOLINE|ERROR|FATAL,
+  "could not open <%s> for input",ERROR|FATAL,
   "could not open <%s> for output",NOLINE|ERROR|FATAL,
   "unknown option <%s>",NOLINE|ERROR,
   "no input file specified",NOLINE|ERROR|FATAL,                 /* 15 */
@@ -43,7 +43,7 @@
   "illegal macro argument",ERROR,
   "reloc org is already set",ERROR|FATAL,
   "reloc org was not set",ERROR,
-  "illegal negative value",ERROR,                               /* 45 */
+  "address space overflow",ERROR,                               /* 45 */
   "bad file-offset argument",ERROR,
   "assertion \"%s\" failed: %s",ERROR,
   "cannot declare structure within structure",ERROR,
@@ -72,3 +72,4 @@
   "cannot mix positional and keyword arguments",ERROR,
   "undefined macro argument name",ERROR,
   "required macro argument %d was left out",ERROR,
+  "label <%s> redefined",ERROR,

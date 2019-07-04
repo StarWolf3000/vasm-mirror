@@ -1039,6 +1039,7 @@
 {"syscall",  {0, 0, 0},                      {  0x0f05, X, NoSuf, CPUK6}},
 {"sysret",   {0, 0, 0},                      {  0x0f07, X, LQ_Suf|DefaultSize, CPUK6}},
 {"swapgs",   {0, 0, 0},                      {  0x0f01, 0xf8, NoSuf|ImmExt, CPU64}},
+{"",         {0, 0, 0},                      {       0,    0, NoSuf, 0}}
 
 
 #undef NoSuf

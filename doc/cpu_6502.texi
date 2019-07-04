@@ -1,9 +1,10 @@
 This chapter documents the backend for the MOS/Rockwell 6502
-microprocessor family.
+microprocessor family. It also supports the Rockwell/WDC 65C02 and the
+Hudson Soft HuC6280 instruction sets.
 
 @section Legal
 
-    This module is written in 2002,2006,2008-2012,2014-2017 by Frank Wille
+    This module is written in 2002,2006,2008-2012,2014-2018 by Frank Wille
     and is covered by the vasm copyright without modifications.
 
 
@@ -12,6 +13,8 @@ microprocessor family.
 This module provides the following additional options:
 
 @table @option
+    @item -6280
+        Recognize all HuC6280 instructions.
     @item -c02
         Recognize all 65C02 instructions. This excludes DTV (@option{-dtv})
         and illegal (@option{-illegal}) instructions.
@@ -22,22 +25,34 @@ This module provides the following additional options:
     @item -opt-branch
         Enables 'optimization' of B<cc> branches into
         "B<!cc> *+3 ; JMP label" sequences when necessary.
+    @item -wdc02
+        Recognize all 65C02 instructions and the WDC65C02 extensions
+        (RMB,SMB,BBR,BBS,STP,WAI).
 @end table
 
 @section General
 
 This backend accepts 6502 family instructions as described in
 the instruction set reference manuals from MOS and Rockwell, which are valid
-for the following CPUs: 6502, 65C02, 65CE02, 65C102, 65C112, 6503, 6504, 6505,
-6507, 6508, 6509, 6510, 6511, 65F11, 6512 - 6518, 65C00/21, 65C29,
-6570, 6571, 6280, 6702, 740, 7501, 8500, 8502, 65802, 65816.
+for the following CPUs: 6502 - 6518, 6570, 6571, 6702, 7501, 8500, 8502.
+
+Optionally accepts 65C02 family instructions as decribed in the
+instruction set reference manuals from Rockwell and WDC. Also supports
+the WDC extensions in the W65C02 and W65C134.
+
+Optionally accepts 65CE02 family instructions as decribed in the
+instruction set reference manuals from Commodore Semiconductor Group.
+
+Optionally accepts HuC6280 instructions as described in the instruction
+set reference manuals from Hudson Soft.
 
 The target address type is 16 bit.
 
-Instructions consist of one up to three bytes and require no alignment.
+Instructions consist of one up to three bytes for the standard 6502 family
+(up to 7 bytes for the 6280) and require no alignment.
 There is also no alignment requirement for sections and data.
 
-All known mnemonics for illegal instructions are recognized (e.g.
+All known mnemonics for illegal instructions are optionally recognized (e.g.
 @code{dcm} and @code{dcp} refer to the same instruction). Some illegal
 insructions (e.g. @code{$ab}) are known to show unpredictable behaviour,
 or do not always work the same on different CPUs.
@@ -58,6 +73,16 @@ This backend provides the following specific extensions:
  generated.
 
 @end itemize
+
+This backend extends the selected syntax module by the following
+directives:
+
+@table @code
+@item setdp <expr>
+      Set the current base address of the zero/direct page for
+      optimizations from absolute to zero-page addressing modes.
+      Example: set it to @code{$2000} for the HuC6280/PC-Engine.
+@end table
 
 @section Optimizations
 
@@ -93,5 +118,6 @@ This module has the following error messages:
 @item 2005: relocation does not allow hi/lo modifier
 @item 2006: operand doesn't fit into 8-bits
 @item 2007: branch destination out of range
+@item 2008: illegal bit number
 
 @end itemize

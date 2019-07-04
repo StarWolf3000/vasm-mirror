@@ -6,7 +6,7 @@ selected with the @option{-Fvobj} option.
     This module is written in 2002-2014 by Volker Barthelmann and
     is covered by the vasm copyright without modifications.
 
-@section Additional options for this version
+@section Additional options for this module
 None.
 
 @section General

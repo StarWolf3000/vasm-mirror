@@ -1,7 +1,82 @@
 vasm history
 =============
 
-- 1.8b (NO-RELEASE)
+- 1.8f (10.06.19)
+o New option -wfail makes vasm return with an error code not only for
+  errors but also for warnings.
+o 6502: Added missing WDC65C02 instructions (-wdc02): STP and WAI.
+o m68k: Warn about DIVxL.L with identical quotient and remainder registers.
+o m68k: Do not optimize or translate PC-relative addressing modes when
+  the referenced symbol is in a different section.
+o m68k: RTD operand should be signed.
+o m68k: Automatic optimization of absolute to base-relative addressing
+  (-sd option) must only be done when the target address is between offset
+  0 and 65535 in the small data section.
+o z80: Forbid ixh/ixl operands on one side with h/l on the other.
+o mot-syntax: Structure directives (RS, SO, FO) without an offset-expression
+  are not allowed in Devpac-compatibility mode (-devpac).
+o mot-syntax: __LINE__ represents the correct line number again, after it
+  had been broken in the last version.
+o mot-syntax: New directive DX for ProAsm/Barfly compatibility. Used to
+  create DataBss space in an executable file. Otherwise identical to DS.
+o mot-syntax: New option -cnop=<code> sets a two-byte code for padding
+  CNOP-alignments. Defaults to 0x4e71 for M68k.
+o output-hunk: Make sure all unsupported relocations in hunk-executables
+  are reported. Do not generate an executable with missing relocs.
+o output-hunk: Do not pad a code section with 0x4e71 when skipping
+  DataBss contents at this point (-databss with -Fhunkexe).
+
+- 1.8e (28.12.18)
+o New option -dwarf automatically generates line debug information for
+  source level debugging in DWARF V2 or DWARF V3 format.
+o New output module for Sharp X68000 Xfile executables. Can be selected
+  with the -Fxfile option.
+o Repeatedly included files are only loaded once into memory.
+o m68k: Avoid wrong branch-optimization info messages with -opt-allbra.
+o 6502: Fixed LDA (zp,X) in 65C02 mode (-c02).
+o 6502: -wdc02 enables the WDC65C02 extensions, like RMB, SMB, BBR, BBS.
+o 6502: Support for Hudson Soft HuC6280 (new option -6280).
+o 6502: New directive SETDP to set the current zero/direct-page address
+  for optimizations from abs to zp addressing modes.
+o x86: Fixed crash with SWAPGS, when not supported by current cpu.
+o std-syntax: Fixed potential buffer overflow when parsing macro arguments.
+o output-hunk: Always try to include the full absolute source-path when
+  writing LINE debug hunks (-linedebug option).
+
+- 1.8d (20.08.18)
+o Repeat-loops with a single line generated a malformatted listing file.
+o m68k: Recognize (PC) addressing mode and transform it into (0,PC).
+o m68k: Only "fpu 1..7" may enable FPU code generation.
+o m68k: -kick1hunks also prevents optimizing from absolute to 32-bit
+  PC-relative.
+o arm: Fixed instruction alignment in Thumb mode, which was broken since
+  1.8b (introduction of -noialign option).
+o arm: Fix for immediate operands like cmp r0,#'A' not working properly in
+  thumb mode (provided by Peter Petterson).
+o PPC: tlbld is available as general PPC instruction again.
+o z80: SBC addressing modes IX,ss and SBC IY,ss do not exist.
+o z80: EX (SP),HL is not supported by GBZ80, but SRL is.
+o mot-syntax: Report garbage at end of line for DC directives.
+o mot-syntax: Labels with a double colon are automatically exported (xdef).
+o mot-syntax: Allow '?' within identifiers, in Devpac-compatibility mode.
+o madmac-syntax: Report garbage at end of line for DC directives.
+o std-syntax: Fixed \@ (unique id) in macros, which was broken since 1.7h.
+o vobj-output: Prevent crash when referencing undefined local symbols.
+
+- 1.8c (15.03.18)
+o Relocated ORG blocks within a section were not recognized, when their
+  start address was 0.
+o The count in repeat-directives is always unsigned, even when given as
+  a negative value.
+o Check for target address space overflows.
+o Fixed crash when undefining non-existing register symbols.
+o A redefined label is no longer a warning, but an error.
+o arm: Fixed compile-error from last release.
+o vobj-output: Fixed uninitialized symbol index for internal/local symbols.
+o oldstyle-syntax: New directive ROFFS to set the program counter relative
+  to the start of the current section.
+
+- 1.8b (30.12.17)
 o Option -noialign disables the automatic instruction alignment.
 o m68k: New Apollo Core instructions (core >=4035.jic), provided by
   Henryk Richter.
@@ -366,7 +441,7 @@ o m68k: New option -sc to set small code mode (same as NEAR CODE directive).
 o mot-syntax: SECTION with a single argument defaults to a code section,
   except when the name is "data" or "bss".
 o hunk-output: New option -kick1hunks to use only those hunk types and
-  external reference types which have been valid at the time of Kickstart
+u  external reference types which have been valid at the time of Kickstart
   1.x for compatibility with old assembler sources and old linkers.
 o tos-output: A 16-bit aligned section size must also show up in the header.
 o tos-output: New option -monst for writing Devpac MonST-compatible

@@ -17,6 +17,8 @@ set(vasm_sources
     hugeint.c
     cond.c
     supp.c
+    dwarf.c
+    osdep.c
     cpus/${VASM_CPU}/cpu.c
     syntax/${VASM_SYNTAX}/syntax.c
     output_test.c
@@ -26,6 +28,7 @@ set(vasm_sources
     output_hunk.c
     output_aout.c
     output_tos.c
+    output_xfile.c
     output_srec.c
     )
 set(vasm_exe vasm${VASM_CPU}_${VASM_SYNTAX})

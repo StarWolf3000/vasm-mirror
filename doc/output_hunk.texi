@@ -4,10 +4,10 @@ selected with the @option{-Fhunk} option to generate objects and with the
 
 @section Legal
 
-    This module is written in 2002-2016 by Frank Wille and
+    This module is written in 2002-2019 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
-@section Additional options for this version
+@section Additional options for this module
 @table @option
     @item -kick1hunks
         Use only those hunk types and external reference types which have
@@ -101,10 +101,11 @@ This module has the following error messages:
 @item 3001: multiple sections not supported by this format
 @item 3002: output module doesn't support cpu <name>
 @item 3003: write error
-@item 3004: section attributes <attr> not suppported
+@item 3004: section attributes <attr> not supported
 @item 3005: reloc type <m>, size <n>, mask <mask> (symbol <sym> + <offset>) not supported
 @item 3006: reloc type <n> not supported
 @item 3009: undefined symbol <%s> at %s+0x%lx, reloc type %d
 @item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
 @item 3011: weak symbol <%s> not supported by output format, treating as global
+@item 3014: data definition following a databss space directive
 @end itemize

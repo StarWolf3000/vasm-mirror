@@ -254,7 +254,7 @@ static uint32_t get_sec_type(section *s)
     }
   }
 #if 0
-  output_error(3,attr);  /* section attributes not suppported */
+  output_error(3,attr);  /* section attributes not supported */
   return SHT_NULL;
 #else
   return SHT_PROGBITS;

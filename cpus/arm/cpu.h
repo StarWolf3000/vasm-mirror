@@ -22,7 +22,7 @@ typedef int32_t taddr;
 typedef uint32_t utaddr;
 
 /* minimum instruction alignment */
-#define INST_ALIGN (thumb_mode ? 2 : 4)
+#define INST_ALIGN 0  /* Handled internally! */
 
 /* default alignment for n-bit data */
 #define DATA_ALIGN(n) ((n)<=8 ? 1 : ((n)<=16 ? 2 : 4))
@@ -210,6 +210,5 @@ typedef struct {
 
 /* exported by cpu.c */
 extern int arm_be_mode;
-extern int thumb_mode;
 
 int cpu_available(int);

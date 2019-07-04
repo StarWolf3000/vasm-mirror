@@ -1,8 +1,9 @@
 /* error.c - error output and modification routines */
-/* (c) in 2002-2017 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2019 by Volker Barthelmann and Frank Wille */
 
 #include <stdarg.h>
 #include "vasm.h"
+#include "error.h"
 
 struct err_out general_err_out[]={
 #include "general_errors.h"
@@ -24,9 +25,9 @@ struct err_out output_err_out[]={
 };
 int output_errors=sizeof(output_err_out)/sizeof(output_err_out[0]);
 
-int errors;
+int errors,warnings;
 int max_errors=5;
-int no_warn=0;
+int no_warn;
 
 
 static void print_source_line(FILE *f)
@@ -111,13 +112,17 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
     ++errors;
     fprintf(f,"error");
   }
-  else if (flags & WARNING)
+  else if (flags & WARNING) {
+    ++warnings;
     fprintf(f,"warning");
+  }
   else if (flags & MESSAGE)
     fprintf(f,"message");
   fprintf(f," %d",n+offset);
   if (!(flags & NOLINE) && cur_src!=NULL)
-    fprintf(f," in line %d of \"%s\"",cur_src->line,cur_src->name);
+    fprintf(f," in line %d of \"%s%s\"",cur_src->line,
+            cur_src->srcfile?cur_src->srcfile->incpath->path:"",
+            cur_src->name);
   fprintf(f,": ");
   vfprintf(f,errlist[n].text,vl);
   fprintf(f,"\n");
@@ -133,7 +138,9 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
           fprintf(f,"\tcalled");    /* macro called from */
         else
           fprintf(f,"\tincluded");  /* included from */
-        fprintf(f," from line %d of \"%s\"",child->parent_line,parent->name);
+        fprintf(f," from line %d of \"%s%s\"",child->parent_line,
+                parent->srcfile?parent->srcfile->incpath->path:"",
+                parent->name);
 
         recurs = 1;
         while (parent->parent!=NULL &&

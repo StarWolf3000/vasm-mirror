@@ -5,3 +5,4 @@
   "relocation does not allow hi/lo modifier",ERROR,
   "operand doesn't fit into 8-bits",ERROR,                           /* 05 */
   "branch destination out of range",ERROR,
+  "illegal bit number",ERROR,

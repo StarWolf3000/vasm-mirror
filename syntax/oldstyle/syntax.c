@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2017 by Frank Wille */
+/* (c) in 2002-2018 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm oldstyle syntax module 0.13c (c) 2002-2017 Frank Wille";
+char *syntax_copyright="vasm oldstyle syntax module 0.13f (c) 2002-2018 Frank Wille";
 hashtable *dirhash;
 
 static char textname[]=".text",textattr[]="acrx";
@@ -418,6 +418,12 @@ static void handle_rend(char *s)
   if (end_rorg())
     eol(s);
 }
+
+
+static void handle_roffs(char *s)
+{
+  add_atom(0,new_roffs_atom(parse_expr_tmplab(&s)));
+}
   
 
 static void handle_section(char *s)
@@ -715,7 +721,7 @@ static void handle_incbin(char *s)
 
 static void handle_rept(char *s)
 {
-  taddr cnt = parse_constexpr(&s);
+  utaddr cnt = parse_constexpr(&s);
 
   eol(s);
   new_repeat((int)cnt,NULL,NULL,
@@ -849,6 +855,7 @@ struct {
   "rend",handle_rend,
   "phase",handle_rorg,
   "dephase",handle_rend,
+  "roffs",handle_roffs,
   "align",handle_align,
   "even",handle_even,
   "byte",handle_d8,
@@ -952,7 +959,9 @@ struct {
   "structure",handle_struct,
   "endstruct",handle_endstruct,
   "endstructure",handle_endstruct,
+#if !defined(VASM_CPU_650X)
   "rmb",handle_spc8,
+#endif
   "fcc",handle_text,
   "fcb",handle_d8,
   "fdb",handle_d16,

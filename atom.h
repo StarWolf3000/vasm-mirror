@@ -1,5 +1,5 @@
 /* atom.h - atomic objects from source */
-/* (c) in 2010-2016 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2019 by Volker Barthelmann and Frank Wille */
 
 #ifndef ATOM_H
 #define ATOM_H
@@ -53,7 +53,9 @@ struct sblock {
   expr *fill_exp;   /* copied to fill, when evaluated - may be NULL */
   rlist *relocs;
   taddr maxalignbytes;
+  uint32_t flags;
 };
+#define SPC_DATABSS 1  /* make sure no to allocate space in a data section */
 
 typedef struct printexpr {
   expr *print_exp;
@@ -118,6 +120,12 @@ size_t atom_size(atom *,section *,taddr);
 void print_atom(FILE *,atom *);
 void atom_printexpr(printexpr *,section *,taddr);
 atom *clone_atom(atom *);
+
+atom *add_data_atom(section *,size_t,taddr,taddr);
+void add_leb128_atom(section *,taddr);
+void add_sleb128_atom(section *,taddr);
+atom *add_bytes_atom(section *,void *,size_t);
+#define add_string_atom(s,p) add_bytes_atom(s,p,strlen(p)+1)
 
 atom *new_inst_atom(instruction *);
 atom *new_data_atom(dblock *,taddr);

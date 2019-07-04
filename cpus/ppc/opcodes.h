@@ -2272,10 +2272,10 @@
 
   "iccci",        { RA, RB }            ,{PPC43,  X(31,966)},
 
-  "tlbld",        { RB }                ,{BE403,  X(31,978)},
+  "tlbld",        { RB }                ,{PPC,    X(31,978)},
   "tlbwehi",      { RT, RA }            ,{PPC403, XTLB(31,978,0)},
   "tlbwelo",      { RT, RA }            ,{PPC403, XTLB(31,978,1)},
-  "tlbwe",        { RSOPT, RAOPT, SHO } ,{BE403, X(31,978)},
+  "tlbwe",        { RSOPT, RAOPT, SHO } ,{BE403,  X(31,978)},
 
   "icbi",         { RA, RB }            ,{PPC,    X(31,982)},
 

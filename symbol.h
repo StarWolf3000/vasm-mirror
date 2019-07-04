@@ -1,5 +1,5 @@
 /* symbol.h - manage all kinds of symbols */
-/* (c) in 2014-2017 by Volker Barthelmann and Frank Wille */
+/* (c) in 2014-2018 by Volker Barthelmann and Frank Wille */
 
 #ifndef SYMBOL_H
 #define SYMBOL_H
@@ -16,6 +16,7 @@
 #define TYPE_FUNCTION 2
 #define TYPE_SECTION  3
 #define TYPE_FILE     4
+#define TYPE_LAST     4
 #define TYPE(sym) ((sym)->flags&TYPE_MASK)
 
 #define EXPORT (1<<3)

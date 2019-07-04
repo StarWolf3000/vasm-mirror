@@ -2062,7 +2062,7 @@
   "roxr",     {D_,D_},      {{RHI,RLO},        {0xe030,0},1|BWL|S_STD,m68000up},
   "roxr",     {QI,D_},      {{D3Q,RLO},        {0xe010,0},1|BWL|S_STD,m68000up},
   "roxr",     {D_},         {{RLO},            {0xe210,0},1|BWL|S_STD,m68000up},
-  "rtd",      {QI},         {{D16},            {0x4e74,0},2|UNS|S_NONE,m68010up},
+  "rtd",      {QI},         {{S16},            {0x4e74,0},2|UNS|S_NONE,m68010up},
   "rte",      {0},          {{0},              {0x4e73,0},1|UNS|S_NONE,m68000up|mcf},
   "rtm",      {R_},         {{RL4},            {0x06c0,0},1|UNS|S_NONE,m68020},
   "rtr",      {0},          {{0},              {0x4e77,0},1|UNS|S_NONE,m68000up},

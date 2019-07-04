@@ -1,5 +1,5 @@
 /* expr.c expression handling for vasm */
-/* (c) in 2002-2017 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2018 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -655,6 +655,9 @@ void simplify_expr(expr *tree)
       if(tree->right->c.val==0){
         general_error(41);
         ival=0;
+      }else if(tree->left->c.val==taddrmin&&tree->right->c.val==-1){
+        general_error(21,sizeof(taddr)*8);  /* target data type overflow */
+        ival=taddrmin;
       }else
         ival=(tree->left->c.val/tree->right->c.val);
       break;
@@ -662,6 +665,9 @@ void simplify_expr(expr *tree)
       if(tree->right->c.val==0){
         general_error(41);
         ival=0;
+      }else if(tree->left->c.val==taddrmin&&tree->right->c.val==-1){
+        general_error(21,sizeof(taddr)*8);  /* target data type overflow */
+        ival=taddrmin;
       }else
         ival=(tree->left->c.val%tree->right->c.val);
       break;
@@ -971,6 +977,9 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     if(rval==0){
       general_error(41);
       val=0;
+    }else if(lval==taddrmin&&rval==-1){
+      general_error(21,sizeof(taddr)*8);  /* target data type overflow */
+      val=taddrmin;
     }else
       val=(lval/rval);
     break;
@@ -978,6 +987,9 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     if(rval==0){
       general_error(41);
       val=0;
+    }else if(lval==taddrmin&&rval==-1){
+      general_error(21,sizeof(taddr)*8);  /* target data type overflow */
+      val=taddrmin;
     }else
       val=(lval%rval);
     break;

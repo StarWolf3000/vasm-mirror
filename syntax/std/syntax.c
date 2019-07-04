@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2017 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2018 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 #include "stabs.h"
@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm std syntax module 5.1 (c) 2002-2017 Volker Barthelmann";
+char *syntax_copyright="vasm std syntax module 5.1d (c) 2002-2018 Volker Barthelmann";
 hashtable *dirhash;
 
 static char textname[]=".text",textattr[]="acrx";
@@ -35,12 +35,14 @@ char *defsecttype = "acrwx";
 
 static char endmname[] = ".endm";
 static char reptname[] = ".rept";
+static char irpname[] = ".irp";
+static char irpcname[] = ".irpc";
 static char endrname[] = ".endr";
 static struct namelen dendm_dirlist[] = {
   { 5,&endmname[0] }, { 0,0 }
 };
 static struct namelen drept_dirlist[] = {
-  { 5,&reptname[0] }, { 0,0 }
+  { 5,&reptname[0] }, { 4,&irpname[0] }, { 5,&irpcname[0] }, { 0,0 }
 };
 static struct namelen dendr_dirlist[] = {
   { 5,&endrname[0] }, { 0,0 }
@@ -49,7 +51,7 @@ static struct namelen endm_dirlist[] = {
   { 4,&endmname[1] }, { 0,0 }
 };
 static struct namelen rept_dirlist[] = {
-  { 4,&reptname[1] }, { 0,0 }
+  { 4,&reptname[1] }, { 3,&irpname[1] }, { 4,&irpcname[1] },{ 0,0 }
 };
 static struct namelen endr_dirlist[] = {
   { 4,&endrname[1] }, { 0,0 }
@@ -488,18 +490,21 @@ static void handle_type(char *s)
   sym=new_import(name);
   myfree(name);
   s=skip(s);
-  if(*s==',')
+  if(*s==','){
     s=skip(s+1);
-  else
-    general_error(6,',');  /* comma expected */
-  if(!strncmp(s,"@object",7)){
-    sym->flags|=TYPE_OBJECT;
-    s=skip(s+7);
-  }else if(!strncmp(s,"@function",9)){
-    sym->flags|=TYPE_FUNCTION;
-    s=skip(s+9);
+    if(!strncmp(s,"@object",7)){
+      sym->flags|=TYPE_OBJECT;
+      s=skip(s+7);
+    }else if(!strncmp(s,"@function",9)){
+      sym->flags|=TYPE_FUNCTION;
+      s=skip(s+9);
+    }else{
+      uint32_t t=parse_constexpr(&s)&TYPE_MASK;
+      if (t<=TYPE_LAST)
+        sym->flags|=t;
+    }
   }else
-    sym->flags|=parse_constexpr(&s);
+    general_error(6,',');  /* comma expected */
   eol(s);
 }
 
@@ -683,10 +688,10 @@ static void handle_incbin(char *s)
 
 static void handle_rept(char *s)
 {
-  taddr cnt = parse_constexpr(&s);
+  utaddr cnt = parse_constexpr(&s);
 
   eol(s);
-  new_repeat((int)cnt,NULL,NULL,
+  new_repeat(cnt,NULL,NULL,
              nodotneeded?rept_dirlist:drept_dirlist,
              nodotneeded?endr_dirlist:dendr_dirlist);
 }
@@ -1268,10 +1273,10 @@ char *parse_macro_arg(struct macro *m,char *s,
   if (*s == '\'') {
     /* evaluate character constant */
     unsigned long cc = parse_constexpr(&s);
-    char buf[16],*ccstr;
+    char buf[64],*ccstr;
     int len;
 
-    if ((len = sprintf(buf,"%lu",cc)) < 0)
+    if ((len = snprintf(buf,64,"%lu",cc)) < 0)
       ierror(0);
     ccstr = mystrdup(buf);
     param->name = ccstr;
@@ -1305,6 +1310,7 @@ int expand_macro(source *src,char **line,char *d,int dlen)
     /* possible macro expansion detected */
     if (*s == '@') {
       /* \@: insert a unique id */
+      s++;
       nc = sprintf(d,"%lu",src->id);
       if (nc >= dlen)
         nc = -1;

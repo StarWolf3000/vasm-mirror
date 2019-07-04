@@ -1,12 +1,8 @@
 /* error.h - error output and modification routines */
-/* (c) in 2002-2009,2015 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2009,2015,2018 by Volker Barthelmann and Frank Wille */
 
 #ifndef ERROR_H
 #define ERROR_H                                                                                
-
-extern int errors;
-extern int max_errors;
-extern int no_warn;
 
 #define FIRST_GENERAL_ERROR 1
 #define FIRST_SYNTAX_ERROR 1001
@@ -25,17 +21,5 @@ struct err_out {
 #define MESSAGE    32
 #define DONTWARN   64
 #define NOLINE    256
-
-#define ierror(x) general_error(4,(x),__LINE__,__FILE__)
-
-void general_error(int,...);
-void syntax_error(int,...);
-void cpu_error(int,...);
-void output_error(int,...);
-void output_atom_error(int,atom *,...);
-void modify_gen_err(int,...);
-void modify_syntax_err(int,...);
-void modify_cpu_err(int,...);
-void disable_warning(int);
 
 #endif

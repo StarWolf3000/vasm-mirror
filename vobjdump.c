@@ -90,7 +90,8 @@ static taddr read_number(int is_signed)
   ubyte n,*q;
   int size;
 
-  if (p >= vobj+vlen) {
+  if (p<vobj || p>=vobj+vlen) {
+    corrupt:
     fprintf(stderr,"\nObject file is corrupt! Aborting.\n");
     exit(1);
   }
@@ -104,6 +105,8 @@ static taddr read_number(int is_signed)
     size = n << 3;
     p += n;
     q = p;
+    if (p > vobj+vlen)
+      goto corrupt;
 
     while (n--)
       val = (val<<8) | *(--q);
@@ -117,8 +120,16 @@ static taddr read_number(int is_signed)
 
 static void skip_string(void)
 {
-  while (*p)
+  if (p < vobj)
+    goto corrupt;
+  while (*p) {
     p++;
+    if (p >= vobj+vlen) {
+      corrupt:
+      fprintf(stderr,"\nObject file is corrupt! Aborting.\n");
+      exit(1);
+    }
+  }
   p++;
 }
 
@@ -222,10 +233,21 @@ static void read_section(struct vobj_section *vsect,
       taddr rsize;
 
       rsize = read_number(0);  /* size of special relocation entry */
+      if (rsize < 0) {
+        printf("Bad special relocation size (%d)!\n",(int)rsize);
+        exit(1);
+      }
       p += rsize;
+      if (p<vobj || p>vobj+vlen)
+        break;
       printf("special relocation type %-3d with a size of %d bytes\n",
              (int)type,(int)rsize);
     }
+  }
+
+  if (p<vobj || p>vobj+vlen) {
+    fprintf(stderr,"\nSection \"%s\" is corrupt! Aborting.\n",vsect->name);
+    exit(1);
   }
 }
 
@@ -391,7 +413,7 @@ int main(int argc,char *argv[])
       fprintf(stderr,"Cannot open \"%s\" for reading!\n",argv[1]);
   }
   else
-    fprintf(stderr,"vobjdump V0.4a\nWritten by Frank Wille\n"
+    fprintf(stderr,"vobjdump V0.5\nWritten by Frank Wille\n"
             "Usage: %s <file name>\n",argv[0]);
 
   return rc;

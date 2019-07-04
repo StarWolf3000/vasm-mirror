@@ -4,10 +4,10 @@ which is available with the extension @code{oldstyle}.
 
 @section Legal
 
-    This module is written in 2002-2017 by Frank Wille and
+    This module is written in 2002-2018 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
-@section Additional options for this version
+@section Additional options for this module
  
 This syntax module provides the following additional options:
  
@@ -132,7 +132,7 @@ CPU- and output-module allow it):
       Insert <exp> zero or <fill> 16-bit words into the current section,
       using the endianess of the target CPU.
 
-@item bsz exp>[,<fill>]
+@item bsz <exp>[,<fill>]
       Equivalent to @code{blk <exp>[,<fill>]}.
 
 @item byt
@@ -397,6 +397,14 @@ CPU- and output-module allow it):
       Ends a @code{rorg} block of label relocation. Following labels will
       be based on @code{org} again.
 
+@item rmb <exp>[,<fill>]
+      Equivalent to @code{blk <exp>[,<fill>]}. (Not available for 6502 CPU.)
+
+@item roffs <expression>
+      Sets the program counter <expression> bytes behind the start of the
+      current section. The new program counter must not be smaller than the
+      current one. The space will be padded with zeros.
+
 @item rorg <expression>
       Relocate all labels between @code{rorg} and @code{rend} based on the
       new origin from @code{<expression>}.
@@ -504,6 +512,8 @@ CPU- and output-module allow it):
 @item xref  <symbol>[,<symbol>...]
         See @code{global}.
 
+@item zmb <exp>[,<fill>]
+      Equivalent to @code{blk <exp>[,<fill>]}.
 @end table
 
 

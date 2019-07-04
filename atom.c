@@ -1,5 +1,5 @@
 /* atom.c - atomic objects from source */
-/* (c) in 2010-2016 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2019 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -148,6 +148,7 @@ sblock *new_sblock(expr *space,size_t size,expr *fill)
     memset(sb->fill,0,MAXPADBYTES);
   sb->relocs = 0;
   sb->maxalignbytes = 0;
+  sb->flags = 0;
   return sb;
 }
 
@@ -156,11 +157,8 @@ static size_t space_size(sblock *sb,section *sec,taddr pc)
 {
   utaddr space=0;
 
-  if (eval_expr(sb->space_exp,&space,sec,pc) || !final_pass) {
+  if (eval_expr(sb->space_exp,&space,sec,pc) || !final_pass)
     sb->space = space;
-    if ((utaddr)(pc+space) < (utaddr)pc)
-      general_error(45);  /* illegal negative value */
-  }
   else
     general_error(30);  /* expression must be constant */
 
@@ -443,6 +441,68 @@ atom *clone_atom(atom *a)
   new->line = 0;
   new->list = NULL;
   return new;
+}
+
+
+atom *add_data_atom(section *sec,size_t sz,taddr alignment,taddr c)
+{
+  dblock *db = new_dblock();
+  atom *a;
+
+  db->size = sz;
+  db->data = mymalloc(sz);
+  if (sz > 1)
+    setval(BIGENDIAN,db->data,sz,c);
+  else
+    *(db->data) = c;
+
+  a = new_data_atom(db,alignment);
+  add_atom(sec,a);
+  return a;
+}
+
+
+void add_leb128_atom(section *sec,taddr c)
+{
+  taddr b;
+
+  do {
+    b = c & 0x7f;
+    if ((c >>= 7) != 0)
+      b |= 0x80;
+    add_data_atom(sec,1,1,b);
+  } while (c != 0);
+}
+
+
+void add_sleb128_atom(section *sec,taddr c)
+{
+  int done = 0;
+  taddr b;
+
+  do {
+    b = c & 0x7f;
+    c >>= 7;  /* assumes arithmetic shifts! */
+    if ((c==0 && !(b&0x40)) || (c==-1 && (b&0x40)))
+      done = 1;
+    else
+      b |= 0x80;
+    add_data_atom(sec,1,1,b);
+  } while (!done);
+}
+
+
+atom *add_bytes_atom(section *sec,void *p,size_t sz)
+{
+  dblock *db = new_dblock();
+  atom *a;
+
+  db->size = sz;
+  db->data = mymalloc(sz);
+  memcpy(db->data,p,sz);
+  a = new_data_atom(db,1);
+  add_atom(sec,a);
+  return a;
 }
 
 

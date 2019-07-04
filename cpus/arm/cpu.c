@@ -1,6 +1,6 @@
 /*
 ** cpu.c ARM cpu-description file
-** (c) in 2004,2006,2010,2011,2014-2016 by Frank Wille
+** (c) in 2004,2006,2010,2011,2014-2018 by Frank Wille
 */
 
 #include "vasm.h"
@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm ARM cpu backend 0.4d (c) 2004,2006,2010,2011,2014-2016 Frank Wille";
+char *cpu_copyright = "vasm ARM cpu backend 0.4e (c) 2004,2006,2010,2011,2014-2018 Frank Wille";
 char *cpuname = "ARM";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -81,10 +81,14 @@ char *parse_cpu_special(char *start)
       s++;
     if (s-name==6 && !strncmp(name,".thumb",6)) {
       thumb_mode = 1;
+      if (inst_alignment > 1)
+        inst_alignment = 2;
       return s;
     }
     else if (s-name==4 && !strncmp(name,".arm",4)) {
       thumb_mode = 0;
+      if (inst_alignment > 1)
+        inst_alignment = 4;
       return s;
     }
   }
@@ -328,20 +332,10 @@ int parse_operand(char *p,int len,operand *op,int optype)
       op->value = number_expr(list);
     }
 
-    else {  /* just parse an expression */
-      char *q;
-
-      if (THIMMOPER(optype)) {
-        if (*p++ != '#')
-          return PO_NOMATCH;
-        p = skip(p);
-      }
-
-      q = p;
-      if (*q=='+' || *q=='-')
-        q = skip(q+1);
-      if (!ISIDSTART(*q) && !isdigit((unsigned char)*q))
+    else if (THIMMOPER(optype)) {
+      if (*p++ != '#')
         return PO_NOMATCH;
+      p = skip(p);
       op->value = parse_expr(&p);
 
       if (THIMMINDIR(optype)) {
@@ -349,6 +343,15 @@ int parse_operand(char *p,int len,operand *op,int optype)
         if (*p++ != ']')
           return PO_NOMATCH;
       }
+    }
+
+    else {  /* just parse an expression */
+      char *q = p;
+
+      /* check that this isn't any other valid operand */
+      if (*p=='#' || *p=='[' || *p=='{' || parse_reg(&q)>=0)
+        return PO_NOMATCH;
+      op->value = parse_expr(&p);
     }
   }
 
@@ -1691,6 +1694,9 @@ int init_cpu()
   new_regsym(0,1,"lr",0,0,14);
   new_regsym(0,1,"pc",0,0,15);
 
+  /* instruction alignment, determined by thumb-mode */
+  if (inst_alignment > 1)
+    inst_alignment = thumb_mode ? 2 : 4;
   return 1;
 }
 
