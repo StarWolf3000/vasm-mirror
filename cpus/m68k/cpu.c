@@ -25,7 +25,7 @@ struct cpu_models models[] = {
 int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3e (c) 2002-2019 Frank Wille";
+char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3f (c) 2002-2019 Frank Wille";
 char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -5120,7 +5120,7 @@ nofpu:
   else if (!strcmp(p,"-opt-brajmp"))
     opt_brajmp = !no_opt;
   else if (!strcmp(p,"-opt-allbra"))
-    opt_allbra = !no_opt;
+    opt_bra = opt_allbra = !no_opt;
   else if (!strcmp(p,"-opt-jbra"))
     opt_jbra = !no_opt;
   else if (!strcmp(p,"-opt-speed"))

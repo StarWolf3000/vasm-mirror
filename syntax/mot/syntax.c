@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm motorola syntax module 3.12c (c) 2002-2019 Frank Wille";
+char *syntax_copyright="vasm motorola syntax module 3.12d (c) 2002-2019 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 
@@ -51,6 +51,7 @@ static int allow_spaces;
 static int check_comm;
 static int dot_idchar;
 static char local_char = '.';
+static int tosout;  /* output is for Atari TOS */
 
 /* (currenty two-byte only) padding value for CNOPs */
 #ifdef VASM_CPU_M68K
@@ -133,7 +134,7 @@ int isidchar(char c)
     return 1;
   if (phxass_compat && (unsigned char)c>=0x80)
     return 1;
-  if (devpac_compat && c=='?')
+  if (devpac_compat && (c=='?' || c=='@'))
     return 1;
   return 0;
 }
@@ -435,16 +436,28 @@ static void handle_section(char *s)
     /* read section type and memory attributes */
     s = read_sec_attr(attr,skip(s+1),&mem);
   }
-  else {
-    /* only name is given - guess type from name */
-    if (!stricmp(name,"data"))
+  else if (tosout) {
+    /* only name is given - guess type from name for Atari TOS */
+    if (!stricmp(name,"data")) {
       strcpy(attr,data_type);
-    else if (!stricmp(name,"bss"))
+      name = data_name;
+    }
+    else if (!stricmp(name,"bss")) {
       strcpy(attr,bss_type);
-    else
+      name = bss_name;
+    }
+    else if (!stricmp(name,"code") || !stricmp(name,"text")) {
       strcpy(attr,code_type);
-    if (devpac_compat && !stricmp(name,"text"))
       name = code_name;
+    }
+    else {
+      syntax_error(13);  /* illegal section type */
+      s = NULL;
+    }
+  }
+  else {
+    /* missing section type defaults to CODE */
+    strcpy(attr,code_type);
   }
 
   if (s) {
@@ -2442,6 +2455,8 @@ int init_syntax()
   if (devpac_compat) avail = 1;
   else if (phxass_compat) avail = 2;
   else avail = 0;
+
+  tosout = !strcmp(output_format,"tos");
 
   dirhash = new_hashtable(0x200); /* @@@ */
   for (i=0; i<dir_cnt; i++) {

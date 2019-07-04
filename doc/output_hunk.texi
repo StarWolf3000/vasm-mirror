@@ -9,6 +9,12 @@ selected with the @option{-Fhunk} option to generate objects and with the
 
 @section Additional options for this module
 @table @option
+    @iten -hunkpad=<code>
+        Sets a two-byte code used for aligning a code hunk to the
+        next 32-bit border. Defaults to 0x4e71 on M68k to allow linking
+        of functions which extend over two object files.
+    @item -keepempty
+        Do not delete empty sections without any symbol definition.
     @item -kick1hunks
         Use only those hunk types and external reference types which have
         been valid at the time of Kickstart 1.x for compatibility with
@@ -21,8 +27,6 @@ selected with the @option{-Fhunk} option to generate objects and with the
         Automatically generate an SAS/C-compatible LINE DEBUG hunk for
         the input source. Overrides any line debugging directives from
         the source.
-    @item -keepempty
-        Do not delete empty sections without any symbol definition.
 @end table
 
 These options are valid for the @code{hunkexe} module only:

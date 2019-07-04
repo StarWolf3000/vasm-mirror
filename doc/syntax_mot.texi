@@ -659,11 +659,11 @@ CPU- and output-module support them):
       Starts a new section named @code{<name>} or reactivates an old one.
       @code{<sec_type>} defines the section type and may be @code{code},
       @code{text} (same as @code{code}), @code{data} or @code{bss}.
-      @code{<sec_type>} defaults to @code{code} in Phxass mode. Otherwise
-      a single argument will start a section with the type and name of
-      @code{<sec_type>}. When @code{<mem_type>} is given
-      it defines a 32-bit memory attribute, which specifies where to load
-      the section.
+      When the output format is "tos", then a single argument will be
+      interpreted as section type. Otherwise this argument is used as
+      section name and the type defaults to @code{code}.
+      When @code{<mem_type>} is given it defines a 32-bit memory attribute,
+      which specifies where to load the section.
       @code{<mem_type>} is either a numerical constant or one of the
       keywords @code{chip} (for Chip-RAM) or @code{fast} (for Fast-RAM).
       Optionally it is also possible to attach the suffix @code{_C}, @code{_F}

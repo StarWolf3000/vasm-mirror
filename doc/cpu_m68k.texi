@@ -9,6 +9,11 @@ microprocessor family.
 
 @section Additional options for this module
 
+Note, that the order on the command line may be important when
+specifiying options. For example, if you specify -devpac compatibility
+mode behind enabling some optimization options, the Devpac-mode might
+disable these optimizations again.
+
 This module provides the following additional options:
 
 @subsection CPU selections

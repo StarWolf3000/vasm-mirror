@@ -1,6 +1,17 @@
 vasm history
 =============
 
+- 1.8g (NO-RELEASE)
+o m68k: -opt-allbra makes sure that branch-optimization is enabled.
+o z80: "ld (BC/DE/HL),abs" is an illegal addressing mode.
+o mot-syntax: SECTION directive with a single argument is interpreted as
+  section-type when the output format is "tos". Otherwise the type
+  defaults to CODE.
+o mot-syntax: In devpac-compatibility mode allow '@' in the middle of labels.
+o output-hunk: New option -hunkpad=<code> selects the padding code for
+  code sections to achieve 32-bit alignment. Default to 0x4e71 (NOP)
+  for M68k.
+
 - 1.8f (10.06.19)
 o New option -wfail makes vasm return with an error code not only for
   errors but also for warnings.

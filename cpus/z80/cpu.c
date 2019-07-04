@@ -576,7 +576,7 @@ mnemonic mnemonics[] = {
 
 int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright="vasm 8080/gbz80/z80/z180/rcmX000 cpu backend 0.3 (c) 2007,2009 Dominic Morris";
+char *cpu_copyright="vasm 8080/gbz80/z80/z180/rcmX000 cpu backend 0.3a (c) 2007,2009 Dominic Morris";
 char *cpuname = "z80";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -934,7 +934,7 @@ int parse_operand(char *p, int len, operand *op, int optype)
 
     if ( optype & OP_ARITH16 ) {
 
-        if ( (opt & OP_ARITH16) == 0 ||
+        if ( (opt & OP_ARITH16) == 0 || (opt & OP_INDIR) != 0 ||
              !PERMITTED(opt, optype, OP_INDEX) || !alt_override_permitted(optype,opt,op->reg) ) {
             goto nomatch;
         }

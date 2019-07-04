@@ -5,8 +5,15 @@
 #include "osdep.h"
 #include "output_hunk.h"
 #if defined(OUTHUNK) && (defined(VASM_CPU_M68K) || defined(VASM_CPU_PPC))
-static char *copyright="vasm hunk format output module 2.10 (c) 2002-2019 Frank Wille";
+static char *copyright="vasm hunk format output module 2.10a (c) 2002-2019 Frank Wille";
 int hunk_onlyglobal;
+
+/* (currenty two-byte only) padding value for not 32-bit aligned code hunks */
+#ifdef VASM_CPU_M68K
+static uint16_t hunk_pad = 0x4e71;
+#else
+static uint16_t hunk_pad = 0;
+#endif
 
 static int databss;
 static int kick1;
@@ -65,7 +72,7 @@ static void fwnopalign(FILE *f,taddr n)
   if (n & 1)
     ierror(0);
   for (i=0; i<n; i+=2)
-    fw16(f,0x4e71,1);
+    fw16(f,hunk_pad,1);
 }
 
 
@@ -954,6 +961,13 @@ static int common_args(char *p)
   }
   if (!strcmp(p,"-keepempty")) {
     keep_empty_sects = 1;
+    return 1;
+  }
+  if (!strncmp(p,"-hunkpad=",9)) {
+    int pad_code;
+
+    sscanf(p+9,"%i",&pad_code);
+    hunk_pad = pad_code;
     return 1;
   }
   return 0;
