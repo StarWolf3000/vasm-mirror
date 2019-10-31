@@ -5,7 +5,7 @@
 #include "osdep.h"
 #include "output_hunk.h"
 #if defined(OUTHUNK) && (defined(VASM_CPU_M68K) || defined(VASM_CPU_PPC))
-static char *copyright="vasm hunk format output module 2.10a (c) 2002-2019 Frank Wille";
+static char *copyright="vasm hunk format output module 2.11 (c) 2002-2019 Frank Wille";
 int hunk_onlyglobal;
 
 /* (currenty two-byte only) padding value for not 32-bit aligned code hunks */
@@ -584,44 +584,92 @@ static void reloc_hunk(FILE *f,uint32_t type,int shrt,struct list *reloclist)
 }
 
 
-static void add_linedebug(struct list *ldblist,uint32_t line,uint32_t off)
+static void add_linedebug(struct list *ldblist,source *src,int line,
+                          uint32_t off)
 {
-  struct hunkline *ldebug = mymalloc(sizeof(struct hunkline));
+  char pathbuf[MAXPATHLEN];
+  struct linedb_block *ldbblk;
+  struct linedb_entry *ldbent;
 
-  ldebug->line = line;
-  ldebug->offset = off;
-  addtail(ldblist,&ldebug->n);
+  /* get full source path and fix line number for macros and repetitions */
+  if (src != NULL) {
+    if (src->defsrc != NULL) {
+      line += src->defline;
+      src = src->defsrc;
+    }
+    pathbuf[0] = '\0';
+    if (src->srcfile->incpath != NULL) {
+      if (src->srcfile->incpath->compdir_based)
+        strcpy(pathbuf,compile_dir);
+      strcat(pathbuf,src->srcfile->incpath->path);
+    }
+    strcat(pathbuf,src->srcfile->name);
+  }
+  else  /* line numbers and source defined by directive */
+    strcpy(pathbuf,getdebugname());
+
+  /* make a new LINE debug block whenever the source path changes */
+  if (ldblist->first->next==NULL
+      || filenamecmp(pathbuf,
+                     ((struct linedb_block *)ldblist->last)->filename)) {
+    ldbblk = mymalloc(sizeof(struct linedb_block));
+    ldbblk->filename = mystrdup(pathbuf);
+    ldbblk->offset = off;
+    ldbblk->entries = 0;
+    initlist(&ldbblk->lines);
+    addtail(ldblist,&ldbblk->n);
+  }
+  else
+    ldbblk = (struct linedb_block *)ldblist->last;
+
+  /* append line/offset pair as a new entry for the debug block */
+  ldbent = mymalloc(sizeof(struct linedb_entry));
+  ldbent->line = (uint32_t)line;
+  ldbent->offset = off - ldbblk->offset;
+  addtail(&ldbblk->lines,&ldbent->n);
+  ldbblk->entries++;
 }
 
 
-static void linedebug_hunk(FILE *f,struct list *ldblist,int num)
+static void linedebug_hunk(FILE *f,struct list *ldblist)
 {
-  if (num > 0) {
-    char pathbuf[MAXPATHLEN];
-    uint32_t srcname_len;
-    struct hunkline *hl;
+  struct linedb_block *ldbblk;
 
-    if (!abs_path(getdebugname())) {
+  while (ldbblk = (struct linedb_block *)remhead(ldblist)) {
+    char abspathbuf[MAXPATHLEN];
+    struct linedb_entry *ldbent;
+    uint32_t abspathlen;
+
+    /* get source file name as full absolute path */
+    if (!abs_path(ldbblk->filename)) {
       char *cwd = append_path_delimiter(get_workdir());
-      snprintf(pathbuf,MAXPATHLEN,"%s%s",cwd,getdebugname());
+      snprintf(abspathbuf,MAXPATHLEN,"%s%s",cwd,ldbblk->filename);
       myfree(cwd);
     }
     else
-      strcpy(pathbuf,getdebugname());
-    srcname_len = strlen32(pathbuf);
+      strcpy(abspathbuf,ldbblk->filename);
+    abspathlen = strlen32(abspathbuf);
 
+    /* write DEBUG-LINE hunk header */
     fw32(f,HUNK_DEBUG,1);
-    fw32(f,srcname_len + num*2 + 3,1);
-    fw32(f,0,1);
+    fw32(f,abspathlen + ldbblk->entries*2 + 3,1);
+    fw32(f,ldbblk->offset,1);
     fw32(f,0x4c494e45,1);  /* "LINE" */
-    fw32(f,srcname_len,1);
-    fwname(f,pathbuf);
+    fw32(f,abspathlen,1);
+    fwname(f,abspathbuf);
 
-    for (hl=(struct hunkline *)ldblist->first;
-         hl->n.next; hl=(struct hunkline *)hl->n.next) {
-      fw32(f,hl->line,1);
-      fw32(f,hl->offset,1);
+    /* writes and deallocate entries */
+    while (ldbent = (struct linedb_entry *)remhead(&ldbblk->lines)) {
+      fw32(f,ldbent->line,1);
+      fw32(f,ldbent->offset,1);
+      myfree(ldbent);
+      ldbblk->entries--;
     }
+
+    /* deallocate debug block */
+    if (ldbblk->entries != 0)
+      ierror(0);  /* shouldn't happen */
+    myfree(ldbblk);
   }
 }
 
@@ -733,7 +781,6 @@ static void write_object(FILE *f,section *sec,symbol *sym)
         uint32_t type;
         atom *a;
         struct list reloclist,xreflist,linedblist;
-        int num_linedb = 0;
 
         wrotesec = 1;
         initlist(&reloclist);
@@ -764,21 +811,16 @@ static void write_object(FILE *f,section *sec,symbol *sym)
 
             npc = fwpcalign(f,a,sec,pc);
 
-            if (genlinedebug && (a->type==DATA || a->type==SPACE)) {
-              add_linedebug(&linedblist,(uint32_t)a->line,npc);
-              ++num_linedb;
-            }
+            if (genlinedebug && (a->type==DATA || a->type==SPACE))
+              add_linedebug(&linedblist,a->src,a->line,npc);
 
-            if (a->type == DATA) {
+            if (a->type == DATA)
               fwdata(f,a->content.db->data,a->content.db->size);
-            }
-            else if (a->type == SPACE) {
+            else if (a->type == SPACE)
               fwsblock(f,a->content.sb);
-            }
-            else if (a->type == LINE && !genlinedebug) {
-              add_linedebug(&linedblist,(uint32_t)a->content.srcline,npc);
-              ++num_linedb;
-            }
+            else if (a->type == LINE && !genlinedebug)
+              add_linedebug(&linedblist,NULL,a->content.srcline,npc);
+
             process_relocs(a,&reloclist,&xreflist,sec,npc);
 
             pc = npc + atom_size(a,sec,npc);
@@ -811,7 +853,7 @@ static void write_object(FILE *f,section *sec,symbol *sym)
           if (!hunk_onlyglobal)
             ext_defs(f,LABSYM,0,sec->idx,EXT_SYMB);
           /* line-debug */
-          linedebug_hunk(f,&linedblist,num_linedb);
+          linedebug_hunk(f,&linedblist);
         }
         fw32(f,HUNK_END,1);
       }
@@ -857,7 +899,6 @@ static void write_exec(FILE *f,section *sec,symbol *sym)
       	uint32_t type;
         atom *a;
         struct list reloclist,linedblist;
-        int num_linedb = 0;
 
         initlist(&reloclist);
         initlist(&linedblist);
@@ -880,21 +921,16 @@ static void write_exec(FILE *f,section *sec,symbol *sym)
 
             npc = fwpcalign(f,a,sec,pc);
 
-            if (genlinedebug && (a->type==DATA || a->type==SPACE)) {
-              add_linedebug(&linedblist,(uint32_t)a->line,npc);
-              ++num_linedb;
-            }
+            if (genlinedebug && (a->type==DATA || a->type==SPACE))
+              add_linedebug(&linedblist,a->src,a->line,npc);
 
-            if (a->type == DATA) {
+            if (a->type == DATA)
               fwdata(f,a->content.db->data,a->content.db->size);
-            }
-            else if (a->type == SPACE) {
+            else if (a->type == SPACE)
               fwsblock(f,a->content.sb);
-            }
-            else if (a->type == LINE && !genlinedebug) {
-              add_linedebug(&linedblist,(uint32_t)a->content.srcline,npc);
-              ++num_linedb;
-            }
+            else if (a->type == LINE && !genlinedebug)
+              add_linedebug(&linedblist,NULL,a->content.srcline,npc);
+
             process_relocs(a,&reloclist,NULL,sec,npc);
 
             pc = npc + atom_size(a,sec,npc);
@@ -919,7 +955,7 @@ static void write_exec(FILE *f,section *sec,symbol *sym)
           if (!hunk_onlyglobal)
             ext_defs(f,LABSYM,0,sec->idx,EXT_SYMB);
           /* line-debug */
-          linedebug_hunk(f,&linedblist,num_linedb);
+          linedebug_hunk(f,&linedblist);
         }
         fw32(f,HUNK_END,1);
       }

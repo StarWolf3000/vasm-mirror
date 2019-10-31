@@ -9,7 +9,7 @@ selected with the @option{-Fhunk} option to generate objects and with the
 
 @section Additional options for this module
 @table @option
-    @iten -hunkpad=<code>
+    @item -hunkpad=<code>
         Sets a two-byte code used for aligning a code hunk to the
         next 32-bit border. Defaults to 0x4e71 on M68k to allow linking
         of functions which extend over two object files.

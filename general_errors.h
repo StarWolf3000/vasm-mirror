@@ -26,7 +26,7 @@
   "missing end directive for macro \"%s\"",ERROR|FATAL,         /* 25 */
   "macro definition inside macro \"%s\"",ERROR|FATAL,
   "maximum number of %d macro arguments exceeded",ERROR,
-  "option -%c was specified twice",NOLINE|WARNING,
+  "option %s was specified twice",NOLINE|WARNING,
   "read error on <%s>",NOLINE|ERROR|FATAL,
   "expression must be constant",ERROR,                          /* 30 */
   "initialized data in bss",WARNING,

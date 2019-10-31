@@ -10,7 +10,7 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 1.8f"
+#define _VER "vasm 1.8g"
 char *copyright = _VER " (c) in 2002-2019 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
@@ -30,11 +30,11 @@ static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 source *cur_src;
 char *filename,*debug_filename;
 section *current_section;
-char *inname,*outname,*listname;
+char *inname,*outname,*listname,*compile_dir;
 taddr inst_alignment;
 int done,secname_attr,unnamed_sections,ignore_multinc,nocase,no_symbols;
 int pic_check,final_pass,debug,exec_out,chklabels,warn_unalloc_ini_dat;
-int dwarf;
+int nostdout;
 int listena,listformfeed=1,listlinesperpage=40,listnosyms;
 listing *first_listing,*last_listing,*cur_listing;
 struct stabdef *first_nlist,*last_nlist;
@@ -49,7 +49,6 @@ static char **listtitles;
 static int *listtitlelines;
 static int listtitlecnt;
 
-static char *compile_dir;
 static FILE *outfile;
 
 static int depend,depend_all;
@@ -60,6 +59,7 @@ struct deplist {
   char *filename;
 };
 static struct deplist *first_depend,*last_depend;
+static char *dep_filename;
 
 static section *first_section,*last_section;
 #if NOT_NEEDED
@@ -72,6 +72,7 @@ static section *prev_sec,*prev_org;
 #endif
 hashtable *mnemohash;
 
+static int dwarf;
 static int verbose=1,auto_import=1;
 static int fail_on_warning;
 static struct include_path *first_incpath;
@@ -86,10 +87,10 @@ void leave(void)
 {
   section *sec;
   symbol *sym;
-  
+
   if(outfile){
     fclose(outfile);
-    if (errors)
+    if (errors&&outname!=NULL)
       remove(outname);
   }
 
@@ -291,7 +292,7 @@ static void assemble(void)
   if(dwarf){
     dinfo.version=dwarf;
     dinfo.producer=cnvstr(copyright,strchr(copyright,'(')-copyright-1);
-    dwarf_init(&dinfo,compile_dir,first_incpath,first_source);
+    dwarf_init(&dinfo,first_incpath,first_source);
   }
   final_pass=1;
   rorg=0;
@@ -397,9 +398,9 @@ static void assemble(void)
       else if(p->type==OPTS)
         cpu_opts(p->content.opts);
 #endif
-      else if(p->type==PRINTTEXT&&!depend)
+      else if(p->type==PRINTTEXT&&!nostdout)
         printf("%s",p->content.ptext);
-      else if(p->type==PRINTEXPR&&!depend)
+      else if(p->type==PRINTEXPR&&!nostdout)
         atom_printexpr(p->content.pexpr,sec,sec->pc);
       else if(p->type==ASSERT){
         assertion *ast=p->content.assert;
@@ -511,13 +512,13 @@ static int init_output(char *fmt)
   if(!strcmp(fmt,"test"))
     return init_output_test(&output_copyright,&write_object,&output_args);
   if(!strcmp(fmt,"elf"))
-    return init_output_elf(&output_copyright,&write_object,&output_args);  
+    return init_output_elf(&output_copyright,&write_object,&output_args);
   if(!strcmp(fmt,"bin"))
     return init_output_bin(&output_copyright,&write_object,&output_args);
   if(!strcmp(fmt,"srec"))
     return init_output_srec(&output_copyright,&write_object,&output_args);
   if(!strcmp(fmt,"vobj"))
-    return init_output_vobj(&output_copyright,&write_object,&output_args);  
+    return init_output_vobj(&output_copyright,&write_object,&output_args);
   if(!strcmp(fmt,"hunk"))
     return init_output_hunk(&output_copyright,&write_object,&output_args);
   if(!strcmp(fmt,"aout"))
@@ -655,13 +656,13 @@ int main(int argc,char **argv)
     }
     if(!strcmp("-o",argv[i])&&i<argc-1){
       if(outname)
-        general_error(28,'o');
+        general_error(28,argv[i]);
       outname=argv[++i];
       continue;
     }
     if(!strcmp("-L",argv[i])&&i<argc-1){
       if(listname)
-        general_error(28,'L');
+        general_error(28,argv[i]);
       listname=argv[++i];
       produce_listing=1;
       set_listing(1);
@@ -728,6 +729,12 @@ int main(int argc,char **argv)
         depend=DEPEND_MAKE;
         continue;
       }
+    }
+    if(!strcmp("-depfile",argv[i])&&i<argc-1){
+      if(dep_filename)
+        general_error(28,argv[i]);
+      dep_filename=argv[++i];
+      continue;
     }
     if(!strcmp("-unnamed-sections",argv[i])){
       unnamed_sections=1;
@@ -810,6 +817,7 @@ int main(int argc,char **argv)
     }
     general_error(14,argv[i]);
   }
+  nostdout=depend&&dep_filename==NULL; /* dependencies to stdout nothing else */
   include_main_source();
   internal_abs(vasmsym_name);
   if(!init_parse())
@@ -834,9 +842,23 @@ int main(int argc,char **argv)
     write_listing(listname);
   }
   if(errors==0){
-    if(!depend){
+    if(depend&&dep_filename==NULL){
+      /* dependencies to stdout, no object output */
+      write_depends(stdout);
+    } else {
       if(verbose)
         statistics();
+      if(depend&&dep_filename!=NULL){
+        /* write dependencies to a named file first */
+        FILE *depfile = fopen(dep_filename,"w");
+        if (depfile){
+          write_depends(depfile);
+          fclose(depfile);
+        }
+        else
+          general_error(13,dep_filename);
+      }
+      /* write the object file */
       if(!outname)
         outname="a.out";
       outfile=fopen(outname,"wb");
@@ -844,8 +866,7 @@ int main(int argc,char **argv)
         general_error(13,outname);
       else
         write_object(outfile,first_section,first_symbol);
-    }else
-      write_depends(stdout);
+    }
   }
   leave();
   return 0; /* not reached */
@@ -1341,7 +1362,7 @@ static void print_list_header(FILE *f,int cnt)
       cnt++;
     }
     fprintf(f,"Err  Line Loc.  S Object1  Object2  M Source\n");
-  }  
+  }
 }
 
 #if VASM_CPU_OIL
@@ -1406,7 +1427,7 @@ void write_listing(char *listname)
       fprintf(f,"%c ",rel);
     }else
       fprintf(f,"                           ");
-    
+
     fprintf(f," %-.77s",p->txt);
 
     /* bei laengeren Daten den Rest ueberspringen */
@@ -1459,7 +1480,7 @@ void write_listing(char *listname)
           else
             rel='0'+p->sec->idx;
         }else
-          rel='A';      
+          rel='A';
       }else
         a=0;
     }

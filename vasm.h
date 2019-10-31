@@ -174,7 +174,7 @@ struct listing {
 
 
 extern listing *first_listing,*last_listing,*cur_listing;
-extern int done,final_pass;
+extern int done,final_pass,nostdout;
 extern int warn_unalloc_ini_dat;
 extern int listena,listformfeed,listlinesperpage,listnosyms;
 extern int mnemonic_cnt;
@@ -185,7 +185,7 @@ extern source *cur_src;
 extern section *current_section;
 extern char *filename;
 extern char *debug_filename;  /* usually an absolute C source file name */
-extern char *inname,*outname,*listname;
+extern char *inname,*outname,*listname,*compile_dir;
 extern char *output_format;
 extern char emptystr[];
 extern char vasmsym_name[];

@@ -59,7 +59,7 @@ struct dwarf_info {
 
 
 /* functions */
-void dwarf_init(struct dwarf_info *,char *,struct include_path *,struct source_file *);
+void dwarf_init(struct dwarf_info *,struct include_path *,struct source_file *);
 void dwarf_finish(struct dwarf_info *);
 void dwarf_end_sequence(struct dwarf_info *,section *);
 void dwarf_line(struct dwarf_info *,section *,int,int);

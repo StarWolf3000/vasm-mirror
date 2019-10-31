@@ -167,10 +167,13 @@ char *get_workdir(void)
 {
   static char buf[MAX_WORKDIR_LEN];
 
+#ifndef __amigaos4__
   if (DOSBase->dl_lib.lib_Version < 36)
     buf[0] = '\0';
-  else if (!GetCurrentDirName(buf,MAX_WORKDIR_LEN))
-    buf[0] = '\0';
+  else
+#endif
+    if (!GetCurrentDirName(buf,MAX_WORKDIR_LEN))
+      buf[0] = '\0';
   return buf;
 }
 

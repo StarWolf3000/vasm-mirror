@@ -20,10 +20,16 @@ struct hunkxref {
 };
 
 /* line debug hunk */
-struct hunkline {
+struct linedb_block {
+  struct node n;
+  char *filename;
+  uint32_t offset;
+  int entries;
+  struct list lines;
+};
+struct linedb_entry {
   struct node n;
   uint32_t line;
-
   uint32_t offset;
 };
 

@@ -1,5 +1,5 @@
 /* expr.c expression handling for vasm */
-/* (c) in 2002-2018 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2019 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -950,12 +950,12 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
   case SUB:
     find_base(tree->left,&lsym,sec,pc);
     find_base(tree->right,&rsym,sec,pc);
-    if(cnst==0&&lsym!=NULL&&rsym!=NULL&&LOCREF(rsym)){
-      if(LOCREF(lsym)&&lsym->sec==rsym->sec){
+    if(cnst==0&&rsym!=NULL&&LOCREF(rsym)){
+      if(lsym!=NULL&&LOCREF(lsym)&&lsym->sec==rsym->sec){
         /* l2-l1 is constant when both have a valid symbol-base, and both
            symbols are LABSYMs from the same section, e.g. (sym1+x)-(sym2-y) */
         cnst=1;
-      }else if(rsym->sec==sec&&(EXTREF(lsym)||LOCREF(lsym))){
+      }else if(lsym!=NULL&&(rsym->sec==sec&&(EXTREF(lsym)||LOCREF(lsym)))){
         /* Difference between symbols from different section or between an
            external symbol and a symbol from the current section can be
            represented by a REL_PC, so we calculate the addend. */
@@ -966,7 +966,9 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
           val=(pc-rval+lval-(lsym->sec?lsym->sec->org:0));
           break;
         }
-      }
+      }else if(lsym==NULL&&(rsym->flags&ABSLABEL))
+        /* const-label is valid and yields a const in absolute ORG sections */
+        cnst=1;
     }
     val=(lval-rval);
     break;

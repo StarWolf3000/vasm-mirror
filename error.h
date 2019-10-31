@@ -2,7 +2,7 @@
 /* (c) in 2002-2009,2015,2018 by Volker Barthelmann and Frank Wille */
 
 #ifndef ERROR_H
-#define ERROR_H                                                                                
+#define ERROR_H
 
 #define FIRST_GENERAL_ERROR 1
 #define FIRST_SYNTAX_ERROR 1001

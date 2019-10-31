@@ -69,6 +69,19 @@ static void print_source_line(FILE *f)
 }
 
 
+static void print_source_file(FILE *f, source *src)
+{
+  if (src->srcfile)
+    fprintf(f,"\"%s%s%s\"",
+            src->srcfile->incpath->compdir_based
+            ? compile_dir : "",
+            src->srcfile->incpath->path,
+            src->srcfile->name);
+  else
+    fprintf(f,"\"%s\"",src->name);
+}
+
+
 static void error(int n,va_list vl,struct err_out *errlist,int offset)
 {
   static source *last_err_source = NULL;
@@ -81,6 +94,8 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
     return;
 
   if ((flags&MESSAGE) && !(flags&(WARNING|ERROR|FATAL))) {
+    if (nostdout)
+      return;
     f = stdout;  /* print messages to stdout */
   }
   else {
@@ -119,10 +134,10 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
   else if (flags & MESSAGE)
     fprintf(f,"message");
   fprintf(f," %d",n+offset);
-  if (!(flags & NOLINE) && cur_src!=NULL)
-    fprintf(f," in line %d of \"%s%s\"",cur_src->line,
-            cur_src->srcfile?cur_src->srcfile->incpath->path:"",
-            cur_src->name);
+  if (!(flags & NOLINE) && cur_src!=NULL) {
+    fprintf(f," in line %d of ",cur_src->line);
+    print_source_file(f,cur_src);
+  }
   fprintf(f,": ");
   vfprintf(f,errlist[n].text,vl);
   fprintf(f,"\n");
@@ -138,9 +153,8 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
           fprintf(f,"\tcalled");    /* macro called from */
         else
           fprintf(f,"\tincluded");  /* included from */
-        fprintf(f," from line %d of \"%s%s\"",child->parent_line,
-                parent->srcfile?parent->srcfile->incpath->path:"",
-                parent->name);
+        fprintf(f," from line %d of ",child->parent_line);
+        print_source_file(f,parent);
 
         recurs = 1;
         while (parent->parent!=NULL &&

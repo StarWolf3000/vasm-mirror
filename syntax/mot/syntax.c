@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm motorola syntax module 3.12d (c) 2002-2019 Frank Wille";
+char *syntax_copyright="vasm motorola syntax module 3.13 (c) 2002-2019 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 
@@ -1242,9 +1242,9 @@ static void handle_ifmacrond(char *s)
   ifmacro(s,0);
 }
 
-static void ifexp(char *s,int c)
+static int eval_ifexp_advance(char **s,int c)
 {
-  expr *condexp = parse_expr_tmplab(&s);
+  expr *condexp = parse_expr_tmplab(s);
   taddr val;
   int b;
 
@@ -1263,8 +1263,51 @@ static void ifexp(char *s,int c)
     general_error(30);  /* expression must be constant */
     b = 0;
   }
-  cond_if(b);
   free_expr(condexp);
+  return b;
+}
+
+static int eval_ifexp(char *s,int c)
+{
+  return eval_ifexp_advance(&s,c);
+}
+
+static void ifexp(char *s,int c)
+{
+  cond_if(eval_ifexp(s,c));
+}
+
+/* Move line_ptr to the end of the string if the parsing should stop,
+   otherwise move line_ptr after the iif directive and the expression
+   so the parsing can continue and return the new line_ptr.
+   The string is never modified. */
+static char *handle_iif(char *line_ptr)
+{
+  if (strnicmp(line_ptr,"iif",3) == 0 &&
+      isspace((unsigned char)line_ptr[3])) {
+    line_ptr += 3;
+
+    /* Move the line ptr to the beginning of the iif expression. */
+    line_ptr = skip(line_ptr);
+
+    /* As eval_ifexp_advance() may modify the input string, duplicate
+       it for the case when the parsing should continue. */
+    char *expr_copy = mystrdup(line_ptr);
+    char *expr_end = expr_copy;
+    const int condition = eval_ifexp_advance(&expr_end,1);
+    size_t expr_len = expr_end - expr_copy;
+    myfree(expr_copy);
+
+    if (condition) {
+      /* Parsing should continue after the expression, from the next field. */
+      line_ptr += expr_len;
+      line_ptr = skip(line_ptr);
+    } else {
+      /* Parsing should stop, move ptr to the end of the line. */
+      line_ptr += strlen(line_ptr);
+    }
+  }
+  return line_ptr;
 }
 
 static void handle_ifeq(char *s)
@@ -1749,9 +1792,8 @@ static int check_directive(char **line)
   return data.idx;
 }
 
-
-/* Handles assembly directives; returns non-zero if the line
-   was a directive. */
+/* Handles assembly directives;
+   returns non-zero if the parsing of the line should stop. */
 static int handle_directive(char *line)
 {
   int idx = check_directive(&line);
@@ -1980,7 +2022,11 @@ void parse(void)
         symflags |= EXPORT;
         s++;
       }
+
       s = skip(s);
+
+      s = handle_iif(s);
+
       if (!strnicmp(s,"equ",3) && isspace((unsigned char)*(s+3))) {
         s = skip(s+3);
         label = new_equate(labname,parse_expr_tmplab(&s));
@@ -2047,6 +2093,8 @@ void parse(void)
     s = skip(s);
     if (*s=='\0' || *s=='*' || *s==commentchar)
       continue;
+
+    s = handle_iif(s);
 
     s = parse_cpu_special(s);
     if (ISEOL(s))
@@ -2518,7 +2566,6 @@ int syntax_args(char *p)
     align_data = 1;
     esc_sequences = 0;
     allmp = 1;
-    dot_idchar = 1;
     warn_unalloc_ini_dat = 1;
     return 1;
   }
@@ -2528,6 +2575,7 @@ int syntax_args(char *p)
     esc_sequences = 1;
     nocase_macros = 1;
     allow_spaces = 1;
+    dot_idchar = 1;
     allmp = 1;
     return 1;
   }

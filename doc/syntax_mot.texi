@@ -45,10 +45,10 @@ This syntax module provides the following additional options:
 
 @item -localu
  Local symbols are prefixed by @code{'_'} instead of @code{'.'}. For
- Devpac compatbility, which offers a similar option.
+ Devpac compatibility, which offers a similar option.
 
 @item -phxass
- PhxAss-compatibilty mode. Only directives known to PhxAss are recognized.
+ PhxAss-compatibility mode. Only directives known to PhxAss are recognized.
  Enables the following features:
 @itemize @minus
   @item @code{section <name>} starts a code section named @code{<name>}
@@ -480,6 +480,25 @@ CPU- and output-module support them):
 @item ifmacrond <macro>
       Conditionally assemble the following line if <macro> is undefined.
 
+@item iif <expression> <statement>
+      Conditionally assemble the <statement> following <expression>.
+      IIF stands for Immediate IF.
+      If the value of <expression> is non-zero then <statement> is assembled.
+      No @code{ENDC} should be used in conjunction with this directive.
+      The <statement> can not include a label, but a label may precede the
+      @code{IIF} directive. For example:
+      @code{foo IIF bar equ 42}
+      The @code{foo} label will be assigned with @code{42} if @code{bar}
+      evaluates to true, otherwise @code{foo} will be assigned with the
+      current program counter.
+      The case when assigning a value in the @code{IIF <statement>} using
+      the equal (@code{=}) operator and the option @option{-spaces}
+      is used can't work as the equal operator
+      will be evaluated as part of the expression.
+      I.e. @code{foo IIF 1+1 = 42} will work, but @code{foo IIF 1 + 1 = 42}
+      when the option @option{-spaces} is specified won't work as
+      @code{= 42} will be evaluated as part of the expression.
+
 @item incbin <file>[,<offset>[,<length>]]
       Inserts the binary contents of <file> into the object code at
       this position. When <offset> is specified, then the given number
@@ -488,7 +507,7 @@ CPU- and output-module support them):
       from that file.
       The file will be searched first in the current
       directory, then in all paths defined by @option{-I} or @code{incdir}
-      in the order of occurence.
+      in the order of occurrence.
 
 @item incdir <path>
       Add another path to search for include files to the list of
@@ -499,7 +518,7 @@ CPU- and output-module support them):
       Include source text of <file> at this position. The include file
       will be searched first in the current directory, then in all
       paths defined by @option{-I} or @code{incdir} in the order of
-      occurence.
+      occurrence.
 
 @item inline
       Local labels in the following block are isolated from previous
@@ -678,11 +697,11 @@ CPU- and output-module support them):
       contain a new value from now on.
 
 @item setfo <expression>
-      Sets the stack-frame offset counter to <expresion>.
+      Sets the stack-frame offset counter to <expression>.
       See @code{fo} directive.
 
 @item setso <expression>
-      Sets the structure offset counter to <expresion>.
+      Sets the structure offset counter to <expression>.
       See @code{so} directive.
 
 @item <label> so.<size> <expression>
@@ -742,7 +761,7 @@ This module has the following error messages:
 @itemize @minus
 @item 1001: mnemonic expected
 @item 1002: invalid extension
-@item 1003: no space before oprands
+@item 1003: no space before operands
 @item 1004: too many closing parentheses
 @item 1005: missing closing parentheses
 @item 1006: missing operand

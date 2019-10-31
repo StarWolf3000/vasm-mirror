@@ -41,6 +41,12 @@ or additional options.
         Prints dependencies in the same way as @option{-depend}, but
         will also print all include files with absolute paths.
 
+@item -depfile <filename>
+        Used together with @option{-depend} or @option{-dependall} and
+        instructs vasm to output all dependencies to a new file, instead
+        of stdout. Code will be generated in parallel to the dependencies
+        output.
+
 @item -dwarf[=<version>]
         Automatically generate DWARF debugging sections, suitable for
         source level debugging. When the version specification is missing
@@ -410,7 +416,7 @@ The frontend has the following error messages:
 @item 26: missing end directive for macro "%s"
 @item 27: macro definition inside macro "%s"
 @item 28: maximum number of %d macro arguments exceeded
-@item 29: option -%c was specified twice
+@item 29: option %s was specified twice
 @item 30: read error on <%s>
 @item 31: expression must be constant
 @item 32: initialized data in bss
