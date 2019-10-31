@@ -11,7 +11,7 @@ COPTS = -c -c99 -DAMIGA -O1 $(OUTFMTS)
 
 LD = $(CC)
 LDOUT = $(CCOUT)
-LDFLAGS = -lm
+LDFLAGS = -lm -lamiga
 
 RM = delete force quiet
 

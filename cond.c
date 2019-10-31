@@ -34,7 +34,7 @@ void cond_check(void)
 }
 
 
-/* establish a new level of condititional assembly */
+/* establish a new level of conditional assembly */
 void cond_if(char flag)
 {
   if (++clev >= MAXCONDLEV)

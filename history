@@ -1,13 +1,24 @@
 vasm history
 =============
 
-- 1.8g (NO-RELEASE)
+- 1.8g (04.10.19)
+o Do not print informational messages when generating dependencies.
+o New option -depfile to specify a file name for the dependency output.
+  Code generation may happen in parallel in this case.
+o Include the compile directory in the path, when printing error messages.
+o Treat a subtraction of a label from a constant as constant, when the
+  label is from an absolute ORG section.
 o m68k: -opt-allbra makes sure that branch-optimization is enabled.
 o z80: "ld (BC/DE/HL),abs" is an illegal addressing mode.
 o mot-syntax: SECTION directive with a single argument is interpreted as
   section-type when the output format is "tos". Otherwise the type
   defaults to CODE.
 o mot-syntax: In devpac-compatibility mode allow '@' in the middle of labels.
+o mot-syntax: -phxass compatibility mode allows dots ('.') in labels (-ldots).
+o mot-syntax: Added support for Devpac IIF directive.
+o output-hunk: Fixed LINE debug hunk output (-linedebug). Now it can
+  deal with code from multiple sources and the line numbers for
+  executing macros and repetitions are correct.
 o output-hunk: New option -hunkpad=<code> selects the padding code for
   code sections to achieve 32-bit alignment. Default to 0x4e71 (NOP)
   for M68k.

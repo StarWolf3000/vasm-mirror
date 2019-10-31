@@ -108,7 +108,7 @@ compatibility with various syntax modules.
 @item Encoding of @code{MOVEI} instruction in little-endian mode is unkown.
 @item The developer has to provide the necessary @code{NOP} instructions
       after jumps, or @code{OR} instructions to work around hardware bugs,
-      himself.
+      her/himself.
 
 @end itemize
 

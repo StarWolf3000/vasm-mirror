@@ -62,7 +62,7 @@ static struct DWinclude *new_dwinc(char *name)
 
 /* DWARF needs source file lists with the file name part only, but without
    any path in it. Include paths are put into another list. */
-static void make_file_lists(char *compdir,struct source_file *first_source)
+static void make_file_lists(struct source_file *first_source)
 {
   struct source_file *srcnode;
   struct include_path *incnode;
@@ -84,8 +84,8 @@ static void make_file_lists(char *compdir,struct source_file *first_source)
 
     if ((incnode = srcnode->incpath) != NULL) {
       if (incnode->compdir_based) {
-        if (compdir != NULL)
-          strcpy(pathbuf,compdir);
+        if (compile_dir != NULL)
+          strcpy(pathbuf,compile_dir);
         else
           ierror(0);
       }
@@ -144,7 +144,7 @@ static void make_file_lists(char *compdir,struct source_file *first_source)
 }
 
 
-void dwarf_init(struct dwarf_info *dinfo,char *compile_dir,
+void dwarf_init(struct dwarf_info *dinfo,
                 struct include_path *first_incpath,
                 struct source_file *first_source)
 {
@@ -279,7 +279,7 @@ void dwarf_init(struct dwarf_info *dinfo,char *compile_dir,
     add_data_atom(dsec,1,1,stdopclengths[i]);
 
   /* make lists of DWARF directories and files */
-  make_file_lists(compile_dir,first_source);
+  make_file_lists(first_source);
 
   /* list of include directories, CWD-entry (index 0) is not written */
   for (dwinc=first_dwinc; dwinc; dwinc=dwinc->next)
