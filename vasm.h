@@ -315,3 +315,5 @@ int init_output_hunk(char **,void (**)(FILE *,section *,symbol *),int (**)(char 
 int init_output_aout(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_tos(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_xfile(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
+int init_output_atari_com(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
+

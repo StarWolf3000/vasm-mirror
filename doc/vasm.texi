@@ -136,6 +136,10 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @chapter Simple binary output module
 @include output_bin.texi
 
+@node Atari DOS COM output module
+@chapter Atari DOS COM output module
+@include output_atari_com.texi
+
 @node Motorola srecord output module
 @chapter Motorola srecord output module
 @include output_srec.texi

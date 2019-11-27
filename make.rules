@@ -5,7 +5,8 @@ OBJS = $(PRE)vasm.o $(PRE)atom.o $(PRE)expr.o $(PRE)symtab.o $(PRE)symbol.o \
        $(PRE)supp.o $(PRE)dwarf.o $(PRE)osdep.o $(PRE)cpu.o $(PRE)syntax.o \
        $(PRE)output_test.o $(PRE)output_elf.o $(PRE)output_bin.o \
        $(PRE)output_vobj.o $(PRE)output_hunk.o $(PRE)output_aout.o \
-       $(PRE)output_tos.o $(PRE)output_xfile.o $(PRE)output_srec.o
+       $(PRE)output_tos.o $(PRE)output_xfile.o $(PRE)output_srec.o \
+       $(PRE)output_atari_com.o
 
 VODOBJS = obj$(TARGET)/vobjdump.o
 
@@ -95,6 +96,9 @@ $(PRE)output_tos.o: output_tos.c output_tos.h vasm.h symbol.h supp.h atom.h
 
 $(PRE)output_xfile.o: output_xfile.c output_xfile.h vasm.h symbol.h supp.h atom.h
 	$(CC) $(INCLUDES) $(COPTS) output_xfile.c $(CCOUT)$(PRE)output_xfile.o
+
+$(PRE)output_atari_com.o: output_atari_com.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_atari_com.c $(CCOUT)$(PRE)output_atari_com.o
 
 $(PRE)cpu.o: cpus/$(CPU)/cpu.c cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h vasm.h symbol.h expr.h error.h supp.h reloc.h hugeint.h tfloat.h parse.h atom.h
 	$(CC) $(INCLUDES) $(COPTS) cpus/$(CPU)/cpu.c $(CCOUT)$(PRE)cpu.o

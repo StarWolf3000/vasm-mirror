@@ -535,6 +535,10 @@ static int init_output(char *fmt)
     exec_out=1;  /* executable format */
     return init_output_xfile(&output_copyright,&write_object,&output_args);
   }
+  if(!strcmp(fmt,"atari_com")){
+    exec_out=1;  /* executable format */
+    return init_output_atari_com(&output_copyright,&write_object,&output_args);
+  }
   return 0;
 }
 
