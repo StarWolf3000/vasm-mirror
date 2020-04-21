@@ -41,6 +41,16 @@ This module provides the following additional options:
         opcodes will result in an error being generated.
     @item -hd64180
         Turns on 64180 mode supporting additional 64180 opcodes.
+    @item -intel-syntax
+        Turns on the older Intel 8080 syntax mode.  When this mode is
+        activated, mnemonics and oprand types from the Intel 8080 syntax 
+        instead of the Zilog Z80 syntax (such as @code{STA 1234h}
+        instead of @code{ld (1234h),a}) will be valid.  This option can
+        be used in parallel with -8080 to use both sets of mnemonics, 
+        although this is discouraged, as two instructions (@code{jp} and
+        @code{cp}) mean different things in each syntax. In this case, 
+        these instructions will be assembled as the Intel syntax, and a 
+        warning will be emitted.       
     @item -rcm2000
     @item -rcm3000
     @item -rcm4000
@@ -151,4 +161,5 @@ This module has the following error messages:
 @item 2024: Operations between different index registers are forbidden
 @item 2025: Operations between ix/iy/hl are forbidden
 @item 2026: Double indirection forbidden
+@item 2027: Instruction %s will be assembled as '%s'
 @end itemize

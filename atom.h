@@ -1,10 +1,11 @@
 /* atom.h - atomic objects from source */
-/* (c) in 2010-2019 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2020 by Volker Barthelmann and Frank Wille */
 
 #ifndef ATOM_H
 #define ATOM_H
 
 /* types of atoms */
+#define VASMDEBUG 0
 #define LABEL 1
 #define DATA  2
 #define INSTRUCTION 3
@@ -57,6 +58,11 @@ struct sblock {
 };
 #define SPC_DATABSS 1  /* make sure no to allocate space in a data section */
 
+typedef struct reloffs {
+  expr *offset;
+  expr *fillval;
+} reloffs;
+
 typedef struct printexpr {
   expr *print_exp;
   short type;  /* hex, signed, unsigned */
@@ -102,7 +108,7 @@ typedef struct atom {
     int srcline;
     char *ptext;
     printexpr *pexpr;
-    expr *roffs;
+    reloffs *roffs;
     taddr *rorg;
     assertion *assert;
     aoutnlist *nlist;
@@ -115,6 +121,7 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len);
 dblock *new_dblock();
 sblock *new_sblock(expr *,size_t,expr *);
 
+atom *new_atom(int,taddr);
 void add_atom(section *,atom *);
 size_t atom_size(atom *,section *,taddr);
 void print_atom(FILE *,atom *);
@@ -136,7 +143,7 @@ atom *new_srcline_atom(int);
 atom *new_opts_atom(void *);
 atom *new_text_atom(char *);
 atom *new_expr_atom(expr *,int,int);
-atom *new_roffs_atom(expr *);
+atom *new_roffs_atom(expr *,expr *);
 atom *new_rorg_atom(taddr);
 atom *new_rorgend_atom(void);
 atom *new_assert_atom(expr *,char *,char *);

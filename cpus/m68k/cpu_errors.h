@@ -66,3 +66,7 @@
   "Addr.reg. operand at level #0 causes F-line exception",WARNING,
   "Dr and Dq are identical, transforming DIVxL.L effectively into "
     "DIVx.L",WARNING,                                                /* 65 */
+  "not a valid register list symbol",ERROR,
+  "trailing garbage in operand",WARNING,
+  "encoding absolute displacement directly",WARNING,
+  "internal symbol %s has been modified",WARNING,

@@ -1,6 +1,6 @@
 /*
 ** cpu.h 650x/65C02/6510/6280 cpu-description header-file
-** (c) in 2002,2008,2009,2014,2018 by Frank Wille
+** (c) in 2002,2008,2009,2014,2018,2020 by Frank Wille
 */
 
 #define BIGENDIAN 0
@@ -14,8 +14,8 @@
 #define MAX_QUALIFIERS 0
 
 /* data type to represent a target-address */
-typedef int16_t taddr;
-typedef uint16_t utaddr;
+typedef int32_t taddr;
+typedef uint32_t utaddr;
 
 /* minimum instruction alignment */
 #define INST_ALIGN 1
@@ -30,12 +30,13 @@ typedef uint16_t utaddr;
 #define MNEMONIC_VALID(i) cpu_available(i)
 
 /* we define two additional unary operations, '<' and '>' */
+int ext_unary_type(char *);
 int ext_unary_eval(int,taddr,taddr *,int);
 int ext_find_base(symbol **,expr *,section *,taddr);
 #define LOBYTE (LAST_EXP_TYPE+1)
 #define HIBYTE (LAST_EXP_TYPE+2)
 #define EXT_UNARY_NAME(s) (*s=='<'||*s=='>')
-#define EXT_UNARY_TYPE(s) (*s=='<'?LOBYTE:HIBYTE)
+#define EXT_UNARY_TYPE(s) ext_unary_type(s)
 #define EXT_UNARY_EVAL(t,v,r,c) ext_unary_eval(t,v,r,c)
 #define EXT_FIND_BASE(b,e,s,p) ext_find_base(b,e,s,p)
 
@@ -85,6 +86,10 @@ typedef struct {
 #define ACCU     17      /* A */
 #define DUMX     18      /* dummy X as 'second' operand */
 #define DUMY     19      /* dummy Y as 'second' operand */
+
+
+/* cpu-specific symbol-flags */
+#define ZPAGESYM (RSRVD_C<<0)   /* symbol will reside in the zero/direct-page */
 
 
 /* exported by cpu.c */

@@ -1,6 +1,6 @@
 /*
  * cpu.c 6800 cpu description file
- * (c) in 2013-2016 by Esben Norby and Frank Wille
+ * (c) in 2013-2016,2019 by Esben Norby and Frank Wille
  */
 
 #include "vasm.h"
@@ -13,7 +13,7 @@ int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
 int		bitsperbyte = 8;
 int		bytespertaddr = 2;
-char *		cpu_copyright = "vasm 6800/6801/68hc11 cpu backend 0.3 (c) 2013-2016 Esben Norby";
+char *		cpu_copyright = "vasm 6800/6801/68hc11 cpu backend 0.4 (c) 2013-2016,2019 Esben Norby";
 char *		cpuname = "6800";
 
 static uint8_t	cpu_type = M6800;
@@ -188,7 +188,13 @@ eval_oper(operand *op, section *sec, taddr pc, taddr offs, dblock *db)
 
 	if (size > 0 && db != NULL) {
 		/* create relocation entry and code for this operand */
-		if (base != NULL && btype == BASE_OK && op->type == REL) {
+		if (op->type == REL && base == NULL) {
+			/* relative branch to absolute label */
+			val = val - (pc + offs + 1);
+			if (val < -0x80 || val > 0x7f)
+				cpu_error(2); /* branch out of range */
+		}
+		else if (op->type == REL && base != NULL && btype == BASE_OK) {
 			/* relative branches */
 			if (!is_pc_reloc(base, sec)) {
 				val = val - (pc + offs + 1);

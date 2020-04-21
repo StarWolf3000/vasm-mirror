@@ -1,5 +1,5 @@
 /* parse.c - global parser support functions */
-/* (c) in 2009-2018 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2020 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 #include "osdep.h"
@@ -23,6 +23,7 @@ static macro *first_macro;
 static macro *cur_macro;
 static struct namelen *enddir_list;
 static size_t enddir_minlen;
+static struct namelen *macrdir_list;
 static struct namelen *reptdir_list;
 
 static int rept_cnt = -1;
@@ -406,12 +407,15 @@ static struct namelen *dirlist_match(char *s,char *e,struct namelen *list)
   char *name;
   size_t len;
 
-  if (!ISIDSTART(*s))
-    return NULL;
+  if (!ISIDSTART(*s) || (!isspace((unsigned char )*(s-1)) && *(s-1)!='\0'))
+    return NULL;  /* cannot be start of directive */
 
-  name = s;
+  name = s++;
   while (s<e && ISIDCHAR(*s))
     s++;
+
+  if (!isspace((unsigned char )*s) && *s!='\0')
+    return NULL;  /* cannot be end of directive */
 
   while (len = list->len) {
     if (s-name==len && !strnicmp(name,list->name,len))
@@ -539,7 +543,8 @@ struct macarg *addmacarg(struct macarg **list,char *start,char *end)
 }
 
 
-macro *new_macro(char *name,struct namelen *endmlist,char *args)
+macro *new_macro(char *name,struct namelen *maclist,struct namelen *endmlist,
+                 char *args)
 {
   hashdata data;
   macro *m = NULL;
@@ -556,7 +561,7 @@ macro *new_macro(char *name,struct namelen *endmlist,char *args)
 
     /* remember the start-line of this macro definition in the real source */
     if (cur_src->defsrc)
-      ierror(0); /* macro can't be defined in a repetition of another macro */
+      general_error(26,cur_src->name);  /* macro definition inside macro */
     m->defsrc = cur_src;
     m->defline = cur_src->line;
 
@@ -584,6 +589,7 @@ macro *new_macro(char *name,struct namelen *endmlist,char *args)
     cur_macro = m;
     enddir_list = endmlist;
     enddir_minlen = dirlist_minlen(endmlist);
+    macrdir_list = maclist;
     rept_cnt = -1;
     rept_start = NULL;
 
@@ -1073,7 +1079,7 @@ char *read_next_line(void)
     struct namelen *dir;
     int rept_nest = 1;
 
-    if (nparam>=0 && cur_macro!=NULL)
+    if (nparam>=0 && cur_macro!=NULL)     /* @@@ needed? */
         general_error(26,cur_src->name);  /* macro definition inside macro */
 
     while (s <= (srcend-enddir_minlen)) {
@@ -1095,6 +1101,12 @@ char *read_next_line(void)
         s += dir->len;
         rept_nest++;
       }
+#ifdef MACRO_IN_MACRO_CHECK  /* caution: misdetection in operands possible */
+      else if (cur_macro!=NULL &&
+               (dir = dirlist_match(s,srcend,macrdir_list)) != NULL) {
+        general_error(26,cur_macro->name);  /* macro definition inside macro */
+      }
+#endif
 
       if (*s=='\"' || *s=='\'') {
         char c = *s++;

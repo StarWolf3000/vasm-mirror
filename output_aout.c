@@ -1,10 +1,10 @@
 /* output_aout.c a.out output driver for vasm */
-/* (c) in 2008-2016 by Frank Wille */
+/* (c) in 2008-2016,2020 by Frank Wille */
 
 #include "vasm.h"
 #include "output_aout.h"
 #if defined(OUTAOUT) && defined(MID)
-static char *copyright="vasm a.out output module 0.7c (c) 2008-2016 Frank Wille";
+static char *copyright="vasm a.out output module 0.8 (c) 2008-2016,2020 Frank Wille";
 
 static section *sections[3];
 static utaddr secsize[3];
@@ -21,30 +21,6 @@ static int mid = -1;
 static int isPIC = 1;
 
 #define SECT_ALIGN 4  /* .text and .data are aligned to 32 bits */
-
-
-static int get_sec_type(section *s)
-/* scan section attributes for type, 0=text, 1=data, 2=bss,
-   -1: ORG-section at an absolute address */
-{
-  char *a = s->attr;
-
-  if (s->flags & ABSOLUTE)
-    return -1;
-
-  while (*a) {
-    switch (*a++) {
-      case 'c':
-        return _TEXT;
-      case 'd':
-        return _DATA;
-      case 'u':
-        return _BSS;
-    }
-  }
-  output_error(3,s->attr);  /* section attributes not supported */
-  return 0;
-}
 
 
 static int aout_getinfo(symbol *sym)
@@ -166,8 +142,8 @@ static void aout_initwrite(section *firstsec)
   initlist(&dreloclist);
 
   /* find exactly one .text, .data and .bss section for a.out */
-  sections[_TEXT] = sections[_DATA] = sections[_BSS] = NULL;
-  secsize[_TEXT] = secsize[_DATA] = secsize[_BSS] = 0;
+  sections[S_TEXT] = sections[S_DATA] = sections[S_BSS] = NULL;
+  secsize[S_TEXT] = secsize[S_DATA] = secsize[S_BSS] = 0;
 
   for (sec=firstsec; sec; sec=sec->next) {
     int i;
@@ -176,7 +152,11 @@ static void aout_initwrite(section *firstsec)
        we would have to calculate it from the atoms and store it there */
     if (get_sec_size(sec) > 0 || (sec->flags & HAS_SYMBOLS)) {
       i = get_sec_type(sec);
-      if (i < 0)
+      if (i == S_MISS) {
+        output_error(3,sec->attr);  /* section attributes not supported */
+        i = S_TEXT;
+      }
+      if (i == S_ABS)
         continue;  /* ignore ORG sections for later */
       if (!sections[i]) {
         sections[i] = sec;
@@ -191,13 +171,13 @@ static void aout_initwrite(section *firstsec)
   /* now scan for absolute ORG-sections and add their aligned size to .text */
   for (sec=firstsec; sec; sec=sec->next) {
     if (sec->flags & ABSOLUTE)
-      secsize[_TEXT] += balign(secsize[_TEXT],sec->align) + get_sec_size(sec);
+      secsize[S_TEXT] += balign(secsize[S_TEXT],sec->align) + get_sec_size(sec);
   }
 
-  secoffs[_TEXT] = 0;
-  secoffs[_DATA] = secsize[_TEXT] + balign(secsize[_TEXT],SECT_ALIGN);
-  secoffs[_BSS] = secoffs[_DATA] + secsize[_DATA] +
-                  balign(secsize[_DATA],SECT_ALIGN);
+  secoffs[S_TEXT] = 0;
+  secoffs[S_DATA] = secsize[S_TEXT] + balign(secsize[S_TEXT],SECT_ALIGN);
+  secoffs[S_BSS] = secoffs[S_DATA] + secsize[S_DATA] +
+                  balign(secsize[S_DATA],SECT_ALIGN);
 }
 
 
@@ -543,7 +523,7 @@ static void aout_writesection(FILE *f,section *sec,taddr sec_align)
 static void aout_writeorg(FILE *f,section *sec,taddr sec_align)
 /* write all absolute ORG-sections appended to .text */
 {
-  taddr pc = get_sec_size(sections[_TEXT]);
+  taddr pc = get_sec_size(sections[S_TEXT]);
   taddr npc;
   atom *a;
 
@@ -606,18 +586,18 @@ static void write_output(FILE *f,section *sec,symbol *sym)
     aout_addsymlist(sym,BIND_LOCAL,0,be);
     aout_debugsyms(be);
   }
-  trsize = aout_addrelocs(be,_TEXT,&treloclist,aoutstd_getrinfo);
-  drsize = aout_addrelocs(be,_DATA,&dreloclist,aoutstd_getrinfo);
+  trsize = aout_addrelocs(be,S_TEXT,&treloclist,aoutstd_getrinfo);
+  drsize = aout_addrelocs(be,S_DATA,&dreloclist,aoutstd_getrinfo);
 
   aout_header(f,OMAGIC,isPIC?EX_PIC:0,
-              secsize[_TEXT] + balign(secsize[_TEXT],SECT_ALIGN),
-              secsize[_DATA] + balign(secsize[_DATA],SECT_ALIGN),
-              secsize[_BSS],
+              secsize[S_TEXT] + balign(secsize[S_TEXT],SECT_ALIGN),
+              secsize[S_DATA] + balign(secsize[S_DATA],SECT_ALIGN),
+              secsize[S_BSS],
               aoutsymlist.nextindex * sizeof(struct nlist32),
               0,trsize,drsize,be);
-  aout_writesection(f,sections[_TEXT],0);
+  aout_writesection(f,sections[S_TEXT],0);
   aout_writeorg(f,sec,SECT_ALIGN);
-  aout_writesection(f,sections[_DATA],SECT_ALIGN);
+  aout_writesection(f,sections[S_DATA],SECT_ALIGN);
   aout_writerelocs(f,&treloclist);
   aout_writerelocs(f,&dreloclist);
   aout_writesymbols(f);
@@ -641,6 +621,8 @@ int init_output_aout(char **cp,void (**wo)(FILE *,section *,symbol *),
   *cp = copyright;
   *wo = write_output;
   *oa = output_args;
+  unnamed_sections = 1;  /* output format doesn't support named sections */
+  secname_attr = 1;
   return 1;
 }
 

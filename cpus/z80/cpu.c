@@ -37,15 +37,17 @@
  * Note: All z80 opcodes work as expected
  */
 mnemonic mnemonics[] = {
+    "aci",  { OP_ABS },                                         { TYPE_NONE,  0xce, CPU_80OS, 0 },
+   
     "adc",  { OP_HL|OP_INDEX|OP_RALT, OP_ARITH16 },             { TYPE_ARITH16, 0xed4a, CPU_ZILOG|CPU_RABBIT, F_ALTD },
-    "adc",  { OP_REG8|OP_INDEX },                               { TYPE_ARITH8,  0x88, CPU_ALL, F_ALL, 0, 0, RCM_EMU_INCREMENT },
+    "adc",  { OP_REG8|OP_INDEX },                               { TYPE_ARITH8,  0x88, CPU_ALL|CPU_80OS, F_ALL, 0, 0, RCM_EMU_INCREMENT },
     "adc",  { OP_REG8|OP_INDEX },                               { TYPE_ARITH8,  0x7f88, CPU_RCM4000, F_ALL },
     "adc",  { OP_A|OP_RALT, OP_REG8 | OP_INDEX },               { TYPE_ARITH8,  0x88, CPU_ALL, F_ALTD, 0, 0, RCM_EMU_INCREMENT },
     "adc",  { OP_A|OP_RALT, OP_REG8 | OP_INDEX },               { TYPE_ARITH8,  0x7f88, CPU_RCM4000, F_ALTD, },
     "adc",  { OP_ABS },                                         { TYPE_NONE,  0xce, CPU_ALL, F_ALTD },
     "adc",  { OP_A|OP_RALT, OP_ABS },                           { TYPE_NONE,  0xce, CPU_ALL, F_ALTD },
 
-    "add",  { OP_REG8 },                                        { TYPE_ARITH8,  0x80, CPU_ALL, F_ALTD, 0, 0, RCM_EMU_INCREMENT },
+    "add",  { OP_REG8 },                                        { TYPE_ARITH8,  0x80, CPU_ALL|CPU_80OS, F_ALTD, 0, 0, RCM_EMU_INCREMENT },
     "add",  { OP_REG8 },                                        { TYPE_ARITH8,  0x7f80, CPU_RCM4000, F_ALTD },
     "add",  { OP_HL|OP_RALT, OP_JK },                           { TYPE_NONE, 0x65, CPU_RCM4000, F_ALTD },
 
@@ -59,6 +61,8 @@ mnemonic mnemonics[] = {
     "add",  { OP_JKHL|OP_RALT, OP_BCDE },                        { TYPE_NONE, 0xedc6, CPU_RCM4000, F_ALTD },
     "add",  { OP_ABS },                                         { TYPE_NONE,  0xc6, CPU_ALL, F_ALTD },
 
+    "ana",  { OP_REG8 },                                        { TYPE_ARITH8, 0xa0, CPU_80OS  }, /* and a,r  */
+    
     "and",  { OP_HL|OP_INDEX|OP_RALT, OP_DE },                  { TYPE_NONE, 0xDC, CPU_RABBIT, F_ALTD }, /* and hl/ix/iy,de */
     "and",  { OP_JKHL|OP_RALT, OP_BCDE },                       { TYPE_NONE, 0xede6, CPU_RCM4000, F_ALTD },
     "and",  { OP_REG8|OP_INDEX },                               { TYPE_ARITH8, 0xa0, CPU_ALL, F_ALL, 0, 0, RCM_EMU_INCREMENT },
@@ -67,6 +71,10 @@ mnemonic mnemonics[] = {
     "and",  { OP_A|OP_RALT, OP_REG8|OP_INDEX },                 { TYPE_ARITH8, 0x7fa0, CPU_RCM4000, F_ALTD },
     "and",  { OP_A|OP_RALT, OP_ABS },                           { TYPE_NONE, 0xE6, CPU_ALL, F_ALTD },
     "and",  { OP_ABS },                                         { TYPE_NONE, 0xE6, CPU_ALL, F_ALTD },
+    
+    "adi",  { OP_ABS },                                         { TYPE_NONE, 0xc6, CPU_80OS, 0 },
+    
+    "ani",  { OP_ABS },                                         { TYPE_NONE, 0xe6, CPU_80OS, 0 },
 
 
 
@@ -76,44 +84,72 @@ mnemonic mnemonics[] = {
 
     "call", { OP_FLAGS, OP_ABS16 },                             { TYPE_FLAGS, 0xc4, CPU_ALL },  /* We use emulation on RCM */
     "call", { OP_HL|OP_INDIR|OP_INDEX },                        { TYPE_NONE, 0xEA, CPU_RCM4000, 0 }, /* call (hl/ix/iy) */
-    "call", { OP_ABS16 },                                       { TYPE_NONE, 0xcd, CPU_ALL, 0 },
+    "call", { OP_ABS16 },                                       { TYPE_NONE, 0xcd, CPU_ALL|CPU_80OS, 0 },
 
     "cbm",  { OP_ABS },                                         { TYPE_NONE, 0xed00, CPU_RCM4000, F_IO }, /* cbm x */
 
+    "cc",   { OP_ABS16 },                                       { TYPE_NONE, 0xdc, CPU_80OS, 0 },
 
     "ccf",  { OP_NONE, },                                       { TYPE_NONE, 0x3f, CPU_ALL, F_ALTD },
  
     "clr",  { OP_HL|OP_RALT },                                  { TYPE_NONE, 0xBF, CPU_RCM4000, F_ALTD },
+    
+    "cm",   { OP_ABS16 },                                       { TYPE_NONE, 0xfc, CPU_80OS, 0 },
+    
+    "cma",  { OP_NONE, },                                       { TYPE_NONE, 0x2f, CPU_80OS, 0 },
+    
+    "cmc",  { OP_NONE, },                                       { TYPE_NONE, 0x3f, CPU_80OS, 0 },
 
+    "cnc",   { OP_ABS16 },                                      { TYPE_NONE, 0xd4, CPU_80OS, 0 },
+    "cnz",   { OP_ABS16 },                                      { TYPE_NONE, 0xc4, CPU_80OS, 0 },
+    
     "copy", { OP_NONE },                                        { TYPE_NONE, 0xed80, CPU_RCM4000, 0 },
     "copyr",{ OP_NONE },                                        { TYPE_NONE, 0xed88, CPU_RCM4000, 0 },
-
     
-    "cp",   { OP_REG8 | OP_INDEX },                             { TYPE_ARITH8, 0xb8, CPU_ALL, F_ALL, 0, 0, RCM_EMU_INCREMENT },
+    "cmp", { OP_REG8 | OP_INDEX },                             { TYPE_ARITH8, 0xb8, CPU_80OS, 0 },
+   
+    "cp",   { OP_REG8 | OP_INDEX },                            { TYPE_ARITH8, 0xb8, CPU_ALL, F_ALL, 0, 0, RCM_EMU_INCREMENT },
     "cp",   { OP_REG8 | OP_INDEX },                             { TYPE_ARITH8, 0x7fb8, CPU_RCM4000,F_ALL },
     "cp",   { OP_A|OP_RALT, OP_REG8 | OP_INDEX },               { TYPE_ARITH8, 0xb8, CPU_ALL, F_ALL, 0, 0, RCM_EMU_INCREMENT },
     "cp",   { OP_A|OP_RALT, OP_REG8 | OP_INDEX },               { TYPE_ARITH8, 0x7fb8, CPU_RCM4000, F_ALL },
     "cp",   { OP_A|OP_RALT, OP_ABS },                           { TYPE_NONE, 0xfe, CPU_ALL, F_ALL },
-    "cp",   { OP_ABS },                                         { TYPE_NONE, 0xfe, CPU_ALL, F_ALTD },
     "cp",   { OP_JKHL|OP_RALT, OP_BCDE },                       { TYPE_NONE, 0xed58, CPU_RCM4000, F_ALTD },
     "cp",   { OP_HL|OP_RALT, OP_DE },                           { TYPE_NONE, 0xED48, CPU_RCM4000, F_ALTD }, /* cp hl,de */
     "cp",   { OP_HL|OP_RALT, OP_ABS },                          { TYPE_NONE, 0x48, CPU_RCM4000, F_ALTD }, /* cp hl,de */
 
+    "cp",   { OP_ABS },                                          { TYPE_NONE, 0xfe, CPU_ALL|CPU_80OS, F_80OS_CHECK},
+    
     "cpd",  { OP_NONE, },                                       { TYPE_NONE, 0xeda9, CPU_RABBIT|CPU_ZILOG, 0, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, 0 },
     "cpdr", { OP_NONE, },                                       { TYPE_NONE, 0xedb9, CPU_RABBIT|CPU_ZILOG, 0, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, 0 },
+    
+    "cpe",   { OP_ABS16 },                                      { TYPE_NONE, 0xec, CPU_80OS, 0 },
+    
     "cpi",  { OP_NONE, },                                       { TYPE_NONE, 0xeda1, CPU_RABBIT|CPU_ZILOG, 0, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, 0 },
+    "cpi",  { OP_ABS },                                         { TYPE_NONE, 0xfe, CPU_80OS, 0 },
     "cpir", { OP_NONE, },                                       { TYPE_NONE, 0xedb1, CPU_RABBIT|CPU_ZILOG, 0, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, 0 },
     "cpl",  { OP_NONE, },                                       { TYPE_NONE, 0x2f,   CPU_ALL, F_ALTD },
-    "daa",  { OP_NONE, },                                       { TYPE_NONE, 0x27,   CPU_ZILOG|CPU_8080|CPU_GB80, 0 },
+    
+    "cpo",   { OP_ABS16 },                                      { TYPE_NONE, 0xe4, CPU_80OS, 0 },
+    
+    "cz",   { OP_ABS16 },                                       { TYPE_NONE, 0xcc, CPU_80OS, 0 },
+    
+    "daa",  { OP_NONE, },                                       { TYPE_NONE, 0x27,   CPU_ZILOG|CPU_8080|CPU_GB80|CPU_80OS, 0 },
+    
+    "dad",  { OP_RP },                                          { TYPE_RP, 0x09, CPU_80OS, 0 },
+    
+    "dcr",  { OP_REG8 },                                        { TYPE_MISC8, 0x05,  CPU_80OS, 0 },
+    
+    "dcx",  { OP_RP },                                          { TYPE_RP, 0x0b,     CPU_80OS, 0 },
+    
     "dec",  { OP_REG8 | OP_INDEX|OP_RALT },                     { TYPE_MISC8, 0x05,  CPU_ALL, F_ALL },
     "dec",  { OP_ARITH16 | OP_INDEX|OP_RALT },                  { TYPE_ARITH16, 0x0b,   CPU_ALL, F_ALTD },
-    "di",   { OP_NONE, },                                       { TYPE_NONE, 0xf3,   CPU_ZILOG|CPU_8080|CPU_GB80, F_ALTD },
+    "di",   { OP_NONE, },                                       { TYPE_NONE, 0xf3,   CPU_ZILOG|CPU_8080|CPU_80OS|CPU_GB80, F_ALTD },
 
     "djnz", { OP_ABS },                                         { TYPE_RELJUMP, 0x10, CPU_NOTGB80, F_ALTD },
     "dwjnz",{ OP_ABS },                                         { TYPE_RELJUMP, 0xed10, CPU_RCM4000, F_ALTD },
 
 
-    "ei",   { OP_NONE, },                                       { TYPE_NONE, 0xfb,   CPU_ZILOG|CPU_8080|CPU_GB80, 0 },
+    "ei",   { OP_NONE, },                                       { TYPE_NONE, 0xfb,   CPU_ZILOG|CPU_8080|CPU_80OS, CPU_GB80, 0 },
     "ex",   { OP_AF, OP_AF | OP_ALT },                          { TYPE_NONE, 0x08, CPU_ZILOG|CPU_RABBIT, F_ALTDW }, /* ex af,af' */
     "ex",   { OP_BC, OP_HL },                                   { TYPE_NONE, 0xb3, CPU_RCM4000, 0 },
     "ex",   { OP_BC, OP_HL|OP_ALT },                            { TYPE_NONE, 0x76b3, CPU_RCM4000, 0 },
@@ -145,6 +181,7 @@ mnemonic mnemonics[] = {
     "fsyscall",{ OP_NONE },                                     { TYPE_NONE, 0xed55, CPU_RCM4000, 0 },
 
     "halt", { OP_NONE, },                                       { TYPE_NONE, 0x76,   CPU_ZILOG|CPU_8080|CPU_GB80, 0},
+    "hlt",  { OP_NONE, },                                       { TYPE_NONE, 0x76,   CPU_80OS, 0},
 
     "ibox", { OP_A|OP_RALT },                                   { TYPE_NONE, 0xed12, CPU_RCM4000, F_ALTD },
     "idet", { OP_NONE },                                        { TYPE_NONE, 0x5b, CPU_RCM3000|CPU_RCM4000, 0 }, 
@@ -153,6 +190,7 @@ mnemonic mnemonics[] = {
 
     "in",   { OP_REG8, OP_PORT },                               { TYPE_MISC8, 0xed40, CPU_ZILOG, 0 }, /* in r,(c) */
     "in",   { OP_A, OP_ADDR8 },                                 { TYPE_NONE, 0xDB, CPU_8080|CPU_ZILOG, 0 },  /* in a,(xx) */
+    "in",   { OP_ABS },                                         { TYPE_NONE, 0xDB, CPU_80OS, 0 },  /* in xx */
     "in",   { OP_PORT },                                        { TYPE_NONE, 0xed70, CPU_ZILOG, 0 }, /* in (c) */ 
     "in",   { OP_F, OP_PORT },                                  { TYPE_NONE, 0xed70, CPU_ZILOG, 0 }, /* in f,(c) */
 
@@ -164,10 +202,25 @@ mnemonic mnemonics[] = {
     "indr", { OP_NONE, },                                       { TYPE_NONE, 0xedba, CPU_ZILOG, 0 },
     "ini",  { OP_NONE, },                                       { TYPE_NONE, 0xeda2, CPU_ZILOG, 0 },
     "inir", { OP_NONE, },                                       { TYPE_NONE, 0xedb2, CPU_ZILOG, 0 },
-
+    
+    "inr",  { OP_REG8 },                                        { TYPE_MISC8, 0x04,   CPU_80OS, 0 },
+   
+    "inx",  { OP_RP },                                          { TYPE_RP, 0x03,   CPU_80OS, 0 },
 
     "ipres",{ OP_NONE },                                        { TYPE_NONE, 0xed54, CPU_RABBIT, 0 },
     "ipset",{ OP_NUMBER },                                      { TYPE_IPSET, 0xed46, CPU_RABBIT, 0 },
+    
+    "jc",    { OP_ABS16 },                                       { TYPE_NONE, 0xda, CPU_80OS, 0 },
+    
+    "jm",    { OP_ABS16 },                                       { TYPE_NONE, 0xfa, CPU_80OS, 0 },
+
+    "jmp",   { OP_ABS16 },                                       { TYPE_NONE, 0xc3, CPU_80OS, 0 },
+    
+    "jnc",   { OP_ABS16 },                                       { TYPE_NONE, 0xd2, CPU_80OS, 0 },
+    "jnz",   { OP_ABS16 },                                       { TYPE_NONE, 0xc2, CPU_80OS, 0 },
+    "jp",    { OP_ABS16 },                                       { TYPE_NONE, 0xf2, CPU_80OS, 0 },
+    "jpe",   { OP_ABS16 },                                       { TYPE_NONE, 0xea, CPU_80OS, 0 },
+    "jpo",   { OP_ABS16 },                                       { TYPE_NONE, 0xe2, CPU_80OS, 0 },
 
     "jr",   { OP_FLAGS, OP_ABS },                               { TYPE_RELJUMP, 0x20, CPU_ALL, 0 },
     "jr",   { OP_FLAGS_RCM, OP_ABS },                           { TYPE_RELJUMP, 0xA0, CPU_RCM4000, 0 },
@@ -181,7 +234,9 @@ mnemonic mnemonics[] = {
     "jp",   { OP_FLAGS_RCM, OP_ABS16 },                         { TYPE_FLAGS, 0xA2, CPU_RCM4000, 0 },
     "jp",   { OP_HL|OP_INDIR|OP_INDEX },                        { TYPE_NONE, 0xE9, CPU_ALL, 0 },
     "jp",   { OP_HL|OP_INDEX },                                 { TYPE_NONE, 0xE9, CPU_ALL, 0 },
-    "jp",   { OP_ABS16 },                                       { TYPE_NONE, 0xc3, CPU_ALL, 0 },
+    "jp",   { OP_ABS16 },                                       { TYPE_NONE, 0xc3, CPU_ALL|CPU_80OS, F_80OS_CHECK },
+    
+    "jz",    { OP_ABS16 },                                      { TYPE_NONE, 0xca, CPU_80OS, 0 },
 
     "lcall",{ OP_ABS24 },                                       { TYPE_NONE, 0xcf, CPU_RABBIT, 0 },
     "ljp",  { OP_ABS24 },                                       { TYPE_NONE, 0xc7, CPU_RABBIT, 0 },
@@ -341,6 +396,11 @@ mnemonic mnemonics[] = {
     "ld",   { OP_ADDR, OP_A },                                  { TYPE_NONE, 0x32, CPU_ALL, F_IO, 0, 0, 0, RCM_EMU_INCREMENT }, /* ld (xx),a */
     "ld",   { OP_ADDR, OP_A },                                  { TYPE_NONE, 0xea, CPU_GB80, 0 }, /* ld (xx),a (GB) */   
 
+    "lda",  { OP_ABS16 },                                       { TYPE_NONE, 0x3a, CPU_80OS, 0 },
+
+    "ldax", { OP_B },                                           { TYPE_NONE, 0x0a, CPU_80OS, 0 },
+    "ldax", { OP_D },                                           { TYPE_NONE, 0x1a, CPU_80OS, 0 },
+
     "ldd",  { OP_NONE, },                                       { TYPE_NONE, 0xeda8, CPU_ZILOG|CPU_RABBIT, F_IO },
     "ldd",  { OP_A, OP_HL|OP_INDIR },                           { TYPE_NONE, 0x3a, CPU_GB80, 0 },
     "ldd",  { OP_HL|OP_INDIR,OP_A },                            { TYPE_NONE, 0x32, CPU_GB80, 0 },
@@ -387,6 +447,8 @@ mnemonic mnemonics[] = {
     "ldp",  { OP_HL, OP_HL|OP_INDEX|OP_INDIR },                 { TYPE_EDPREF, 0xed6c, CPU_RABBIT, 0 }, /* ldp hl,(hl) */
     "ldp",  { OP_HL|OP_INDEX, OP_ADDR },                        { TYPE_EDPREF, 0xed6d, CPU_RABBIT, 0 }, /* ldp hl,(xx) */
 
+    "lhld",   { OP_ABS16 },                                     { TYPE_NONE, 0x2a, CPU_80OS, 0 },
+    
     "llret",{ OP_NONE },                                        { TYPE_NONE, 0xed8b, CPU_RCM4000, 0 },
     "lret", { OP_NONE },                                        { TYPE_NONE, 0xed45, CPU_RABBIT, 0 },
 
@@ -395,18 +457,23 @@ mnemonic mnemonics[] = {
     "lsir", { OP_NONE },                                        { TYPE_NONE, 0xedf0, CPU_RCM3000 | CPU_RCM4000, F_IO },
     "lsdr", { OP_NONE },                                        { TYPE_NONE, 0xedf8, CPU_RCM3000 | CPU_RCM4000, F_IO },
 
+    "lxi",   { OP_RP, OP_ABS16 },                               { TYPE_RP, 0x01, CPU_80OS, 0 }, /* lxi h,b,d,sp,xx */
+
+    "mov",   {OP_REG8, OP_REG8},                                 { TYPE_LD8, 0x40, CPU_80OS, 0 },
 
     "mul",  { OP_NONE },                                        { TYPE_NONE, 0xf7, CPU_RABBIT, 0 }, /* mul (hl:bc=bc*de) */
 
     "mult", { OP_ARITH16 },                                     { TYPE_ARITH16, 0xed4c, CPU_Z180|CPU_EZ80,0 }, /* mult bc/de/hl/sp */
     "mulu", { OP_NONE },                                        { TYPE_NONE, 0xa7, CPU_RCM4000, 0 }, /* mulu (hl:bc=bc*de) */
     
+    "mvi",  { OP_REG8, OP_ABS },                                { TYPE_MISC8, 0x06, CPU_80OS, 0 },  /* mvi r8, nn */
+    
     "neg",  { OP_NONE, },                                       { TYPE_NONE, 0xed44, CPU_ZILOG|CPU_RABBIT, F_ALTD },
     "neg",  { OP_HL|OP_RALT, },                                 { TYPE_NONE, 0x44, CPU_RCM4000, F_ALTD },
     "neg",  { OP_JKHL },                                        { TYPE_NONE, 0xfd4d, CPU_RCM4000, 0 },
     "neg",  { OP_BCDE },                                        { TYPE_NONE, 0xdd4d, CPU_RCM4000, 0 },
 
-    "nop",  { OP_NONE, },                                       { TYPE_NONE, 0x00, CPU_ALL, 0 },
+    "nop",  { OP_NONE, },                                       { TYPE_NONE, 0x00, CPU_ALL|CPU_80OS, 0 },
 
     "or",   { OP_REG8 | OP_INDEX },                             { TYPE_ARITH8, 0xb0, CPU_ALL, F_ALL,0, 0, RCM_EMU_INCREMENT },
     "or",   { OP_REG8 | OP_INDEX },                             { TYPE_ARITH8, 0x7fb0, CPU_RCM4000, F_ALL },
@@ -416,6 +483,10 @@ mnemonic mnemonics[] = {
     "or",   { OP_ABS },                                         { TYPE_NONE,  0xf6, CPU_ALL, F_ALTD },
     "or",   { OP_HL|OP_INDEX|OP_RALT, OP_DE },                  { TYPE_NONE, 0xEC, CPU_RABBIT, F_ALTD }, /* or hl/ix/iy,de */
     "or",   { OP_JKHL|OP_RALT, OP_BCDE },                       { TYPE_NONE, 0xedf6, CPU_RCM4000, F_ALTD },
+    
+    "ora",  { OP_REG8 },                                        { TYPE_ARITH8, 0xb0, CPU_80OS, 0 },
+    
+    "ori",   { OP_ABS },                                        { TYPE_NONE,  0xf6, CPU_80OS, 0 },
 
     "otdm", { OP_NONE },                                        { TYPE_NONE, 0xed8b, CPU_Z180|CPU_EZ80, 0 },
     "otdmr",{ OP_NONE },                                        { TYPE_NONE, 0xed9b, CPU_Z180|CPU_EZ80, 0 },
@@ -431,6 +502,7 @@ mnemonic mnemonics[] = {
     "out",  { OP_PORT, OP_F },                                  { TYPE_NONE, 0xed71, CPU_ZILOG, 0 }, /* Undoc out (c),f */
     "out",  { OP_PORT, OP_NUMBER },                             { TYPE_OUT_C_0, 0xed71, CPU_ZILOG, 0 }, /* Undoc out (c),0 */
     "out",  { OP_ADDR8, OP_A },                                 { TYPE_NONE, 0xD3, CPU_8080|CPU_ZILOG, 0 },   /* out (xx),a */
+    "out",  { OP_ABS },                                         { TYPE_NONE, 0xd3, CPU_80OS, 0 },   /* out xx */
     "out0", { OP_ADDR8, OP_REG8 },                              { TYPE_MISC8, 0xed01, CPU_Z180|CPU_EZ80, 0 }, /* out0 (xx),r */
 
 
@@ -438,7 +510,10 @@ mnemonic mnemonics[] = {
     "outd", { OP_NONE, },                                       { TYPE_NONE, 0xedab, CPU_ZILOG, 0 },
     "outi", { OP_NONE, },                                       { TYPE_NONE, 0xeda3, CPU_ZILOG, 0 },
 
+    "pchl", { OP_NONE },                                        { TYPE_NONE, 0xE9, CPU_80OS, 0 },
+    
     "pop",  { OP_PUSHABLE|OP_INDEX|OP_RALT },                   { TYPE_ARITH16, 0xc1, CPU_ALL, F_ALTD },
+    "pop",  { OP_RP_PUSHABLE },                                 { TYPE_RP, 0xc1, CPU_80OS, 0 },
     "pop",  { OP_IP },                                          { TYPE_NONE, 0xed7e, CPU_RABBIT, 0 } ,
     "pop",  { OP_BCDE|OP_RALT },                                { TYPE_NONE, 0xddf1, CPU_RCM4000, F_ALTD },
     "pop",  { OP_JKHL|OP_RALT },                                { TYPE_NONE, 0xfdf1, CPU_RCM4000, F_ALTD },
@@ -446,18 +521,24 @@ mnemonic mnemonics[] = {
     "pop",  { OP_IDX32 },                                       { TYPE_IDX32, 0xedc1, CPU_RCM4000 , 0 },
 
     "push", { OP_PUSHABLE|OP_INDEX|OP_RALT },                   { TYPE_ARITH16, 0xc5, CPU_ALL, F_ALTD },
+    "push", { OP_RP_PUSHABLE },                                 { TYPE_RP, 0xc5, CPU_80OS, 0 },
     "push", { OP_IP },                                          { TYPE_NONE, 0xed76, CPU_RABBIT, 0 } ,
     "push", { OP_BCDE|OP_RALT },                                { TYPE_NONE, 0xddf5, CPU_RCM4000, F_ALTD },
     "push", { OP_JKHL|OP_RALT },                                { TYPE_NONE, 0xfdf5, CPU_RCM4000, F_ALTD },
     "push", { OP_IDX32 },                                       { TYPE_IDX32, 0xedc5, CPU_RCM4000 , 0 },
     "push", { OP_SU },                                          { TYPE_NONE, 0xed66, CPU_RCM4000, 0 }, /* push su */
     "push", { OP_ABS16 },                                       { TYPE_NONE, 0xeda5, CPU_RCM4000, 0 },  /* push xx */
-
-    "rdmode", { OP_NONE },                                      { TYPE_NONE, 0xed7f, CPU_RCM3000|CPU_RCM4000, 0 },
+    
+    "ral",  { OP_NONE },                                        { TYPE_NONE, 0x17, CPU_80OS, 0 },
+    "rar",  { OP_NONE, },                                       { TYPE_NONE, 0x1f, CPU_80OS, 0 },
+    
+    "rc",  { OP_NONE },                                        { TYPE_NONE, 0xd8,  CPU_80OS, 0 },
+   
+   "rdmode", { OP_NONE },                                      { TYPE_NONE, 0xed7f, CPU_RCM3000|CPU_RCM4000, 0 },
 
     "res",  { OP_NUMBER, OP_REG8|OP_INDEX|OP_RALT},             { TYPE_BIT, 0xCB80, CPU_NOT8080, F_ALL|F_ALTDWHL },
 
-    "ret",  { OP_NONE, },                                       { TYPE_NONE, 0xc9,   CPU_ALL, 0 },
+    "ret",  { OP_NONE, },                                       { TYPE_NONE, 0xc9,   CPU_ALL|CPU_80OS, 0 },
     "ret",  { OP_FLAGS },                                       { TYPE_FLAGS, 0xc0, CPU_ALL, 0 },
     "retn", { OP_NONE, },                                       { TYPE_NONE, 0xed45, CPU_ZILOG, 0 },
     "reti", { OP_NONE, },                                       { TYPE_NONE, 0xed4d, CPU_ZILOG|CPU_RABBIT|CPU_GB80, 0, 0, 0, 0, RCM_EMU_INCREMENT },
@@ -475,10 +556,19 @@ mnemonic mnemonics[] = {
     "rlc",  { OP_REG8|OP_RALT },                                { TYPE_ARITH8, 0xcb00, CPU_NOT8080, F_ALTD },
     "rlc",  { OP_DE|OP_RALT },                                  { TYPE_NONE, 0x50, CPU_RCM4000, F_ALTD },
     "rlc",  { OP_BC|OP_RALT },                                  { TYPE_NONE, 0x60, CPU_RCM4000, F_ALTD },
+    "rlc",  { OP_NONE, },                                       { TYPE_NONE, 0x07, CPU_80OS, 0 },
     "rlca", { OP_NONE, },                                       { TYPE_NONE, 0x07,   CPU_ALL, F_ALTD },
 
     "rld",  { OP_NONE, },                                       { TYPE_NONE, 0xed6f, CPU_ZILOG|CPU_RABBIT, 0, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, 0 },
 
+    "rnc",  { OP_NONE },                                        { TYPE_NONE, 0xd0,  CPU_80OS, 0 },
+    "rnz",  { OP_NONE },                                        { TYPE_NONE, 0xc0,  CPU_80OS, 0 },
+    
+    "rm",   { OP_NONE },                                        { TYPE_NONE, 0xf8,  CPU_80OS, 0 },
+    "rp",   { OP_NONE },                                        { TYPE_NONE, 0xf0,  CPU_80OS, 0 },
+    "rpe",  { OP_NONE },                                        { TYPE_NONE, 0xe8,  CPU_80OS, 0 },
+    "rpo",  { OP_NONE },                                        { TYPE_NONE, 0xe0,  CPU_80OS, 0 },
+    
     "rr",   { OP_REG8|OP_RALT },                                { TYPE_ARITH8, 0xcb18, CPU_NOT8080, F_ALL },
     "rr",   { OP_DE|OP_RALT },                                  { TYPE_NONE, 0xfb, CPU_RABBIT, F_ALTD },
     "rr",   { OP_BC|OP_RALT },                                  { TYPE_NONE, 0x63, CPU_RCM4000, F_ALTD },
@@ -493,11 +583,16 @@ mnemonic mnemonics[] = {
     "rrc",  { OP_REG8|OP_RALT, },                               { TYPE_ARITH8, 0xcb08, CPU_NOT8080, F_ALTD },
     "rrc",  { OP_BC|OP_RALT, },                                 { TYPE_NONE, 0x61, CPU_RCM4000, F_ALTD },
     "rrc",  { OP_DE|OP_RALT, },                                 { TYPE_NONE, 0x51, CPU_RCM4000, F_ALTD },
+    "rrc",  { OP_NONE, },                                       { TYPE_NONE, 0x0f, CPU_80OS, 0 },
     "rrca", { OP_NONE, },                                       { TYPE_NONE, 0x0f, CPU_ALL, F_ALTD },
 
     "rrd",  { OP_NONE, },                                       { TYPE_NONE, 0xed67, CPU_ZILOG|CPU_RABBIT, 0, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, 0 },
-    "rst",  { OP_NUMBER },                                      { TYPE_RST,  0xc7, CPU_ALL, 0 },  /* RCM doesn't support 0, 8, 30 */
+    "rst",  { OP_NUMBER },                                      { TYPE_RST,  0xc7, CPU_ALL|CPU_80OS, 0 },  /* RCM doesn't support 0, 8, 30 */
 
+    "rz",  { OP_NONE, },                                        { TYPE_NONE, 0xc8,   CPU_80OS, 0 },
+    
+    "sbb",  { OP_REG8 },                                        { TYPE_ARITH8, 0x98, CPU_80OS },
+    
     "sbc",  { OP_REG8 | OP_INDEX, },                            { TYPE_ARITH8, 0x98, CPU_ALL, F_ALL, 0, 0, RCM_EMU_INCREMENT },
     "sbc",  { OP_REG8 | OP_INDEX, },                            { TYPE_ARITH8, 0x7f98, CPU_RCM4000, F_ALL },
     "sbc",  { OP_A|OP_RALT, OP_REG8 | OP_INDEX },               { TYPE_ARITH8, 0x98, CPU_ALL, F_ALTD, 0, 0, RCM_EMU_INCREMENT },
@@ -505,6 +600,8 @@ mnemonic mnemonics[] = {
     "sbc",  { OP_A|OP_RALT, OP_ABS },                           { TYPE_NONE, 0xde, CPU_ALL , F_ALTD},
     "sbc",  { OP_ABS },                                         { TYPE_NONE, 0xde, CPU_ALL, F_ALTD },
     "sbc",  { OP_HL|OP_RALT, OP_ARITH16 },                      { TYPE_ARITH16, 0xed42, CPU_ZILOG|CPU_RABBIT, F_ALTD },
+    
+    "sbi",  { OP_ABS },                                         { TYPE_NONE, 0xde, CPU_80OS, 0 },
 
     "sbox", { OP_A },                                           { TYPE_NONE, 0xed02, CPU_RCM4000, F_ALTD },
 
@@ -517,17 +614,28 @@ mnemonic mnemonics[] = {
     "setsysp", { OP_ABS16 },                                    { TYPE_NONE, 0xedb1, CPU_RCM4000, 0 },
     "setusr",  { OP_NONE },                                     { TYPE_NONE, 0xed6f, CPU_RCM3000|CPU_RCM4000 },
     "setusrp", { OP_ABS16 },                                    { TYPE_NONE, 0xedbf, CPU_RCM4000, 0 },
+    
+    "shld",  { OP_ABS16 },                                      { TYPE_NONE, 0x22, CPU_80OS, 0 }, 
 
     "sla",  { OP_REG8 },                                        { TYPE_ARITH8, 0xcb20, CPU_NOT8080, F_ALTD },
     "sll",  { OP_REG8, },                                       { TYPE_ARITH8, 0xcb30, CPU_Z80, 0 }, /* Undoc */
 
     "slp",  { OP_NONE },                                        { TYPE_NONE, 0xed76, CPU_Z180|CPU_EZ80 }, 
 
+    "sphl",  { OP_NONE, },                                      { TYPE_NONE, 0xf9, CPU_80OS, 0 },
+    
     "sra",  { OP_REG8|OP_RALT, },                               { TYPE_ARITH8, 0xcb28, CPU_NOT8080, F_ALTD },
 
 
     "srl",  { OP_REG8|OP_RALT, },                               { TYPE_ARITH8, 0xcb38, CPU_ZILOG|CPU_RABBIT|CPU_GB80, F_ALTD },
 
+    "sta",  { OP_ABS16 },                                       { TYPE_NONE, 0x32, CPU_80OS, 0 },
+    
+    "stax", { OP_B },                                           { TYPE_NONE, 0x02, CPU_80OS, 0 },
+    "stax", { OP_D },                                           { TYPE_NONE, 0x12, CPU_80OS, 0 },
+    
+    "stc",  { OP_NONE, },                                       { TYPE_NONE, 0x37, CPU_80OS, 0 },
+    
     "stop", { OP_NONE },                                        { TYPE_NONE, 0x10, CPU_GB80, 0 },
 
     "sub",  { OP_HL|OP_RALT, OP_DE },                           { TYPE_NONE, 0x55, CPU_RCM4000, F_ALTD },
@@ -535,13 +643,15 @@ mnemonic mnemonics[] = {
     "sub",  { OP_JKHL|OP_RALT, OP_BCDE },                       { TYPE_NONE, 0xedd6, CPU_RCM4000, F_ALTD},
 
 
-    "sub",  { OP_REG8|OP_INDEX },                               { TYPE_ARITH8, 0x90, CPU_ALL, F_ALTD, 0, 0, RCM_EMU_INCREMENT },
+    "sub",  { OP_REG8|OP_INDEX },                               { TYPE_ARITH8, 0x90, CPU_ALL|CPU_80OS, F_ALTD, 0, 0, RCM_EMU_INCREMENT },
     "sub",  { OP_REG8|OP_INDEX },                               { TYPE_ARITH8, 0x7f90, CPU_RCM4000, F_ALTD },
     "sub",  { OP_A|OP_RALT, OP_REG8|OP_INDEX },                 { TYPE_ARITH8, 0x90, CPU_ALL,F_ALTD,0,0,RCM_EMU_INCREMENT },
     "sub",  { OP_A|OP_RALT, OP_REG8|OP_INDEX },                 { TYPE_ARITH8, 0x7f90, CPU_RCM4000,F_ALTD },
     "sub",  { OP_A|OP_RALT, OP_ABS },                           { TYPE_NONE, 0xd6, CPU_ALL, F_ALTD },
     "sub",  { OP_ABS },                                         { TYPE_NONE, 0xd6, CPU_ALL, F_ALTD },
 
+    "sui",  { OP_ABS },                                         { TYPE_NONE, 0xd6, CPU_80OS, 0 },
+    
     "sures",   { OP_NONE },                                     { TYPE_NONE, 0xed7d, CPU_RCM3000|CPU_RCM4000, 0 },
 
     "swap",  { OP_REG8 },                                       { TYPE_ARITH8, 0xcb30, CPU_GB80, 0 },
@@ -564,6 +674,8 @@ mnemonic mnemonics[] = {
     "uma",  { OP_NONE },                                        { TYPE_NONE, 0xedc0, CPU_RCM3000|CPU_RCM4000, 0 },
     "ums",  { OP_NONE },                                        { TYPE_NONE, 0xedc8, CPU_RCM3000|CPU_RCM4000, 0 },
 
+    "xchg",   { OP_NONE },                                      { TYPE_NONE, 0xEB, CPU_80OS, 0 },
+    
     "xor",  { OP_JKHL|OP_RALT, OP_BCDE },                       { TYPE_NONE, 0xedee, CPU_RCM4000, F_ALTD },
     "xor",  { OP_REG8|OP_INDEX },                               { TYPE_ARITH8, 0xa8, CPU_ALL, F_ALTD, 0, 0, RCM_EMU_INCREMENT },
     "xor",  { OP_REG8|OP_INDEX },                               { TYPE_ARITH8, 0x7fa8, CPU_RCM4000, F_ALTD },
@@ -572,6 +684,12 @@ mnemonic mnemonics[] = {
     "xor",  { OP_A|OP_RALT, OP_ABS },                           { TYPE_NONE, 0xEE, CPU_ALL, F_ALTD },
     "xor",  { OP_ABS },                                         { TYPE_NONE, 0xEE, CPU_ALL, F_ALTD },
     "xor",  { OP_HL|OP_RALT, OP_DE },                           { TYPE_NONE, 0x54, CPU_RCM4000, F_ALTD }, /* xor hl,de */
+    
+    "xra",  { OP_REG8 },                                        { TYPE_ARITH8, 0xa8, CPU_80OS, 0 },
+    
+    "xri",  { OP_ABS },                                         { TYPE_NONE, 0xee, CPU_80OS, 0 },
+    
+    "xthl",  { OP_NONE, },                                      { TYPE_NONE, 0xe3, CPU_80OS, 0 },
 };
 
 int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
@@ -608,7 +726,7 @@ struct {
     { "bc",   OP_BC|OP_STD16BIT|OP_ARITH16|OP_PUSHABLE, REG_BC, CPU_ALL },
     { "hl",   OP_HL|OP_STD16BIT|OP_ARITH16|OP_PUSHABLE, REG_HL, CPU_ALL },
     { "de",   OP_DE|OP_STD16BIT|OP_ARITH16|OP_PUSHABLE, REG_DE, CPU_ALL },
-    { "sp",   OP_SP|OP_ARITH16, REG_SP, CPU_ALL },
+    { "sp",   OP_SP|OP_ARITH16|OP_RP, REG_SP, CPU_ALL },
     { "af",   OP_AF|OP_PUSHABLE, REG_AF, CPU_ALL },
 
     { "ixl",  OP_REG8|OP_INDEX, REG_L | REG_IX, CPU_ZILOG },
@@ -626,13 +744,15 @@ struct {
     { "e'",   OP_REG8|OP_ALT,  REG_E|REG_ALT, CPU_RABBIT },
     { "h'",   OP_REG8|OP_ALT,  REG_H|REG_ALT, CPU_RABBIT },
     { "l'",   OP_REG8|OP_ALT,  REG_L|REG_ALT, CPU_RABBIT },
+    { "psw",  OP_RP_PUSHABLE, REG_A, CPU_80OS },
     { "a",    OP_A,  REG_A, CPU_ALL },
-    { "b",    OP_REG8,  REG_B, CPU_ALL },
+    { "b",    OP_REG8|OP_B|OP_RP|OP_RP_PUSHABLE,  REG_B, CPU_ALL|CPU_80OS },
     { "c",    OP_REG8,  REG_C, CPU_ALL },
-    { "d",    OP_REG8,  REG_D, CPU_ALL },
+    { "d",    OP_REG8|OP_D|OP_RP|OP_RP_PUSHABLE,  REG_D, CPU_ALL|CPU_80OS },
     { "e",    OP_REG8,  REG_E, CPU_ALL },
-    { "h",    OP_REG8,  REG_H, CPU_ALL },
+    { "h",    OP_REG8|OP_RP|OP_RP_PUSHABLE,  REG_H, CPU_ALL },
     { "l",    OP_REG8,  REG_L, CPU_ALL },
+    { "m",    OP_REG8,  REG_M, CPU_8080 },
     { "r",    OP_R, REG_R, CPU_ZILOG },
     { "eir",  OP_R, REG_R, CPU_RABBIT },  /* RCM alias */
     { "i",    OP_I, REG_I, CPU_ZILOG },
@@ -765,7 +885,7 @@ static int get_register_info(char **text, int len, int *reg, int *op)
 }
 
 
-#define BASIC_TYPE(x) ((x) & OP_MASK )
+#define BASIC_TYPE(x) ((x) & OP_MASK)
 #define CHECK_INDEXVALID(ot, r) ( ( (ot) & OP_INDEX ) == OP_INDEX || ( ( ((r) & (REG_IX|REG_IY)) == 0 ) ) )
 #define ONLY_MODIFIER(x, nmod) ((((x) & ~OP_MASK) | (nmod)) == (nmod))
 #define PERMITTED(c, ot, b ) ( ( (ot) & (b) ) || ( ((ot) & (b)) | ( (c) & (b) ) ) == 0 )
@@ -948,11 +1068,23 @@ int parse_operand(char *p, int len, operand *op, int optype)
              !PERMITTED(opt, optype, OP_INDEX) || !alt_override_permitted(optype,opt,op->reg) ) {
             goto nomatch;
         }
+    } else if ( optype & OP_RP ) {
+        if ( (opt & OP_RP) == 0)
+            goto nomatch;
+    } else if ( optype & OP_RP_PUSHABLE ) {
+        if ( (opt & OP_RP_PUSHABLE) == 0)
+            goto nomatch;
+    } else  if (optype & OP_B) {
+        if ( (opt & OP_B) == 0)
+            goto nomatch;
+    } else  if (optype & OP_D) {
+        if ( (opt & OP_D) == 0)
+            goto nomatch;
     } else {
-
-
         switch ( BASIC_TYPE(optype) ) {   
         case OP_A:
+        case OP_B:
+        case OP_D:
         case OP_AF:
         case OP_BC:
         case OP_DE:
@@ -1339,6 +1471,11 @@ size_t instruction_size(instruction *ip, section *sec, taddr pc)
         size++;
     }
 
+    if (((cpu_type & CPU_80OS) == CPU_80OS) && 
+            (opcode->ext.modifier_flags & F_80OS_CHECK) == F_80OS_CHECK && opcode->ext.opcode == 0xfe) {
+        size = 3;
+        ip->op[0]->type = OP_ABS16;
+    }
     return size;
 }
 
@@ -1683,6 +1820,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
     int   size = 0, reg,offs = 0; 
     int error = 0;
 
+
     size = instruction_size(ip, sec, pc);
 
     if ( (opcode->ext.cpus & cpu_type) == 0 ) {
@@ -1802,6 +1940,28 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
             }
         }
 
+    }
+
+    if (((cpu_type & CPU_80OS) == CPU_80OS) && 
+        (opcode->ext.modifier_flags & F_80OS_CHECK) == F_80OS_CHECK) {
+        char* warn[2];
+        switch (opcode->ext.opcode) {
+        case 0xc3:
+        case 0xf2:
+            opcode->ext.opcode = 0xf2;
+            warn[0] =  "jp";
+            warn[1] =  "jump when positive";
+            break;
+        case 0xfe:
+        case 0xf4:
+            opcode->ext.opcode = 0xf4;
+            warn[0] =  "cp";
+            warn[1] =  "call when positive";
+            break;
+        }
+
+        if ((cpu_type & CPU_8080) == CPU_8080 && warn)
+            cpu_error(26, warn[0], warn[1]);
     }
 
     /* Check for bad register usage */
@@ -2009,19 +2169,9 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
         break;
     case TYPE_RST:
         if ( eval_expr(ip->op[0]->value, &val, sec, pc) == 0 ) {
-            /* Also allow known labels from an absolute program segment */
-            if ( find_base(ip->op[0]->value, &base, sec, pc) != BASE_OK ) {
-                general_error(38);  /* illegal relocation */
-                error = 1;
-                break;
-            }
-            if ( !( base->sec->flags & ABSOLUTE ) || EXTREF(base) ) {
-                cpu_error(19, opcode->name);
-                error = 1;
-                break;
-            }
-            offs = val;
-        } else if ( (val & ~0x38) == 0 ) {
+            cpu_error(19, opcode->name);
+            error = 1;
+        } else if ( (val & ~0x38) == 0 && cpu_type != CPU_80OS) {
             if ( cpu_type == CPU_RCM2000 ) {
                 /* Check for valid rst on Rabbit */
                 if ( val == 0 ||  val == 8 || val == 0x30 ) {
@@ -2030,12 +2180,20 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                 }
             }
             offs = val;
+        } else if ( (val & 0xf8) == 0 && cpu_type == CPU_80OS) {
+            offs = val << 3;
         } else {
             cpu_error(5, val, val);  /* rst out of range */
             error = 1;
         }
         break;
+    case TYPE_RP:
+        if (ip->op[0]->reg == REG_SP)
+            ip->op[0]->reg = REG_A;
+        offs = ((ip->op[0]->reg & REG_PLAIN) / 2) * 16;
+        break;
     }
+
     if ( error == 0 ) {
         write_opcode(opcode, db, size, sec, pc, ip->op[0], ip->op[1], offs, &ip->ext);
     }
@@ -2064,9 +2222,14 @@ int init_cpu()
 int cpu_args(char *p)
 {
 
-    if ( strcmp(p, "-8080") == 0 ) {
-        cpu_type = CPU_8080;
-        cpuname = "8080";
+    if ( strcmp(p, "-intel-syntax") == 0) {
+        cpu_type = (cpu_type & CPU_8080) | CPU_80OS;
+        cpuname="8080 Intel Syntax";
+        return 1;
+    } else if ( strcmp(p, "-8080") == 0 ) {
+        cpu_type = (cpu_type & CPU_80OS) | CPU_8080;
+        if ((cpu_type & CPU_80OS) == 0)
+            cpuname = "8080";
         return 1;
     } else if ( strcmp(p, "-rcm2000") == 0 ) {
         cpu_type = CPU_RCM2000;

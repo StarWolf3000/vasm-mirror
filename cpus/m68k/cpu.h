@@ -1,6 +1,6 @@
 /*
 ** cpu.h Motorola M68k, CPU32 and ColdFire cpu-description header-file
-** (c) in 2002,2006-2017 by Frank Wille
+** (c) in 2002,2006-2020 by Frank Wille
 */
 
 #define BIGENDIAN 1
@@ -67,6 +67,7 @@ enum {
   OCMD_OPTDISP,
   OCMD_OPTABS,
   OCMD_OPTMOVEQ,
+  OCMD_OPTNMOVQ,
   OCMD_OPTQUICK,
   OCMD_OPTBRANOP,
   OCMD_OPTBDISP,
@@ -75,6 +76,7 @@ enum {
   OCMD_OPTLQUICK,
   OCMD_OPTIMMADDR,
   OCMD_OPTSPEED,
+  OCMD_OPTSIZE,
   OCMD_SMALLCODE,
   OCMD_SMALLDATA,
   OCMD_OPTWARN,
@@ -97,6 +99,13 @@ enum {
 
 /* parse cpu-specific directives with label */
 #define PARSE_CPU_LABEL(l,s) parse_cpu_label(l,s)
+
+/* we define one additional, but internal, unary operation, to count 1-bits */
+int ext_unary_eval(int,taddr,taddr *,int);
+int ext_find_base(symbol **,expr *,section *,taddr);
+#define CNTONES (LAST_EXP_TYPE+1)
+#define EXT_UNARY_EVAL(t,v,r,c) ext_unary_eval(t,v,r,c)
+#define EXT_FIND_BASE(b,e,s,p) BASE_ILLEGAL
 
 /* type to store each operand */
 typedef struct {

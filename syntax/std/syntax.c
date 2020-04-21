@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2018 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2020 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 #include "stabs.h"
@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm std syntax module 5.1d (c) 2002-2018 Volker Barthelmann";
+char *syntax_copyright="vasm std syntax module 5.2 (c) 2002-2020 Volker Barthelmann";
 hashtable *dirhash;
 
 static char textname[]=".text",textattr[]="acrx";
@@ -33,11 +33,15 @@ char commentchar='#';
 char *defsectname = textname;
 char *defsecttype = "acrwx";
 
+static char macroname[] = ".macro";
 static char endmname[] = ".endm";
 static char reptname[] = ".rept";
 static char irpname[] = ".irp";
 static char irpcname[] = ".irpc";
 static char endrname[] = ".endr";
+static struct namelen dmacro_dirlist[] = {
+  { 6,&macroname[0] }, { 0,0 }
+};
 static struct namelen dendm_dirlist[] = {
   { 5,&endmname[0] }, { 0,0 }
 };
@@ -49,6 +53,9 @@ static struct namelen dendr_dirlist[] = {
 };
 static struct namelen endm_dirlist[] = {
   { 4,&endmname[1] }, { 0,0 }
+};
+static struct namelen macro_dirlist[] = {
+  { 5,&macroname[1] }, { 0,0 }
 };
 static struct namelen rept_dirlist[] = {
   { 4,&reptname[1] }, { 3,&irpname[1] }, { 4,&irpcname[1] },{ 0,0 }
@@ -226,7 +233,17 @@ static void handle_org(char *s)
   }
   else if (current_section != NULL) {
     /* .org inside a section is treated as an offset */
-    add_atom(0,new_roffs_atom(parse_expr_tmplab(&s)));
+    expr *offs = parse_expr_tmplab(&s);
+    expr *fill;
+
+    s = skip(s);
+    if (*s == ',') {
+      /* ...and may be followed by an optional fill-value */
+      s = skip(s+1);
+      fill = parse_expr_tmplab(&s);
+    }
+    else fill = NULL;
+    add_atom(0,new_roffs_atom(offs,fill));
   }
   else
     set_section(new_org(parse_constexpr(&s)));
@@ -735,7 +752,8 @@ static void handle_macro(char *s)
     s=skip(s);
     if(ISEOL(s))
       s=NULL;
-    new_macro(name,nodotneeded?endm_dirlist:dendm_dirlist,s);
+    new_macro(name,nodotneeded?macro_dirlist:dmacro_dirlist,
+              nodotneeded?endm_dirlist:dendm_dirlist,s);
     myfree(name);
   }else
     syntax_error(10);  /* identifier expected */
@@ -919,6 +937,11 @@ static void handle_fail(char *s)
   eol(s);
 }
 
+static void handle_vdebug(char *s)
+{
+  add_atom(0,new_atom(VASMDEBUG,0));
+}
+
 static void handle_title(char *s)
 {
   char *t;
@@ -1053,6 +1076,7 @@ struct {
   "list",handle_list,
   "nolist",handle_nolist,
   "swbeg",handle_swbeg,
+  "vdebug",handle_vdebug,
 };
 
 int dir_cnt=sizeof(directives)/sizeof(directives[0]);

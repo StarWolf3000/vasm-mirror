@@ -1,6 +1,6 @@
 /*
 ** cpu.c ARM cpu-description file
-** (c) in 2004,2006,2010,2011,2014-2018 by Frank Wille
+** (c) in 2004,2006,2010,2011,2014-2019 by Frank Wille
 */
 
 #include "vasm.h"
@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm ARM cpu backend 0.4e (c) 2004,2006,2010,2011,2014-2018 Frank Wille";
+char *cpu_copyright = "vasm ARM cpu backend 0.4f (c) 2004,2006,2010,2011,2014-2019 Frank Wille";
 char *cpuname = "ARM";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -599,65 +599,64 @@ size_t eval_thumb_operands(instruction *ip,section *sec,taddr pc,
 
     if (op.type==TPCLW || THBRANCH(op.type)) {
       /* PC-relative offsets (take prefetch into account: PC+4) */
-      if (base!=NULL && btype==BASE_OK) {
-        if (!is_pc_reloc(base,sec)) {
-          /* no relocation required, can be resolved immediately */
-          if (op.type == TPCLW) {
-            /* bit 1 of PC is forced to 0 */
-            val -= (pc&~2) + 4;
-          }
-          else
-            val -= pc + 4;
+      if ((base!=NULL && btype==BASE_OK && !is_pc_reloc(base,sec)) ||
+           base==NULL) {
+        /* no relocation required, can be resolved immediately */
+        if (op.type == TPCLW) {
+          /* bit 1 of PC is forced to 0 */
+          val -= (pc&~2) + 4;
+        }
+        else
+          val -= pc + 4;
 
-          if (op.type == TBR08) {
-            if (val<-0x100 || val>0xfe) {
-              /* optimize to: B<!cc> .+4 ; B label */
-              if (insn) {
-                *insn++ ^= 0x100;   /* negate branch-condition */
-                *insn = 0xe000;     /* B unconditional to label */
-              }
-              if (val < 0)
-                val -= 2;  /* backward-branches are 2 bytes longer */
-              isize += 2;
-              op.type = TBR11;
+        if (op.type == TBR08) {
+          if (val<-0x100 || val>0xfe) {
+            /* optimize to: B<!cc> .+4 ; B label */
+            if (insn) {
+              *insn++ ^= 0x100;   /* negate branch-condition */
+              *insn = 0xe000;     /* B unconditional to label */
             }
-          }
-          else if (op.type == TBRHL) {
-            /* BL always consists of two instructions */
+            if (val < 0)
+              val -= 2;  /* backward-branches are 2 bytes longer */
             isize += 2;
-          }
-          else if (op.type == TPCLW) {
-            /* @@@ optimization makes any sense? */
-            op.type = TUIMA;
-            base = NULL;  /* no more checks */
+            op.type = TBR11;
           }
         }
-        else {
-          /* symbol is in a different section or externally declared */
-          if (op.type == TBRHL) {
-            val -= THB_PREFETCH;
-            if (db) {
-              add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                                   arm_be_mode?5:0,11,0,0x7ff000);
-              add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                                   arm_be_mode?16+5:16+0,11,0,0xffe);
-            }
-            isize += 2;  /* we need two instructions for a 23-bit branch */
-          }
-          else if (op.type == TPCLW) {
-            /* val -= THB_PREFETCH;  @@@ only positive offsets allowed! */
-            op.type = TUIMA;
-            if (db)
-              add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                                   arm_be_mode?8:0,8,0,0x3fc);
-            base = NULL;  /* no more checks */
-          }
-          else if (insn)
-            cpu_error(22); /* operation not allowed on external symbols */
+        else if (op.type == TBRHL) {
+          /* BL always consists of two instructions */
+          isize += 2;
+        }
+        else if (op.type == TPCLW) {
+          /* @@@ optimization makes any sense? */
+          op.type = TUIMA;
+          base = NULL;  /* no more checks */
         }
       }
+      else if (btype == BASE_OK) {
+        /* symbol is in a different section or externally declared */
+        if (op.type == TBRHL) {
+          val -= THB_PREFETCH;
+          if (db) {
+            add_extnreloc_masked(&db->relocs,base,val,REL_PC,
+                                 arm_be_mode?5:0,11,0,0x7ff000);
+            add_extnreloc_masked(&db->relocs,base,val,REL_PC,
+                                 arm_be_mode?16+5:16+0,11,0,0xffe);
+          }
+          isize += 2;  /* we need two instructions for a 23-bit branch */
+        }
+        else if (op.type == TPCLW) {
+          /* val -= THB_PREFETCH;  @@@ only positive offsets allowed! */
+          op.type = TUIMA;
+          if (db)
+            add_extnreloc_masked(&db->relocs,base,val,REL_PC,
+                                 arm_be_mode?8:0,8,0,0x3fc);
+          base = NULL;  /* no more checks */
+        }
+        else if (insn)
+          cpu_error(22); /* operation not allowed on external symbols */
+      }
       else if (insn)
-        cpu_error(2);  /* label from current section required */
+        cpu_error(22); /* operation not allowed on external symbols */
     }
 
     /* optimizations should be finished at this stage -
@@ -1088,186 +1087,183 @@ size_t eval_arm_operands(instruction *ip,section *sec,taddr pc,
     if (op.type==PCL12 || op.type==PCLRT ||
         op.type==PCLCP || op.type==BRA24) {
       /* PC-relative offsets (take prefetch into account: PC+8) */
-      if (base!=NULL && btype==BASE_OK) {
-        if (!is_pc_reloc(base,sec)) {
-          /* no relocation required, can be resolved immediately */
-          val -= pc + 8;
+      if ((base!=NULL && btype==BASE_OK && !is_pc_reloc(base,sec)) ||
+          base==NULL) {
+        /* no relocation required, can be resolved immediately */
+        val -= pc + 8;
 
-          switch (op.type) {
-            case BRA24:
-              if (val>=0x2000000 || val<-0x2000000) {
-                /* @@@ optimize? to what? */
-                if (insn)
-                  cpu_error(3,(long)val);  /* branch offset is out of range */
-              }
+        switch (op.type) {
+          case BRA24:
+            if (val>=0x2000000 || val<-0x2000000) {
+              /* @@@ optimize? to what? */
+              if (insn)
+                cpu_error(3,(long)val);  /* branch offset is out of range */
+            }
               break;
 
-            case PCL12:
-              if ((!aa4ldst && val<0x1000 && val>-0x1000) ||
-                  (aa4ldst && val<0x100 && val>-0x100)) {
-                op.type = IMUD2;  /* handle as normal #+/-Imm12 */
-                if (val < 0)
-                  val = -val;
-                else
-                  op.flags |= OFL_UP;
-                base = NULL;  /* no more checks */
-              }
-              else {
-                if (opt_ldrpc &&
-                    ((!aa4ldst && val<0x100000 && val>-0x100000) ||
-                     (aa4ldst && val<0x10000 && val>-0x10000))) {
-                  /* ADD/SUB Rd,PC,#offset&0xff000 */
-                  /* LDR/STR Rd,[Rd,#offset&0xfff] */
-                  if (insn) {
-                    taddr v;
+          case PCL12:
+            if ((!aa4ldst && val<0x1000 && val>-0x1000) ||
+                (aa4ldst && val<0x100 && val>-0x100)) {
+              op.type = IMUD2;  /* handle as normal #+/-Imm12 */
+              if (val < 0)
+                val = -val;
+              else
+                op.flags |= OFL_UP;
+              base = NULL;  /* no more checks */
+            }
+            else {
+              if (opt_ldrpc &&
+                  ((!aa4ldst && val<0x100000 && val>-0x100000) ||
+                   (aa4ldst && val<0x10000 && val>-0x10000))) {
+                /* ADD/SUB Rd,PC,#offset&0xff000 */
+                /* LDR/STR Rd,[Rd,#offset&0xfff] */
+                if (insn) {
+                  taddr v;
 
-                    *(insn+1) = *insn;
-                    *insn &= 0xf0000000;         /* clear all except cond. */
-                    if (val < 0) {
-                      v = -val;
-                      *insn |= 0x024f0a00;       /* SUB */
-                      *(insn+1) &= ~0x00800000;  /* clear U-bit */
-                    }
-                    else {
-                      v = val;
-                      *insn |= 0x028f0a00;      /* ADD */
-                      *(insn+1) |= 0x00800000;  /* set U-bit */
-                    }
-                    if (aa4ldst)
-                      *insn |= (*(insn+1)&0xf000) | ((v&0xff00)>>8);
-                    else
-                      *insn |= (*(insn+1)&0xf000) | ((v&0xff000)>>12);
-                    *(insn+1) &= ~0x000f0000;  /* replace PC by Rd */
-                    *(insn+1) |= (*insn & 0xf000) << 4;
-                    insn++;
+                  *(insn+1) = *insn;
+                  *insn &= 0xf0000000;         /* clear all except cond. */
+                  if (val < 0) {
+                    v = -val;
+                    *insn |= 0x024f0a00;       /* SUB */
+                    *(insn+1) &= ~0x00800000;  /* clear U-bit */
                   }
-                  if (val < 0)
-                    val = -val;
+                  else {
+                    v = val;
+                    *insn |= 0x028f0a00;      /* ADD */
+                    *(insn+1) |= 0x00800000;  /* set U-bit */
+                  }
+                  if (aa4ldst)
+                    *insn |= (*(insn+1)&0xf000) | ((v&0xff00)>>8);
                   else
-                    op.flags |= OFL_UP;
-                  val = aa4ldst ? (val & 0xff) : (val & 0xfff);
-                  isize += 4;
-                  op.type = IMUD2;
-                  base = NULL;  /* no more checks */
+                    *insn |= (*(insn+1)&0xf000) | ((v&0xff000)>>12);
+                  *(insn+1) &= ~0x000f0000;  /* replace PC by Rd */
+                  *(insn+1) |= (*insn & 0xf000) << 4;
+                  insn++;
                 }
-                else {
-                  op.type = NOOP;
-                  if (insn)
-                    cpu_error(4,val);  /* PC-relative ldr/str out of range */
-                }
-              }
-              break;
-
-            case PCLCP:
-              if (val<0x400 && val>-0x400) {
-                op.type = IMCP2;  /* handle as normal #+/-Imm10>>2 */
                 if (val < 0)
                   val = -val;
                 else
                   op.flags |= OFL_UP;
+                val = aa4ldst ? (val & 0xff) : (val & 0xfff);
+                isize += 4;
+                op.type = IMUD2;
                 base = NULL;  /* no more checks */
               }
               else {
-                /* no optimization, because we don't have a free register */
                 op.type = NOOP;
                 if (insn)
-                  cpu_error(4,val);  /* PC-relative ldc/stc out of range */
+                  cpu_error(4,val);  /* PC-relative ldr/str out of range */
               }
-              break;
+            }
+            break;
 
-            case PCLRT:
-              op.type = NOOP;  /* is handled here */
-              if (val < 0) {
-                /* use SUB instead of ADD */
-                if (insn)
-                  *insn ^= 0x00c00000;
+          case PCLCP:
+            if (val<0x400 && val>-0x400) {
+              op.type = IMCP2;  /* handle as normal #+/-Imm10>>2 */
+              if (val < 0)
                 val = -val;
-              }
-              if ((val = rotated_immediate(val)) != ROTFAIL) {
-                if (insn)
-                  *insn |= val;
-              }
-              else if (opt_adr || am==AM_L) {
-                /* ADRL or optimize ADR automatically to ADRL */
-                uint32_t hi,lo;
-
-                isize += 4;
-                if ((lo = double_rot_immediate(val,&hi)) != ROTFAIL) {
-                  /* ADD/SUB Rd,PC,#hi8rotated */
-                  /* ADD/SUB Rd,Rd,#lo8rotated */
-                  if (insn) {
-                    *(insn+1) = *insn & ~0xf0000;
-                    *(insn+1) |= (*insn&0xf000) << 4;
-                    *insn++ |= hi;
-                    *insn |= lo;
-                  }
-                }
-                else if (insn)
-                  cpu_error(5,(uint32_t)val); /* Cannot make rot.immed.*/
-              }
-              else if (insn)
-                cpu_error(5,(uint32_t)val);  /* Cannot make rot.immed.*/
-              break;
-
-            default:
-              ierror(0);
-          }
-        }
-        else {
-          /* symbol is in a different section or externally declared */
-          switch (op.type) {
-            case BRA24:
-              val -= ARM_PREFETCH;
-              if (db)
-                add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                                     arm_be_mode?8:0,24,0,0x3fffffc);
-              break;
-            case PCL12:
-              op.type = IMUD2;
-              if (db) {
-                if (val<0x1000 && val>-0x1000) {
-                  add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                                       arm_be_mode?20:0,12,0,0x1fff);
-                  base = NULL;  /* don't add another REL_ABS below */
-                }
-                else
-                  cpu_error(22); /* operation not allowed on external symbols */
-              }
-              break;
-            case PCLCP:
-              if (db)
-                cpu_error(22); /* operation not allowed on external symbols */
-              break;
-            case PCLRT:
+              else
+                op.flags |= OFL_UP;
+              base = NULL;  /* no more checks */
+            }
+            else {
+              /* no optimization, because we don't have a free register */
               op.type = NOOP;
-              if (am==AM_L && val==0) {  /* ADRL */
-                isize += 4;  /* always reserve two ADD instructions */
-                if (insn!=NULL && db!=NULL) {
+              if (insn)
+                cpu_error(4,val);  /* PC-relative ldc/stc out of range */
+            }
+            break;
+
+          case PCLRT:
+            op.type = NOOP;  /* is handled here */
+            if (val < 0) {
+              /* use SUB instead of ADD */
+              if (insn)
+                *insn ^= 0x00c00000;
+              val = -val;
+            }
+            if ((val = rotated_immediate(val)) != ROTFAIL) {
+              if (insn)
+                *insn |= val;
+            }
+            else if (opt_adr || am==AM_L) {
+              /* ADRL or optimize ADR automatically to ADRL */
+              uint32_t hi,lo;
+
+              isize += 4;
+              if ((lo = double_rot_immediate(val,&hi)) != ROTFAIL) {
+                /* ADD/SUB Rd,PC,#hi8rotated */
+                /* ADD/SUB Rd,Rd,#lo8rotated */
+                if (insn) {
                   *(insn+1) = *insn & ~0xf0000;
                   *(insn+1) |= (*insn&0xf000) << 4;
-                  add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                                       arm_be_mode?24:0,8,0,0xff00);
-                  add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                                       arm_be_mode?32+24:32+0,8,0,0xff);
+                  *insn++ |= hi;
+                  *insn |= lo;
                 }
               }
-              else if (val == 0) {  /* ADR */
-                if (db)
-                  add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                                       arm_be_mode?24:0,8,0,0xff);
-              }
-              else if (db)
-                cpu_error(22); /* operation not allowed on external symbols */
-              break;
-            default:
-              ierror(0);
-          }
+              else if (insn)
+                cpu_error(5,(uint32_t)val); /* Cannot make rot.immed.*/
+            }
+            else if (insn)
+              cpu_error(5,(uint32_t)val);  /* Cannot make rot.immed.*/
+            break;
+
+          default:
+            ierror(0);
         }
       }
-      else if (insn) {
-        op.type = NOOP;
-        cpu_error(2);  /* label from current section required */
+      else if (btype == BASE_OK) {
+        /* symbol is in a different section or externally declared */
+        switch (op.type) {
+          case BRA24:
+            val -= ARM_PREFETCH;
+            if (db)
+              add_extnreloc_masked(&db->relocs,base,val,REL_PC,
+                                   arm_be_mode?8:0,24,0,0x3fffffc);
+            break;
+          case PCL12:
+            op.type = IMUD2;
+            if (db) {
+              if (val<0x1000 && val>-0x1000) {
+                add_extnreloc_masked(&db->relocs,base,val,REL_PC,
+                                     arm_be_mode?20:0,12,0,0x1fff);
+                base = NULL;  /* don't add another REL_ABS below */
+              }
+              else
+                cpu_error(22); /* operation not allowed on external symbols */
+            }
+            break;
+          case PCLCP:
+            if (db)
+              cpu_error(22); /* operation not allowed on external symbols */
+            break;
+          case PCLRT:
+            op.type = NOOP;
+            if (am==AM_L && val==0) {  /* ADRL */
+              isize += 4;  /* always reserve two ADD instructions */
+              if (insn!=NULL && db!=NULL) {
+                *(insn+1) = *insn & ~0xf0000;
+                *(insn+1) |= (*insn&0xf000) << 4;
+                add_extnreloc_masked(&db->relocs,base,val,REL_PC,
+                                     arm_be_mode?24:0,8,0,0xff00);
+                add_extnreloc_masked(&db->relocs,base,val,REL_PC,
+                                     arm_be_mode?32+24:32+0,8,0,0xff);
+              }
+            }
+            else if (val == 0) {  /* ADR */
+              if (db)
+                add_extnreloc_masked(&db->relocs,base,val,REL_PC,
+                                     arm_be_mode?24:0,8,0,0xff);
+            }
+            else if (db)
+              cpu_error(22); /* operation not allowed on external symbols */
+            break;
+          default:
+            ierror(0);
+        }
       }
+      else if (db)
+        cpu_error(22); /* operation not allowed on external symbols */
     }
 
     else if (op.type == IMROT) {

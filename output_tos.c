@@ -1,10 +1,10 @@
 /* output_tos.c Atari TOS executable output driver for vasm */
-/* (c) in 2009-2016 by Frank Wille */
+/* (c) in 2009-2016,2020 by Frank Wille */
 
 #include "vasm.h"
 #include "output_tos.h"
 #if defined(OUTTOS) && defined(VASM_CPU_M68K)
-static char *copyright="vasm tos output module 1.0a (c) 2009-2016 Frank Wille";
+static char *copyright="vasm tos output module 1.1 (c) 2009-2016,2020 Frank Wille";
 int tos_hisoft_dri = 1;
 
 static int tosflags,textbasedsyms;
@@ -17,40 +17,24 @@ static utaddr sdabase,lastoffs;
 #define SECT_ALIGN 2  /* TOS sections have to be aligned to 16 bits */
 
 
-static int get_sec_type(section *s)
-/* scan section attributes for type, 0=text, 1=data, 2=bss */
-{
-  char *a = s->attr;
-
-  while (*a) {
-    switch (*a++) {
-      case 'c':
-        return _TEXT;
-      case 'd':
-        return _DATA;
-      case 'u':
-        return _BSS;
-    }
-  }
-  output_error(3,s->attr);  /* section attributes not supported */
-  return 0;
-}
-
-
 static int tos_initwrite(section *sec,symbol *sym)
 {
   int nsyms = 0;
   int i;
 
   /* find exactly one .text, .data and .bss section for a.out */
-  sections[_TEXT] = sections[_DATA] = sections[_BSS] = NULL;
-  secsize[_TEXT] = secsize[_DATA] = secsize[_BSS] = 0;
+  sections[S_TEXT] = sections[S_DATA] = sections[S_BSS] = NULL;
+  secsize[S_TEXT] = secsize[S_DATA] = secsize[S_BSS] = 0;
 
   for (; sec; sec=sec->next) {
     /* section size is assumed to be in in (sec->pc - sec->org), otherwise
        we would have to calculate it from the atoms and store it there */
     if ((sec->pc - sec->org) > 0 || (sec->flags & HAS_SYMBOLS)) {
       i = get_sec_type(sec);
+      if (i<S_TEXT || i>S_BSS) {
+        output_error(3,sec->attr);  /* section attributes not supported */
+        i = S_TEXT;
+      }
       if (!sections[i]) {
         sections[i] = sec;
         secsize[i] = (get_sec_size(sec) + SECT_ALIGN - 1) /
@@ -63,12 +47,12 @@ static int tos_initwrite(section *sec,symbol *sym)
   }
 
   max_relocs_per_atom = 1;
-  secoffs[_TEXT] = 0;
-  secoffs[_DATA] = secsize[_TEXT] + balign(secsize[_TEXT],SECT_ALIGN);
-  secoffs[_BSS] = secoffs[_DATA] + secsize[_DATA] +
-                  balign(secsize[_DATA],SECT_ALIGN);
+  secoffs[S_TEXT] = 0;
+  secoffs[S_DATA] = secsize[S_TEXT] + balign(secsize[S_TEXT],SECT_ALIGN);
+  secoffs[S_BSS] = secoffs[S_DATA] + secsize[S_DATA] +
+                  balign(secsize[S_DATA],SECT_ALIGN);
   /* define small data base as .data+32768 @@@FIXME! */
-  sdabase = secoffs[_DATA] + 0x8000;
+  sdabase = secoffs[S_DATA] + 0x8000;
 
   /* count symbols */
   for (; sym; sym=sym->next) {
@@ -349,14 +333,14 @@ static void write_output(FILE *f,section *sec,symbol *sym)
   int nsyms = tos_initwrite(sec,sym);
   int nrelocs = 0;
 
-  tos_header(f,secsize[_TEXT],secsize[_DATA],secsize[_BSS],
+  tos_header(f,secsize[S_TEXT],secsize[S_DATA],secsize[S_BSS],
              nsyms*sizeof(struct DRIsym),tosflags);
-  tos_writesection(f,sections[_TEXT],SECT_ALIGN);
-  tos_writesection(f,sections[_DATA],SECT_ALIGN);
+  tos_writesection(f,sections[S_TEXT],SECT_ALIGN);
+  tos_writesection(f,sections[S_DATA],SECT_ALIGN);
   if (nsyms)
     tos_symboltable(f,sym);
-  nrelocs += tos_writerelocs(f,sections[_TEXT]);
-  nrelocs += tos_writerelocs(f,sections[_DATA]);
+  nrelocs += tos_writerelocs(f,sections[S_TEXT]);
+  nrelocs += tos_writerelocs(f,sections[S_DATA]);
   if (nrelocs)
     fw8(f,0);
   else
@@ -384,6 +368,8 @@ int init_output_tos(char **cp,void (**wo)(FILE *,section *,symbol *),
   *cp = copyright;
   *wo = write_output;
   *oa = output_args;
+  unnamed_sections = 1;  /* output format doesn't support named sections */
+  secname_attr = 1;
   return 1;
 }
 

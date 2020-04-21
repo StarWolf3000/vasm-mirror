@@ -1,6 +1,61 @@
 vasm history
 =============
 
+- 1.8h (18.04.20)
+o Reworked absolute ORG sections.
+o -pic no longer reports references to undefined symbols.
+o New option -pad=<value> can be used to define a different padding value
+  than zero for alignments and for filling gaps between absolute sections.
+o Fixed alignment directives. Now also alignments which are not a power
+  of two are allowed (but probably not supported by all object file
+  formats).
+o m68k: New optimizations for BAsm compatibility: MOVE.L #n,Dn is
+  transformed into a combination of MOVEQ and SWAP, ADD.W or NEG.W.
+o m68k: New optimization flag for size, even when speed suffers. It will
+  optimize for example MOVE.L #x,Dn to MOVEQ #x>>n,Dn + LSL.W #n,Dn.
+o m68k: Fix some situations where an absolute label from an ORG section
+  should be treated as a simple absolute value (e.g. MOVEQ).
+o m68k: New option -nodpc to disallow direct encoding of absolute PC
+  displacements (also set automatically with -devpac compatibility).
+o m68k: Added internal symbols _MOVEMBYTES and _MOVEMREGS for BAsm
+  compatibility.
+o 6502: New directive ZPAGE, to declare a relocatable symbol as being
+  located in the zero-page, so vasm will use ZP-addressing, even on
+  external symbols.
+o 6502: Allow 32-bit data directives.
+o 6502: New option -bbcade for compatibility with the BBC ADE assembler,
+  contributed by Garry Marshall.
+o z80: New option -intel-syntax switches to the old Intel 8080 syntax.
+  Contributed by Mark Jones.
+o std-syntax: .org within a section allows an optional argument to define
+  a fill-value.
+o mot-syntax: A SECTION directive with a single argument is interpreted
+  as section type when the selected output format does not support
+  section names (e.g. aout, tos, xfile). Otherwise the type defaults
+  to code, using the given argument as section name.
+o mot-syntax: register list directives (REG, EQURL) also accept a
+  previously defined register list symbol.
+o mot-syntax: Fix segfault/out-of-memory when a macro-argument enclosed in
+  < ... > is missing the '>'.
+o mot-syntax: Allow comment-character directly attached to a macro directive.
+o mot-syntax: RORG allows an optional argument to define a fill-value.
+o mot-syntax: Only allow valid identifiers for macro names.
+o mot-syntax: Fixed string expressions as macro arguments.
+o mot-syntax: New directives db, dw and dl for ArgAsm, BAsm, HX68, Macro68,
+  MaxonAsm, OMA, ProAsm, Cape compatibility. They do not exist in PhxAss-
+  or Devpac-compatibility mode.
+o oldstyle-syntax: The addend in the abyte directive is now a modifier,
+  where the special symbol ._ works as a placeholder for each expression
+  from the line.
+o oldstyle-syntax: macro definitions and repetitions with -dotdir were
+  not correctly recognized.
+o oldstyle-syntax: Fixed string expressions as macro arguments.
+o oldstyle-syntax: New directives fi and str, contributed by Garry Marshall.
+o oldstyle-syntax: New directives dsect and dend to implement offset-sections.
+o madmac-syntax: Fixed string expressions as macro arguments.
+o bin-output: option -atari-com may be used to output Atari 6502 COM files.
+o output-hunk: Alignment directives behind DX are allowed.
+
 - 1.8g (04.10.19)
 o Do not print informational messages when generating dependencies.
 o New option -depfile to specify a file name for the dependency output.

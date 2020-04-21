@@ -1,5 +1,5 @@
 /* output_aout.h header file for a.out objects */
-/* (c) in 2008 by Frank Wille */
+/* (c) in 2008,2020 by Frank Wille */
 
 #include "stabs.h"
 
@@ -86,9 +86,6 @@ struct relocation_info {
 
 #define STRHTABSIZE 0x10000
 #define SYMHTABSIZE 0x10000
-#define _TEXT 0
-#define _DATA 1
-#define _BSS 2
 
 struct StrTabNode {
   struct node n;

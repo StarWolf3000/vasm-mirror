@@ -1,6 +1,6 @@
 /*
 ** cpu.c PowerPC cpu-description file
-** (c) in 2002-2017 by Frank Wille
+** (c) in 2002-2019 by Frank Wille
 */
 
 #include "vasm.h"
@@ -12,7 +12,7 @@ mnemonic mnemonics[] = {
 
 int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright="vasm PowerPC cpu backend 3.0 (c) 2002-2017 Frank Wille";
+char *cpu_copyright="vasm PowerPC cpu backend 3.1 (c) 2002-2019 Frank Wille";
 char *cpuname = "PowerPC";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -463,6 +463,12 @@ static taddr make_reloc(int reloctype,operand *op,section *sec,
 illreloc:
       general_error(38);  /* illegal relocation */
     }
+  }
+  else {
+     if (reloctype == REL_PC) {
+       /* a relative reference to an absolute label */
+       return val-pc;
+     }
   }
 
   return val;

@@ -4,7 +4,7 @@ M68k and ColdFire families of CPUs, which is available with the extension
 
 @section Legal
 
-    This module is written in 2002-2019 by Frank Wille and
+    This module is written in 2002-2020 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -38,6 +38,7 @@ This syntax module provides the following additional options:
   @item Enable dots within identifiers (see @option{-ldots}).
   @item Up to 35 macro arguments.
   @item Do not use @code{NOP} instructions when aligning code.
+  @item Directives unknown to Devpac are no longer supported.
 @end itemize
 
 @item -ldots
@@ -51,8 +52,6 @@ This syntax module provides the following additional options:
  PhxAss-compatibility mode. Only directives known to PhxAss are recognized.
  Enables the following features:
 @itemize @minus
-  @item @code{section <name>} starts a code section named @code{<name>}
-        instead of a section which also has the type @code{<name>}.
   @item Enable escape codes handling in strings (see @option{-esc}).
   @item Macro names are treated as case-insensitive.
   @item Up to 35 macro arguments.
@@ -60,6 +59,7 @@ This syntax module provides the following additional options:
   @item Defines the symbol @code{_PHXASS_} with value 2 (to differentiate
         from the real PhxAss with value 1).
   @item When no output file name is given, construct it from the input name.
+  @item Directives unknown to PhxAss are no longer supported.
 @end itemize
 
 @item -spaces
@@ -230,6 +230,10 @@ CPU- and output-module support them):
 @item data_f
       Equivalent to @code{section data_f,data,fast}.
 
+@item db <exp1>[,<exp2>,"<string1>",'<string2>'...]
+      Equivalent to @code{dc.b} for ArgAsm, BAsm, HX68, Macro68, ProAsm, etc.
+      compatibility. Does not exist in PhxAss- or Devpac-compatiblity mode.
+
 @item dc.b <exp1>[,<exp2>,"<string1>",'<string2>'...]
       Assign the integer or string constant operands into successive
       bytes of memory in the current section. Any combination of integer
@@ -286,6 +290,10 @@ CPU- and output-module support them):
       Insert <exp> zero or <fill> 96-bit words into the current section.
       <fill> might also be an IEEE extended precision constant.
 
+@item dl <exp1>[,<exp2>...]
+      Equivalent to @code{dc.l} for ArgAsm, BAsm, HX68, Macro68, ProAsm, etc.
+      compatibility. Does not exist in PhxAss- or Devpac-compatiblity mode.
+
 @item dr.b <exp1>[,<exp2>...]
       Calculates <expN> - <current pc value> and stores it into successive
       bytes of memory in the current section.
@@ -321,6 +329,10 @@ CPU- and output-module support them):
 
 @item dseg
       Equivalent to @code{section data,data}.
+
+@item dw <exp1>[,<exp2>...]
+      Equivalent to @code{dc.w} for ArgAsm, BAsm, HX68, Macro68, ProAsm, etc.
+      compatibility. Does not exist in PhxAss- or Devpac-compatiblity mode.
 
 @item dx.b <exp>
       Tries to allocate space in the DataBss portion of a code or
@@ -602,7 +614,7 @@ CPU- and output-module support them):
 
 @item odd
       Aligns to an odd address. Equivalent to @code{cnop 1,2}.
-      Bugs: Note that this is not a real @code{odd} instruction, as it
+      Bugs: Note that this is not a real @code{odd} directive, as it
       wastes two bytes when the address is already odd.
 
 @item offset [<expression>]
@@ -659,10 +671,11 @@ CPU- and output-module support them):
       of the inner repeat loop, starting with 0. @code{REPTN} is -1 outside
       of any repeat block.
 
-@item rorg <expression>
+@item rorg <expression>[,<fill>]
       Sets the program counter <expression> bytes behind the start of the
       current section. The new program counter must not be smaller than the
-      current one. The space will be padded with zeros.
+      current one. The space will be padded by the optional <fill> value,
+      or zero.
 
 @item <label> rs.<size> <expression>
       Works like the @code{so} directive, with the only difference that
@@ -674,13 +687,15 @@ CPU- and output-module support them):
 @item rsset
       Equivalent to @code{setso}, but the symbol manipulated is @code{__RS}.
 
-@item section [<name>,]<sec_type>[,<mem_type>]
+@item section <name>[,<sec_type>][,<mem_type>]
       Starts a new section named @code{<name>} or reactivates an old one.
       @code{<sec_type>} defines the section type and may be @code{code},
       @code{text} (same as @code{code}), @code{data} or @code{bss}.
-      When the output format is "tos", then a single argument will be
-      interpreted as section type. Otherwise this argument is used as
-      section name and the type defaults to @code{code}.
+      If the selected output format does not support section names
+      (e.g. "aout", "tos", "xfile") then a missing @code{<sec_type>}
+      argument interprets the first argument, @code{<name>}, as section
+      type instead. Otherwise a missing @code{<sec_type>} defaults to
+      a @code{code} section with the given name.
       When @code{<mem_type>} is given it defines a 32-bit memory attribute,
       which specifies where to load the section.
       @code{<mem_type>} is either a numerical constant or one of the
@@ -738,7 +753,7 @@ CPU- and output-module support them):
 
 @item xref <symbol>[,<symbol>...]
       Flag <symbol> as externally defined, which means it has to
-      be important from another module in the linking process.
+      be imported from another module into the linking process.
       See also @code{public}.
 
 @end table
@@ -751,6 +766,9 @@ CPU- and output-module support them):
 
 @item @code{odd} directive wastes two bytes, when address is already odd.
 @item Some listing file directives have no effect.
+@item Macro parameter replacement also takes place when a line is
+      commented out. This is a problem for special codes which modify the
+      internal state, like \@@@@, \@@!, \@@?, \+, \-.
 
 @end itemize
 

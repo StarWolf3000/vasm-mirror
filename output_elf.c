@@ -1,11 +1,11 @@
 /* output_elf.c ELF output driver for vasm */
-/* (c) in 2002-2016 by Frank Wille */
+/* (c) in 2002-2016,2020 by Frank Wille */
 
 #include "vasm.h"
 #include "output_elf.h"
 #include "stabs.h"
 #if ELFCPU && defined(OUTELF)
-static char *copyright="vasm ELF output module 2.6 (c) 2002-2016 Frank Wille";
+static char *copyright="vasm ELF output module 2.7 (c) 2002-2016,2020 Frank Wille";
 
 static int keep_empty_sects;
 
@@ -236,22 +236,18 @@ static void init_ident(unsigned char *id,uint8_t class)
 }
 
 
-static uint32_t get_sec_type(section *s)
+static uint32_t elf_sec_type(section *s)
 /* scan section attributes for type */
 {
-  char *a = s->attr;
-
   if (!strncmp(s->name,".note",5))
     return SHT_NOTE;
 
-  while (*a) {
-    switch (*a++) {
-      case 'c':
-      case 'd':
-        return SHT_PROGBITS;
-      case 'u':
-        return SHT_NOBITS;
-    }
+  switch (get_sec_type(s)) {
+    case S_TEXT:
+    case S_DATA:
+      return SHT_PROGBITS;
+    case S_BSS:
+      return SHT_NOBITS;
   }
 #if 0
   output_error(3,attr);  /* section attributes not supported */
@@ -461,7 +457,7 @@ static utaddr prog_sec_hdrs(section *sec,utaddr soffset,
   for (secp=sec; secp; secp=secp->next) {
     if (keep_empty_sects ||
         get_sec_size(secp)!=0 || (secp->flags & HAS_SYMBOLS)) {
-      uint32_t type = get_sec_type(secp);
+      uint32_t type = elf_sec_type(secp);
 
       /* add section base symbol */
       newsym(NULL,0,0,STB_LOCAL,STT_SECTION,shdrindex);
@@ -615,7 +611,7 @@ static void write_section_data(FILE *f,section *sec)
   section *secp;
 
   for (secp=sec; secp; secp=secp->next) {
-    if (secp->idx && get_sec_type(secp)!=SHT_NOBITS) {
+    if (secp->idx && elf_sec_type(secp)!=SHT_NOBITS) {
       atom *a;
       utaddr pc=0,npc;
 

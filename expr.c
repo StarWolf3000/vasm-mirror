@@ -1,5 +1,5 @@
 /* expr.c expression handling for vasm */
-/* (c) in 2002-2019 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2020 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -51,17 +51,22 @@ expr *copy_tree(expr *old)
   return new;
 }
 
-expr *curpc_expr(void)
+expr *new_sym_expr(symbol *sym)
 {
   expr *new=new_expr();
+  new->type=SYM;
+  new->c.sym=sym;
+  return new;
+}
+
+expr *curpc_expr(void)
+{
   if(!cpc){
     cpc=new_import(" *current pc dummy*");
     cpc->type=LABSYM;
     cpc->flags|=VASMINTERN|PROTECTED;
   }
-  new->type=SYM;
-  new->c.sym=cpc;
-  return new;
+  return new_sym_expr(cpc);
 }
 
 static void update_curpc(expr *exp,section *sec,taddr pc)
@@ -98,12 +103,7 @@ static expr *primary_expr(void)
     if(!sym)
       sym=new_import(name);
     sym->flags|=USED;
-    if (sym->type!=EXPRESSION){
-      new=new_expr();
-      new->type=SYM;
-      new->c.sym=sym;
-    }else
-      new=copy_tree(sym->expr);
+    new=(sym->type!=EXPRESSION)?new_sym_expr(sym):copy_tree(sym->expr);
     myfree(name);
     return new;
   }
@@ -191,9 +191,7 @@ static expr *primary_expr(void)
     s++;
     EXPSKIP();
     if(make_tmp_lab){
-      new=new_expr();
-      new->type=SYM;
-      new->c.sym=new_tmplabel(0);
+      new=new_sym_expr(new_tmplabel(0));
       add_atom(0,new_label_atom(new->c.sym));
     }else new=curpc_expr();
     return new;
@@ -214,13 +212,7 @@ static expr *primary_expr(void)
       sym=new_import(name);
     }
     sym->flags|=USED;
-    if (sym->type!=EXPRESSION){
-      new=new_expr();
-      new->type=SYM;
-      new->c.sym=sym;
-    }
-    else
-      new=copy_tree(sym->expr);
+    new=(sym->type!=EXPRESSION)?new_sym_expr(sym):copy_tree(sym->expr);
     myfree(name);
     return new;
   }
@@ -607,6 +599,26 @@ int type_of_expr(expr *tree)
   return rtype>ltype?rtype:ltype;
 }
 
+/* Find pointer to first symbol occurence inside expression tree */
+expr **find_sym_expr(expr **ptree,char *name)
+{
+  expr **psym;
+
+  if(*ptree==NULL)
+    return NULL;
+  if((*ptree)->left!=NULL &&
+     (*ptree)->left->type==SYM&&!strcmp((*ptree)->left->c.sym->name,name))
+    return &(*ptree)->left;
+  if(psym=find_sym_expr(&(*ptree)->left,name))
+    return psym;
+  if((*ptree)->right!=NULL &&
+     (*ptree)->right->type==SYM&&!strcmp((*ptree)->right->c.sym->name,name))
+    return &(*ptree)->right;
+  if(psym=find_sym_expr(&(*ptree)->right,name))
+    return psym;
+  return NULL;
+}
+
 /* Try to evaluate expression as far as possible. Subexpressions
    only containing constants or absolute symbols are simplified. */
 void simplify_expr(expr *tree)
@@ -926,6 +938,19 @@ void simplify_expr(expr *tree)
   }
 }
 
+static void add_dep(section *src, section *dest)
+{
+  if(num_secs&&src!=NULL&&src!=dest){
+    if(debug&&(!dest->deps||!BTST(dest->deps,src->idx)))
+      printf("sec %s might depend on %s\n",src->name,dest->name);
+    if(!dest->deps){
+      dest->deps=mymalloc(BVSIZE(num_secs));
+      memset(dest->deps,0,BVSIZE(num_secs));
+    }
+    BSET(dest->deps, src->idx);
+  }
+}
+
 /* Evaluate an expression using current values of all symbols.
    Result is written to *result. The return value specifies
    whether the result is constant (i.e. only depending on
@@ -955,20 +980,24 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
         /* l2-l1 is constant when both have a valid symbol-base, and both
            symbols are LABSYMs from the same section, e.g. (sym1+x)-(sym2-y) */
         cnst=1;
+	add_dep(sec,lsym->sec);
       }else if(lsym!=NULL&&(rsym->sec==sec&&(EXTREF(lsym)||LOCREF(lsym)))){
         /* Difference between symbols from different section or between an
            external symbol and a symbol from the current section can be
            represented by a REL_PC, so we calculate the addend. */
-        if((rsym->flags&ABSLABEL)&&(lsym->flags&ABSLABEL))
+        if((rsym->flags&ABSLABEL)&&(lsym->flags&ABSLABEL)){
+	  add_dep(sec, lsym->sec);
+	  add_dep(sec, rsym->sec);
           cnst=1;  /* constant, when labels are from two ORG sections */
-        else{
+	}else{
           /* prepare a value which works with REL_PC */
           val=(pc-rval+lval-(lsym->sec?lsym->sec->org:0));
           break;
         }
       }else if(lsym==NULL&&(rsym->flags&ABSLABEL))
         /* const-label is valid and yields a const in absolute ORG sections */
-        cnst=1;
+	  add_dep(sec, rsym->sec);
+	  cnst=1;
     }
     val=(lval-rval);
     break;
@@ -1047,16 +1076,19 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     val=BOOLEAN(lval==rval);
     break;
   case SYM:
-    if(tree->c.sym->type==EXPRESSION){
-      if(tree->c.sym->flags&INEVAL)
-        general_error(18,tree->c.sym->name);
-      tree->c.sym->flags|=INEVAL;
-      cnst=eval_expr(tree->c.sym->expr,&val,sec,pc);
-      tree->c.sym->flags&=~INEVAL;
-    }else if(LOCREF(tree->c.sym)){
+    lsym=tree->c.sym;
+    if(lsym->type==EXPRESSION){
+      if(lsym->flags&INEVAL)
+        general_error(18,lsym->name);
+      lsym->flags|=INEVAL;
+      cnst=eval_expr(lsym->expr,&val,sec,pc);
+      lsym->flags&=~INEVAL;
+    }else if(LOCREF(lsym)){
       update_curpc(tree,sec,pc);
-      val=tree->c.sym->pc;
-      cnst=tree->c.sym->sec==NULL?0:(tree->c.sym->sec->flags&UNALLOCATED)!=0;
+      val=lsym->pc;
+      cnst=lsym->sec==NULL?0:(lsym->sec->flags&UNALLOCATED)!=0;
+      if(lsym->flags&ABSLABEL) cnst=1;
+      if(cnst) add_dep(sec,lsym->sec);
     }else{
       /* IMPORT */
       cnst=0;
@@ -1306,55 +1338,6 @@ void print_expr(FILE *f,expr *p)
     fprintf(f,"complex expression");
 }
 
-/* return a single base symbol from an absolute ORG section, when present */
-static int find_abs_base(expr *tree,symbol **base)
-{
-  if(tree==NULL)
-    return 1;
-  if(tree->type==SYM){
-    if(tree->c.sym->type==EXPRESSION){
-      int ok;
-      if(tree->c.sym->flags&INEVAL)
-        return 0;
-      tree->c.sym->flags|=INEVAL;
-      ok=find_abs_base(tree->c.sym->expr,base);
-      tree->c.sym->flags&=~INEVAL;
-      return ok;
-    }else if(LOCREF(tree->c.sym)){
-      if(tree->c.sym->flags&ABSLABEL){
-        *base=tree->c.sym;
-        return 1;
-      }
-    }
-#if 0 /* There is no reason to forbid that? Especially not in RORG sections,
-         which are embedded in a normal relocatable, linkable code section. */
-    else{
-      if(current_section!=NULL&&(current_section->flags&ABSOLUTE)){
-        /* IMPORT in ORG section, will be flagged as BASE_ILLEGAL */
-        *base=tree->c.sym;
-        return 1;
-      }
-    }
-#endif
-    return 0;
-  }
-  if(!find_abs_base(tree->left,base))
-    return 0;
-  if(*base!=NULL){
-    symbol *tstbase=NULL;
-    if(!find_abs_base(tree->right,&tstbase))
-      return 0;
-    if(tstbase!=NULL){
-      *base=NULL;
-      return 1;
-    }
-  }else{
-    if(!find_abs_base(tree->right,base))
-      return 0;
-  }
-  return 1;
-}
-
 static int _find_base(expr *p,symbol **base,section *sec,taddr pc)
 {
   if(p->type==SYM){
@@ -1401,15 +1384,8 @@ int find_base(expr *p,symbol **base,section *sec,taddr pc)
   if(ret=EXT_FIND_BASE(base,p,sec,pc))
     return ret;
 #endif
-  if(base){
+  if(base)
     *base=NULL;
-    if(find_abs_base(p,base)){
-        /* a base label from an absolute ORG section */
-      if(*base!=NULL)
-        return EXTREF(*base)?BASE_ILLEGAL:BASE_OK;
-      return BASE_NONE;
-    }
-  }
   return _find_base(p,base,sec,pc);
 }
 

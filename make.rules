@@ -33,7 +33,7 @@ $(PRE)vasm.o: vasm.c vasm.h symbol.h osdep.h stabs.h dwarf.h expr.h supp.h atom.
 $(PRE)atom.o: atom.c vasm.h symbol.h expr.h supp.h reloc.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h
 	$(CC) $(INCLUDES) $(COPTS) atom.c $(CCOUT)$(PRE)atom.o
 
-$(PRE)expr.o: expr.c vasm.h symbol.h expr.h supp.h syntax/$(SYNTAX)/syntax.h hugeint.h tfloat.h
+$(PRE)expr.o: expr.c vasm.h symbol.h expr.h supp.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h hugeint.h tfloat.h
 	$(CC) $(INCLUDES) $(COPTS) expr.c $(CCOUT)$(PRE)expr.o
 
 $(PRE)cond.o: cond.c vasm.h cond.h syntax/$(SYNTAX)/syntax.h

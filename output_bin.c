@@ -1,13 +1,14 @@
 /* output_bin.c binary output driver for vasm */
-/* (c) in 2002-2009,2013,2015,2017 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2009,2013-2019 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
 #ifdef OUTBIN
-static char *copyright="vasm binary output module 1.8a (c) 2002-2009,2013,2015,2017 Volker Barthelmann";
+static char *copyright="vasm binary output module 1.9a (c) 2002-2009,2013-2020 Volker Barthelmann";
 
 #define BINFMT_RAW      0
 #define BINFMT_CBMPRG   1   /* Commodore VIC-20/C-64 PRG format */
+#define BINFMT_ATARICOM 2   /* Atari 800 DOS COM format */
 static int binfmt = BINFMT_RAW;
 
 
@@ -64,17 +65,37 @@ static void write_output(FILE *f,section *sec,symbol *sym)
     fw8(f,(sec->org>>8)&0xff);
   }
 
+  if (binfmt == BINFMT_ATARICOM) {
+    /* ATARI COM header: $FFFF */
+    fw8(f,0xff);
+    fw8(f,0xff);
+  }
+
   for (slp=seclist; nsecs>0; nsecs--) {
     s = *slp++;
-    if (s!=seclist[0] && ULLTADDR(s->org)>pc) {
-      /* fill gap between sections with zeros */
-      for (; pc<ULLTADDR(s->org); pc++)
-        fw8(f,0);
-    }
-    else
-      pc = ULLTADDR(s->org);
 
-    for (p=s->first; p; p=p->next) {
+    if (binfmt==BINFMT_ATARICOM) {
+      /* for each section start with load address 
+       * 00: LSB of load address
+       * 01: MSB of load address
+       */
+      fw8(f,s->org&0xff);
+      fw8(f,(s->org>>8)&0xff);
+  
+      /* for each section followed by last byte address
+       * 00: LSB of last byte address
+       * 01: MSB of last byte address
+       */
+      fw8(f,(s->pc-1)&0xff);
+      fw8(f,((s->pc-1)>>8)&0xff);
+    }
+
+    if (s!=seclist[0] && ULLTADDR(s->org)>pc && binfmt!=BINFMT_ATARICOM) {
+      /* fill gap between sections with pad-bytes */
+      fwalignpattern(f,ULLTADDR(s->org)-pc,s->pad,s->padbytes);
+    }
+
+    for (p=s->first,pc=ULLTADDR(s->org); p; p=p->next) {
       npc = ULLTADDR(fwpcalign(f,p,s,pc));
       if (p->type == DATA) {
         for (i=0; i<p->content.db->size; i++)
@@ -86,7 +107,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
       pc = npc + atom_size(p,s,npc);
     }
   }
-  free(seclist);
+  myfree(seclist);
 }
 
 
@@ -94,6 +115,9 @@ static int output_args(char *p)
 {
   if (!strcmp(p,"-cbm-prg")) {
     binfmt = BINFMT_CBMPRG;
+    return 1;
+  } else if (!strcmp(p,"-atari-com")) {
+    binfmt = BINFMT_ATARICOM;
     return 1;
   }
   return 0;

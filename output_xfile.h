@@ -1,10 +1,5 @@
 /* output_xfile.h header file for the Sharp X68000 Xfile format */
-/* (c) in 2018 by Frank Wille */
-
-/* section index */
-#define _TEXT 0
-#define _DATA 1
-#define _BSS 2
+/* (c) in 2018,2020 by Frank Wille */
 
 
 /* Xfile program header, big endian */

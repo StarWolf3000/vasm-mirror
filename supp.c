@@ -1,5 +1,5 @@
 /* supp.c miscellaneous support routines */
-/* (c) in 2008-2018 by Frank Wille */
+/* (c) in 2008-2020 by Frank Wille */
 
 #include <math.h>
 #include "vasm.h"
@@ -447,9 +447,39 @@ void fwalign(FILE *f,taddr n,taddr align)
 }
 
 
-taddr fwpcalign(FILE *f,atom *a,section *sec,taddr pc)
+int fwalignpattern(FILE *f,taddr n,uint8_t *pat,int patlen)
 {
   int align_warning = 0;
+
+  while (n % patlen) {
+    align_warning = 1;
+    fw8(f,0);
+    n--;
+  }
+
+  /* write alignment pattern */
+  while (n >= patlen) {
+    if (!fwrite(pat,patlen,1,f))
+      output_error(2);  /* write error */
+    n -= patlen;
+  }
+
+  while (n--) {
+    align_warning = 1;
+    fw8(f,0);
+  }
+  
+#if 0
+  if (align_warning)
+    output_error(9,sec->name,(unsigned long)n,(unsigned long)patlen,
+                 ULLTADDR(pc));
+#endif
+  return align_warning;
+}
+
+
+taddr fwpcalign(FILE *f,atom *a,section *sec,taddr pc)
+{
   taddr n = balign(pc,a->align);
   taddr patlen;
   uint8_t *pat;
@@ -469,32 +499,7 @@ taddr fwpcalign(FILE *f,atom *a,section *sec,taddr pc)
   }
 
   pc += n;
-
-  while (n % patlen) {
-    if (!align_warning) {
-      align_warning = 1;
-      /*output_error(9,sec->name,(unsigned long)n,(unsigned long)patlen,
-                   ULLTADDR(pc));*/
-    }
-    fw8(f,0);
-    n--;
-  }
-
-  /* write alignment pattern */
-  while (n >= patlen) {
-    if (!fwrite(pat,patlen,1,f))
-      output_error(2);  /* write error */
-    n -= patlen;
-  }
-
-  while (n--) {
-    if (!align_warning) {
-      align_warning = 1;
-      /*output_error(9,sec->name,(unsigned long)n,(unsigned long)patlen,
-                   ULLTADDR(pc));*/
-    }
-    fw8(f,0);
-  }
+  fwalignpattern(f,n,pat,patlen);
 
   return pc;
 }
@@ -595,7 +600,11 @@ const char *trim(const char *s)
 taddr balign(taddr addr,taddr a)
 /* return number of bytes required to achieve alignment */
 {
-  return a ? (((addr+a-1)&~(a-1)) - addr) : 0;
+  if (a) {
+    if (addr %= a)
+      return a - addr;
+  }
+  return 0;
 }
 
 
@@ -614,6 +623,20 @@ taddr pcalign(atom *a,taddr pc)
     if (n > a->content.sb->maxalignbytes)
       n = 0;
   return pc + n;
+}
+
+
+int make_padding(taddr val,uint8_t *pad,int maxlen)
+/* fill a padding array from a given padding value, return length in bytes */
+{
+  utaddr uval;
+  int len;
+
+  for (len=0,uval=(utaddr)val; uval!=0; uval>>=8,len++);
+  if (len > maxlen)
+    len = maxlen;
+  copy_cpu_taddr(pad,val,len);
+  return len;
 }
 
 
@@ -658,4 +681,25 @@ utaddr get_sec_size(section *sec)
   /* section size is assumed to be in in (sec->pc - sec->org), otherwise
      we would have to calculate it from the atoms and store it there */
   return sec ? (utaddr)sec->pc - (utaddr)sec->org : 0;
+}
+
+
+int get_sec_type(section *s)
+/* determine section type from its attributes */
+{
+  char *a = s->attr;
+
+  if (s->flags & ABSOLUTE)
+    return S_ABS;
+  while (*a) {
+    switch (*a++) {
+      case 'c':
+        return S_TEXT;
+      case 'd':
+        return S_DATA;
+      case 'u':
+        return S_BSS;
+    }
+  }
+  return S_MISS;  /* type is missing */
 }

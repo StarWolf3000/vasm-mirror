@@ -1,5 +1,5 @@
 /* expr.h expression handling for vasm */
-/* (c) in 2002-2015 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2020 by Volker Barthelmann and Frank Wille */
 
 #include "hugeint.h"
 
@@ -38,6 +38,7 @@ extern int unsigned_shift;
 expr *new_expr(void);
 expr *make_expr(int,expr *,expr *);
 expr *copy_tree(expr *);
+expr *new_sym_expr(symbol *);
 expr *curpc_expr(void);
 expr *parse_expr(char **);
 expr *parse_expr_tmplab(char **);
@@ -49,6 +50,7 @@ expr *huge_expr(thuge);
 expr *float_expr(tfloat);
 void free_expr(expr *);
 int type_of_expr(expr *);
+expr **find_sym_expr(expr **,char *);
 void simplify_expr(expr *);
 int eval_expr(expr *,taddr *,section *,taddr);
 int eval_expr_huge(expr *,thuge *);

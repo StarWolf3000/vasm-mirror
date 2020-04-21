@@ -1,5 +1,5 @@
 /* vasm.c  main module for vasm */
-/* (c) in 2002-2019 by Volker Barthelmann */
+/* (c) in 2002-2020 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,8 +10,8 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 1.8g"
-char *copyright = _VER " (c) in 2002-2019 Volker Barthelmann";
+#define _VER "vasm 1.8h"
+char *copyright = _VER " (c) in 2002-2020 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 #endif
@@ -43,6 +43,7 @@ unsigned long long taddrmask;
 taddr taddrmin,taddrmax;
 char emptystr[]="";
 char vasmsym_name[]="__VASM";
+int num_secs;
 
 static int produce_listing;
 static char **listtitles;
@@ -75,6 +76,7 @@ hashtable *mnemohash;
 static int dwarf;
 static int verbose=1,auto_import=1;
 static int fail_on_warning;
+static taddr sec_padding;
 static struct include_path *first_incpath;
 static struct source_file *first_source;
 
@@ -144,6 +146,56 @@ static void remove_unalloc_sects(void)
   last_section = prev;
 }
 
+/* convert reloffs-atom into one or more space-atoms */
+static void roffs_to_space(section *sec,atom *p)
+{
+  uint8_t padding[MAXPADBYTES];
+  taddr space,padbytes,n;
+  sblock *sb = NULL;
+
+  if (eval_expr(p->content.roffs->offset,&space,sec,sec->pc) &&
+      (p->content.roffs->fillval==NULL ||
+       eval_expr(p->content.roffs->fillval,&n,sec,sec->pc))) {
+    space = sec->org + space - sec->pc;
+
+    if (space >= 0) {
+      if (p->content.roffs->fillval == NULL) {
+        memcpy(padding,sec->pad,MAXPADBYTES);
+        padbytes = sec->padbytes;
+      }
+      else
+        padbytes = make_padding(n,padding,MAXPADBYTES);
+
+      if (space >= padbytes) {
+        n = balign(sec->pc,padbytes);  /* alignment is automatic */
+        space -= n;
+        sec->pc += n;  /* Important! Fix the PC for new alignment. */
+        sb = new_sblock(number_expr(space/padbytes),padbytes,0);
+        memcpy(sb->fill,padding,padbytes);
+        p->type = SPACE;
+        p->content.sb = sb;
+        p->align = padbytes;
+
+        space %= padbytes;
+        if (space > 0) {
+          /* fill the rest with zeros */
+          atom *a = new_space_atom(number_expr(space),1,0);
+          a->next = p->next;
+          p->next = a;
+        }
+      }
+      else {
+        p->type = SPACE;
+        p->content.sb = new_sblock(number_expr(space),1,0);
+      }
+    }
+    else
+      general_error(20);  /* rorg is lower than current pc */
+  }
+  else
+    general_error(30);  /* expression must be constant */
+}
+
 /* append a new stabs (nlist) symbol/debugging definition */
 static void new_stabdef(aoutnlist *nlist,section *sec)
 {
@@ -172,7 +224,19 @@ static void new_stabdef(aoutnlist *nlist,section *sec)
     first_nlist = last_nlist = new;
 }
 
-static void resolve_section(section *sec)
+/* emit internal debug info, triggered by a VASMDEBUG atom */
+void vasmdebug(const char *f,section *s,atom *a)
+{
+  if (a->next != NULL) {
+    a = a->next;
+    printf("%s: (%s+0x%llx) %2d:%lu(%u) ",
+           f,s->name,ULLTADDR(s->pc),a->type,(unsigned long)a->lastsize,a->changes);
+    print_atom(stdout,a);
+    putchar('\n');
+  }
+}
+
+static int resolve_section(section *sec)
 {
   taddr rorg_pc,org_pc;
   int fastphase=FASTOPTPHASE;
@@ -230,6 +294,8 @@ static void resolve_section(section *sec)
           label->pc=sec->pc;
         }
       }
+      else if(p->type==VASMDEBUG)
+        vasmdebug("resolve_section",sec,p);
       if(pass>fastphase&&!done&&p->type==INSTRUCTION){
         /* entered safe mode: optimize only one instruction every pass */
         sec->pc+=p->lastsize;
@@ -268,16 +334,46 @@ static void resolve_section(section *sec)
        became larger than in the previous pass. */
     if(extrapass) fastphase++;
   }while(errors==0&&!done);
+  return pass;
+}
+
+static void bvunite(bvtype *dest,bvtype *src,size_t len)
+{
+  len/=sizeof(bvtype);
+  for(;len>0;len--)
+    *dest++|=*src++;
 }
 
 static void resolve(void)
 {
   section *sec;
+  bvtype *todo;
+  int finished;
+
   final_pass=0;
   if(debug)
     printf("resolve()\n");
-  for(sec=first_section;sec;sec=sec->next)
-    resolve_section(sec);
+
+  for(num_secs=0, sec=first_section;sec;sec=sec->next)
+    sec->idx=num_secs++;
+
+  todo=mymalloc(BVSIZE(num_secs));
+  memset(todo,~(bvtype)0,BVSIZE(num_secs));
+
+  do{
+    finished=1;
+    for(sec=first_section;sec;sec=sec->next)
+      if(BTST(todo, sec->idx)){
+	int passes;
+	finished=0;
+	passes = resolve_section(sec);
+	BCLR(todo, sec->idx);
+	if(passes>1){
+	  if(sec->deps)
+	    bvunite(todo, sec->deps, BVSIZE(num_secs));
+	}
+      }
+  }while(!finished);
 }
 
 static void assemble(void)
@@ -378,22 +474,8 @@ static void assemble(void)
         p->content.db=db;
         p->type=DATA;
       }
-      else if(p->type==ROFFS){
-        sblock *sb;
-        taddr space;
-        if(eval_expr(p->content.roffs,&space,sec,sec->pc)){
-          space=sec->org+space-sec->pc;
-          if (space>=0){
-            sb=new_sblock(number_expr(space),1,0);
-            p->content.sb=sb;
-            p->type=SPACE;
-          }
-          else
-            general_error(20);  /* rorg is lower than current pc */
-        }
-        else
-          general_error(30);  /* expression must be constant */
-      }
+      else if(p->type==ROFFS)
+        roffs_to_space(sec,p);
 #if HAVE_CPU_OPTS
       else if(p->type==OPTS)
         cpu_opts(p->content.opts);
@@ -415,6 +497,8 @@ static void assemble(void)
       }
       else if(p->type==NLIST)
         new_stabdef(p->content.nlist,sec);
+      else if(p->type==VASMDEBUG)
+        vasmdebug("assemble",sec,p);
       if(p->type==DATA&&bss){
         if(lasterrsrc!=p->src||lasterrline!=p->line){
           if(sec->flags&UNALLOCATED){
@@ -797,6 +881,12 @@ int main(int argc,char **argv)
         dwarf=3;  /* default to DWARF3 */
       continue;
     }
+    else if(!strncmp("-pad=",argv[i],5)){
+      long long ullpadding;
+      sscanf(argv[i]+5,"%lli",&ullpadding);
+      sec_padding=(taddr)ullpadding;
+      continue;
+    }
     if(cpu_args(argv[i]))
       continue;
     if(syntax_args(argv[i]))
@@ -1106,6 +1196,19 @@ void end_source(source *s)
   }
 }
 
+/* try to find a matching section name for the given attributes */
+static char *name_from_attr(char *attr)
+{
+  while(*attr) {
+    switch(*attr++) {
+      case 'c': return "text";
+      case 'd': return "data";
+      case 'u': return "bss";
+    }
+  }
+  return emptystr;
+}
+
 /* set current section, remember last */
 void set_section(section *s)
 {
@@ -1130,11 +1233,12 @@ section *new_section(char *name,char *attr,int align)
 {
   section *p;
   if(unnamed_sections)
-    name=emptystr;
+    name=name_from_attr(attr);
   if(p=find_section(name,attr))
     return p;
   p=mymalloc(sizeof(*p));
   p->next=0;
+  p->deps=0;
   p->name=mystrdup(name);
   p->attr=mystrdup(attr);
   p->first=p->last=0;
@@ -1143,7 +1247,10 @@ section *new_section(char *name,char *attr,int align)
   p->flags=0;
   p->memattr=0;
   memset(p->pad,0,MAXPADBYTES);
-  p->padbytes=1;
+  if(sec_padding)
+    p->padbytes=make_padding(sec_padding,p->pad,MAXPADBYTES);
+  else
+    p->padbytes=1;
   if(last_section)
     last_section=last_section->next=p;
   else
@@ -1169,7 +1276,7 @@ void switch_section(char *name,char *attr)
 {
   section *p;
   if(unnamed_sections)
-    name=emptystr;
+    name=name_from_attr(attr);
   p=find_section(name,attr);
   if(!p)
     general_error(2,name);

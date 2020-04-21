@@ -1,5 +1,5 @@
 /* symbol.h - manage all kinds of symbols */
-/* (c) in 2014-2018 by Volker Barthelmann and Frank Wille */
+/* (c) in 2014-2020 by Volker Barthelmann and Frank Wille */
 
 #ifndef SYMBOL_H
 #define SYMBOL_H
@@ -32,6 +32,7 @@
 #define REGLIST (1<<13)
 #define USED (1<<14)        /* used in any expression */
 #define NEAR (1<<15)        /* may refer symbol with near addressing modes */
+#define RSRVD_C (1L<<20)    /* bits 20..23 are reserved for cpu modules */
 #define RSRVD_S (1L<<24)    /* bits 24..27 are reserved for syntax modules */
 #define RSRVD_O (1L<<28)    /* bits 28..31 are reserved for output modules */
 
