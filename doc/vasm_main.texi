@@ -130,6 +130,12 @@ or additional options.
         Write the generated assembler output to <ofile> rather than
         @file{a.out}.
 
+@item -pad=<value>
+        The given padding value can be one of multiple bytes (up to the
+        cpu-backend's address size). It is used for alignment purposes
+        and to fill gaps between absolute @code{ORG} sections in the
+        binary output module. Defaults to a zero-byte.
+
 @item -pic
         Try to generate position independant code. Every relocation is
         flagged by an error message.
@@ -142,6 +148,8 @@ or additional options.
         their attributes. This has the effect that when defining a second
         section with a different name but same attributes as a first one,
         it will switch to the first, instead of starting a new section.
+        Is set automatically, when using an output-module which doesn't
+        support section names. For example: aout, tos, xfile.
 
 @item -unsshift
         The shift-right operator (@code{>>}) treats the value to shift as
@@ -360,6 +368,8 @@ Has to be provided completely by the syntax module.
     @item Jordan Zebor
     @item Joseph Zatarski
     @item Frank Wille
+    @item Jim Westfall
+    @item Jens Sch"onfeld
     @item Henryk Richter
     @item Sebastian Pachuta
     @item Esben Norby
@@ -368,18 +378,25 @@ Has to be provided completely by the syntax module.
     @item Timm S. Mueller
     @item Gareth Morris
     @item Dominic Morris
+    @item Garry Marshall
     @item Jean-Paul Mari
     @item Mauricio Mu@~noz Lucero
     @item J@"org van de Loo
     @item Robert Leffmann
     @item Andreas Larsson
     @item Miro Kropacek
+    @item Olav Kr"omeke
     @item Mikael Kalms
+    @item Mark Jones
+    @item Bert Jahn
+    @item Daniel Illgen
     @item Matthew Hey
     @item Philippe Guichardon
     @item Romain Giot
     @item Francois Galea
     @item Tom Duin
+    @item Fernando Cabrera
+    @item Patrick Bricout
     @item Karoly Balogh
 @end itemize
 

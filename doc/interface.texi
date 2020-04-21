@@ -589,6 +589,9 @@ Pointer to the following atom (0 if last).
 @item  int type;
 The type of the atom. Can be one of
 @table @code
+@item #define VASMDEBUG 0
+Used for internal debugging.
+
 @item #define LABEL 1
 A label is defined here.
 

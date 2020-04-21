@@ -452,18 +452,17 @@ static int32_t eval_oper(instruction *ip,operand *op,section *sec,
       else if (optype==REL) {
         loval = -16;
         hival = 15;
-        if (base!=NULL && btype==BASE_OK) {
-          if (is_pc_reloc(base,sec)) {
-            /* external label or from a different section (distance / 2) */
-            add_extnreloc_masked(&db->relocs,base,val-2,REL_PC,
-                                 jag_big_endian?6:5,5,0,0x3e);
-          }
-          else if (LOCREF(base)) {
-            /* known label from the same section doesn't need a reloc */
-            val = (val - (pc + 2)) / 2;
-          }
-          base = NULL;
+        if ((base!=NULL && btype==BASE_OK && !is_pc_reloc(base,sec)) ||
+            base==NULL) {
+          /* known label from same section or absolute label */
+          val = (val - (pc + 2)) / 2;
         }
+        else if (btype == BASE_OK) {
+          /* external label or from a different section (distance / 2) */
+          add_extnreloc_masked(&db->relocs,base,val-2,REL_PC,
+                               jag_big_endian?6:5,5,0,0x3e);
+        }
+        base = NULL;
       }
       else ierror(0);
 

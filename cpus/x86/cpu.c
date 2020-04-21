@@ -1,6 +1,6 @@
 /*
 ** cpu.c x86 cpu-description file
-** (c) in 2005-2006,2011,2015-2017 by Frank Wille
+** (c) in 2005-2006,2011,2015-2019 by Frank Wille
 */
 
 #include "vasm.h"
@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm x86 cpu backend 0.7 (c) 2005-2006,2011,2015-2017 Frank Wille";
+char *cpu_copyright = "vasm x86 cpu backend 0.7a (c) 2005-2006,2011,2015-2019 Frank Wille";
 char *cpuname = "x86";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -699,10 +699,10 @@ static void optimize_jump(instruction *ip,operand *op,section *sec,
         general_error(38);  /* illegal relocation */
       return;
     }
-    label_in_sec = LOCREF(base) && (base->sec==sec);
+    label_in_sec = !is_pc_reloc(base, sec);
   }
   else
-    label_in_sec = 0;
+    label_in_sec = 1;
 
   if (mod & JmpByte) {
     op->type = Disp8;
@@ -1322,10 +1322,10 @@ static unsigned char *output_disp(dblock *db,unsigned char *d,
   for (i=0; i<MAX_OPERANDS; i++) {
     if (op = ip->op[i]) {
       if (op->type & Disp) {
+        mnemonic *mnemo = &mnemonics[ip->code];
         bits = get_disp_bits(op->type);
 
         if (!eval_expr(op->value,&val,sec,pc)) {
-          mnemonic *mnemo = &mnemonics[ip->code];
           symbol *base;
 
           if (find_base(op->value,&base,sec,pc) == BASE_OK) {
@@ -1349,6 +1349,13 @@ static unsigned char *output_disp(dblock *db,unsigned char *d,
           }
           else
             general_error(38);  /* illegal relocation */
+        }
+        else {  /* constant/absolute */
+          if ((mnemo->ext.opcode_modifier & (Jmp|JmpByte|JmpDword))
+                || (op->flags & OPER_PCREL)) {
+            /* handle pc-relative jumps to absolute labels */
+            val = val - (pc + (d-(unsigned char *)db->data) + (bits>>3));
+          }
         }
         d = write_taddr(d,val,bits);
       }

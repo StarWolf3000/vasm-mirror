@@ -3,6 +3,7 @@
   "missing closing parenthesis in addressing mode",ERROR,
   "data size %d not supported",ERROR,
   "relocation does not allow hi/lo modifier",ERROR,
-  "operand doesn't fit into 8-bits",ERROR,                           /* 05 */
+  "operand doesn't fit into %d bits",ERROR,                           /* 05 */
   "branch destination out of range",ERROR,
   "illegal bit number",ERROR,
+  "identifier expected",ERROR,

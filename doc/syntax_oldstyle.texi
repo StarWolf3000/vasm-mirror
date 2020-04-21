@@ -4,7 +4,7 @@ which is available with the extension @code{oldstyle}.
 
 @section Legal
 
-    This module is written in 2002-2018 by Frank Wille and
+    This module is written in 2002-2020 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -92,11 +92,14 @@ CPU- and output-module allow it):
 @item <symbol> = <expression>
       Equivalent to @code{<symbol> equ <expression>}.
 
-@item abyte <offset>,<exp1>[,<exp2>,"<string1>"...]
-      Write the integer or string constant operands into successive
-      bytes of memory in the current section while adding the constant
-      <offset> to each byte. Any combination of integer and character
-      string constant operands is permitted.
+@item abyte <modifier>,<exp1>[,<exp2>,"<string1>"...]
+      Write the integer or string constants into successive bytes
+      of memory in the current section while modifying each expression
+      (and string-character) by the modifier expression.
+      When the modifier contains the special @code{._} symbol, then it
+      is a placeholder for any expression from the line. Otherwise the
+      modifier will be just added to each element.
+      Any combination of integer and character string constants is permitted.
 
 @item addr <exp1>[,<exp2>...]
       Equivalent to @code{word <exp1>[,<exp2>...]}.
@@ -186,6 +189,10 @@ CPU- and output-module allow it):
 @item defs <exp>[,<fill>]
       Equivalent to @code{blk <exp>[,<fill>]}.
 
+@item dend
+      Ends an offset-section started by @code{dsect} and restores the
+      previously active section.
+
 @item dephase
       Equivalent to @code{rend}.
 
@@ -194,6 +201,16 @@ CPU- and output-module allow it):
 
 @item dsb <exp>[,<fill>]
       Equivalent to @code{blk <exp>[,<fill>]}.
+
+@item dsect
+      Starts an 'offset-section' (the original directive in ADE was called
+      'dummy-section') which does not generate any code in the output file.
+      Its only purpose is to define absolute labels. Within a @code{dsect}
+      block you may use @code{org} directives to set a new offset, which
+      defaults to zero for the first @code{dsect} otherwise. Following
+      @code{dsect} sections continue with the last offset from the former.
+      Such an offsect-section block is closed by the @code{dend} directive,
+      which restores the previous 'real' section.
 
 @item dsw <exp>[,<fill>]
       Equivalent to @code{blkw <exp>[,<fill>]}.
@@ -258,6 +275,9 @@ CPU- and output-module allow it):
 @item fail <message>
       Show an error message including the <message> string. Do not generate
       an ouput file.
+
+@item fi
+      Equivalent to @code{endif}.
 
 @item fill <exp>
       Equivalent to @code{blk <exp>,0}.
@@ -463,6 +483,10 @@ CPU- and output-module allow it):
 
 @item spc <exp>
       Equivalent to @code{blk <exp>,0}.
+
+@item str "<string1>"[,"<string2>"...]
+      Like @code{text}, but adds a terminating carriage return (ASCII
+      code 13).
 
 @item string "<string1>"[,"<string2>"...]
       Like @code{text}, but adds a terminating zero-byte.

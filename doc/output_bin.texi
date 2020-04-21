@@ -13,6 +13,11 @@ selected with the @option{-Fbin} option.
         Writes a Commodore PRG header in front of the output file, which
         consists of two bytes in little-endian order, defining the load
         address of the program.
+    @item -atari-com
+        Writes a Atari DOS COM header in front of the output file, which
+        consists of standard header (0xFFFF) followed by each section,
+        starting with four bytes in little-endian order, defining the load
+        address begin and end of each section.
 @end table
  
 @section General
@@ -20,7 +25,8 @@ selected with the @option{-Fbin} option.
 This output module outputs the contents of all sections as simple
 binary data without any header or additional information. When there
 are multiple sections, they must not overlap. Gaps between sections
-are filled with zero bytes. Undefined symbols are not allowed.
+are filled with zero bytes when not using Atari COM format. Undefined 
+symbols are not allowed.
 
 @section Known Problems
 

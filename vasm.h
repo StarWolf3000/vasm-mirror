@@ -1,5 +1,5 @@
 /* vasm.h  main header file for vasm */
-/* (c) in 2002-2019 by Volker Barthelmann */
+/* (c) in 2002-2020 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <limits.h>
 
 typedef struct symbol symbol;
 typedef struct section section;
@@ -60,6 +61,15 @@ typedef struct regsym regsym;
 #endif
 
 #define MAXPATHLEN 1024
+
+/* operations on bit-vectors */
+typedef unsigned int bvtype;
+#define BVBITS (sizeof(bvtype)*CHAR_BIT)
+#define BVSIZE(x) ((((x)+BVBITS-1)/BVBITS)*sizeof(bvtype))
+#define BSET(array,bit) (array)[(bit)/BVBITS]|=1<<((bit)%BVBITS)
+#define BCLR(array,bit) (array)[(bit)/BVBITS]&=~(1<<((bit)%BVBITS))
+#define BTST(array,bit) ((array)[(bit)/BVBITS]&(1<<((bit)%BVBITS)))
+
 
 /* include paths */
 struct include_path {
@@ -129,6 +139,7 @@ struct source {
 /* section description */
 struct section {
   struct section *next;
+  bvtype *deps;
   char *name;
   char *attr;
   atom *first;
@@ -141,6 +152,7 @@ struct section {
   taddr org;
   taddr pc;
   unsigned long idx; /* usable by output module */
+  
 };
 
 /* mnemonic description */
@@ -178,7 +190,8 @@ extern int done,final_pass,nostdout;
 extern int warn_unalloc_ini_dat;
 extern int listena,listformfeed,listlinesperpage,listnosyms;
 extern int mnemonic_cnt;
-extern int nocase,no_symbols,pic_check,secname_attr,exec_out,chklabels;
+extern int nocase,no_symbols,pic_check,exec_out,chklabels;
+extern int secname_attr,unnamed_sections;
 extern taddr inst_alignment;
 extern hashtable *mnemohash;
 extern source *cur_src;
@@ -189,6 +202,7 @@ extern char *inname,*outname,*listname,*compile_dir;
 extern char *output_format;
 extern char emptystr[];
 extern char vasmsym_name[];
+extern int num_secs;
 
 extern unsigned long long taddrmask;
 #define ULLTADDR(x) (((unsigned long long)x)&taddrmask)

@@ -282,12 +282,14 @@ See @code{.string}.
 @item .nolist
       The following lines will not be visible in a listing file.
 
-@item .org <exp>
+@item .org <exp>[,<fill>]
       Before any other section directive @code{<exp>} defines the absolute
       start address of the program. Within a section @code{<exp>} defines
       the offset from the start of this section for the subsequent code.
+      The optional <fill> value is only valid within a section and is used
+      to fill the space to the new program counter (defaults to zero).
       When <exp> starts with a current-pc symbol followed by a plus (@code{+})
-      operator, then the directive behaves like @code{.space}.
+      operator, then the directive just reserves space (filled with zero).
 
 @item .p2align <bit_count>[,<fill>][,<maxpad>]
       Insert as much fill bytes as required to reach an address where

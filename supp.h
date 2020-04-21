@@ -1,5 +1,5 @@
 /* supp.h miscellaneous support routines */
-/* (c) in 2008-2017 by Frank Wille */
+/* (c) in 2008-2020 by Frank Wille */
 
 #ifndef SUPP_H
 #define SUPP_H
@@ -47,6 +47,7 @@ void fwdata(FILE *,void *,size_t);
 void fwsblock(FILE *,sblock *);
 void fwspace(FILE *,size_t);
 void fwalign(FILE *,taddr,taddr);
+int fwalignpattern(FILE *,taddr,uint8_t *,int);
 taddr fwpcalign(FILE *,atom *,section *,taddr);
 size_t filesize(FILE *);
 int abs_path(char *);
@@ -62,9 +63,18 @@ const char *trim(const char *);
 taddr balign(taddr,taddr);
 taddr palign(taddr,taddr);
 taddr pcalign(atom *,taddr);
+int make_padding(taddr,uint8_t *,int);
 
 taddr get_sym_value(symbol *);
 taddr get_sym_size(symbol *);
 utaddr get_sec_size(section *);
+int get_sec_type(section *);
+
+/* section types returned by get_sec_type */
+#define S_MISS -1
+#define S_TEXT 0
+#define S_DATA 1
+#define S_BSS 2
+#define S_ABS 3
 
 #endif

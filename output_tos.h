@@ -1,10 +1,5 @@
 /* output_tos.h header file for Atari TOS format */
-/* (c) in 2009,2012 by Frank Wille */
-
-/* section index */
-#define _TEXT 0
-#define _DATA 1
-#define _BSS 2
+/* (c) in 2009,2012,2020 by Frank Wille */
 
 
 /* TOS program header */

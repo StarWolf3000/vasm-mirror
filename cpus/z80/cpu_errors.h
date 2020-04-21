@@ -24,3 +24,4 @@
     "Operations between different index registers are forbidden",ERROR,
     "Operations between ix/iy/hl are forbidden", ERROR, 
     "Double indirection forbidden", ERROR, /* 25 */
+    "Instruction %s will be assembled as '%s'", WARNING,

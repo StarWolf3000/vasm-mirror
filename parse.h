@@ -1,5 +1,5 @@
 /* parse.h - global parser support functions */
-/* (c) in 2009-2018 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2020 by Volker Barthelmann and Frank Wille */
 
 #ifndef PARSE_H
 #define PARSE_H 
@@ -62,7 +62,7 @@ int real_line(void);
 void new_repeat(int,char *,char *,struct namelen *,struct namelen *);
 int find_macarg_name(source *,char *,size_t);
 struct macarg *addmacarg(struct macarg **,char *,char *);
-macro *new_macro(char *,struct namelen *,char *);
+macro *new_macro(char *,struct namelen *,struct namelen *,char *);
 macro *find_macro(char *,int);
 int execute_macro(char *,int,char **,int *,int,char *);
 int leave_macro(void);

@@ -1,5 +1,5 @@
 /* atom.c - atomic objects from source */
-/* (c) in 2010-2019 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2020 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -189,11 +189,11 @@ static size_t space_size(sblock *sb,section *sec,taddr pc)
 }
 
 
-static size_t roffs_size(expr *offsexp,section *sec,taddr pc)
+static size_t roffs_size(reloffs *roffs,section *sec,taddr pc)
 {
   taddr offs;
 
-  eval_expr(offsexp,&offs,sec,pc);
+  eval_expr(roffs->offset,&offs,sec,pc);
   offs = sec->org + offs - pc;
   return offs>0 ? offs : 0;
 }
@@ -250,6 +250,7 @@ void add_atom(section *sec,atom *a)
 size_t atom_size(atom *p,section *sec,taddr pc)
 {
   switch(p->type) {
+    case VASMDEBUG:
     case LABEL:
     case LINE:
     case OPTS:
@@ -297,6 +298,9 @@ void print_atom(FILE *f,atom *p)
   rlist *rl;
 
   switch (p->type) {
+    case VASMDEBUG:
+      fprintf(f,"vasm debug directive");
+      break;
     case LABEL:
       fprintf(f,"symbol: ");
       print_symbol(f,p->content.label);
@@ -340,7 +344,12 @@ void print_atom(FILE *f,atom *p)
       break;
     case ROFFS:
       fprintf(f,"roffs: offset ");
-      print_expr(f,p->content.roffs);
+      print_expr(f,p->content.roffs->offset);
+      fprintf(f,",fill=");
+      if (p->content.roffs->fillval)
+        print_expr(f,p->content.roffs->fillval);
+      else
+        fprintf(f,"none");
       break;
     case RORG:
       fprintf(f,"rorg: relocate to 0x%llx",ULLTADDR(*p->content.rorg));
@@ -506,7 +515,7 @@ atom *add_bytes_atom(section *sec,void *p,size_t sz)
 }
 
 
-static atom *new_atom(int type,taddr align)
+atom *new_atom(int type,taddr align)
 {
   atom *new = mymalloc(sizeof(*new));
 
@@ -609,11 +618,13 @@ atom *new_expr_atom(expr *exp,int type,int size)
 }
 
 
-atom *new_roffs_atom(expr *offs)
+atom *new_roffs_atom(expr *offs,expr *fill)
 {
   atom *new = new_atom(ROFFS,1);
 
-  new->content.roffs = offs;
+  new->content.roffs = mymalloc(sizeof(*new->content.roffs));
+  new->content.roffs->offset = offs;
+  new->content.roffs->fillval = fill;
   return new;
 }
 

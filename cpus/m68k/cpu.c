@@ -1,6 +1,6 @@
 /*
 ** cpu.c Motorola M68k, CPU32 and ColdFire cpu-description file
-** (c) in 2002-2019 by Frank Wille
+** (c) in 2002-2020 by Frank Wille
 */
 
 #include <math.h>
@@ -25,7 +25,7 @@ struct cpu_models models[] = {
 int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3f (c) 2002-2019 Frank Wille";
+char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3k (c) 2002-2020 Frank Wille";
 char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -36,6 +36,8 @@ static uint32_t cpu_type = m68000;
 static expr *baseexp[7];              /* basereg: expression loaded to reg. */
 static signed char sdreg = -1;        /* current small-data base register */
 static signed char last_sdreg = -1;
+static unsigned char phxass_compat = 0;
+static unsigned char devpac_compat = 0;
 static unsigned char gas = 0;         /* true enables GNU-as mnemonics */
 static unsigned char sgs = 0;         /* true enables & as immediate prefix */
 static unsigned char no_fpu = 0;      /* true: FPU code/direct. disallowed */
@@ -58,6 +60,7 @@ static unsigned char opt_jbra = 0;    /* JMP/JSR <ext> -> BRA.L/BSR.L (020+) */
 static unsigned char opt_disp = 1;    /* (0,An) -> (An), etc. */
 static unsigned char opt_abs = 1;     /* optimize absolute addreses to 16bit */
 static unsigned char opt_moveq = 1;   /* MOVE.L #x,Dn -> MOVEQ #x,Dn */
+static unsigned char opt_nmovq = 0;   /* MOVE.L #x,Dn -> MOVEQ #x,Dn & NEG Dn*/
 static unsigned char opt_quick = 1;   /* ADD/SUB #x,Rn -> ADDQ/SUBQ #x,Rn */
 static unsigned char opt_branop = 1;  /* BRA.B *+2 -> NOP */
 static unsigned char opt_bdisp = 1;   /* base displacement optimization */
@@ -65,7 +68,8 @@ static unsigned char opt_odisp = 1;   /* outer displacement optimization */
 static unsigned char opt_lea = 1;     /* ADD/SUB #x,An -> LEA (x,An),An */
 static unsigned char opt_lquick = 1;  /* LEA (x,An),An -> ADDQ/SUBQ #x,An */
 static unsigned char opt_immaddr = 1; /* <op>.L #x,An -> <op>.W #x,An */
-static unsigned char opt_speed = 0;   /* optimize for speed, not for size */
+static unsigned char opt_speed = 0;   /* optimize for speed, code may grow */
+static unsigned char opt_size = 0;    /* optimize for size, even when slower */
 static unsigned char opt_sc = 0;      /* external JMP/JSR are 16-bit PC-rel. */
 static unsigned char opt_sd = 0;      /* small data opts: abs.L -> (d16,An) */
 static unsigned char no_opt = 0;      /* don't optimize at all! */
@@ -74,9 +78,8 @@ static unsigned char convert_brackets = 0;  /* convert [ into ( for <020 */
 static unsigned char typechk = 1;     /* check value types and ranges */
 static unsigned char ign_unambig_ext = 0;  /* don't check unambig. size ext. */
 static unsigned char regsymredef = 0; /* allow redefinition of reg. symbols */
-static unsigned char phxass_compat = 0;
-static unsigned char devpac_compat = 0;
-static unsigned char kick1hunks = 0;
+static unsigned char kick1hunks = 0;  /* no optim. to 32-bit PC-displacem. */
+static unsigned char no_dpc = 0;      /* abs. PC-displacments not allowed */
 static char current_ext;              /* extension of current parsed inst. */
 
 static char b_str[] = "b";
@@ -93,13 +96,18 @@ static char mmu_name[] = "__MMU";
 static char fpu_name[] = "__FPU";
 static char g2_name[] = "__G2";
 static char lk_name[] = "__LK";
+static char movembytes_name[] = "_MOVEMBYTES";
+static char movemregs_name[] = "_MOVEMREGS";
+static char movemsize_name[] = " MOVEMSIZE";
+
+static symbol *movembytes,*movemregs,*movemsize;
 
 static int OC_JMP,OC_JSR,OC_MOVEQ,OC_MOV3Q,OC_LEA,OC_PEA,OC_SUBA,OC_CLR;
 static int OC_ST,OC_ADDQ,OC_SUBQ,OC_ADDA,OC_ADD,OC_BRA,OC_BSR,OC_TST;
 static int OC_NOT,OC_NOOP,OC_FNOP,OC_MOVEA,OC_EXT,OC_MVZ,OC_MOVE;
 static int OC_ASRI,OC_LSRI,OC_ASLI,OC_LSLI,OC_NEG;
 static int OC_FMOVEMTOLIST,OC_FMOVEMTOSPEC,OC_FMOVEMFROMSPEC;
-static int OC_FMUL,OC_FSMUL,OC_FDMUL,OC_FSGLMUL,OC_LOAD;
+static int OC_FMUL,OC_FSMUL,OC_FDMUL,OC_FSGLMUL,OC_LOAD,OC_SWAP;
 
 static struct {
   int *var;
@@ -141,6 +149,7 @@ static struct {
   &OC_ST,               "st",     AD,0,
   &OC_SUBA,             "suba",   0,0,
   &OC_SUBQ,             "subq",   0,AD,
+  &OC_SWAP,             "swap",   D_,0,
   &OC_TST,              "tst",    0,0,
   &OC_NOOP,             " no-op", 0,0
 };
@@ -148,7 +157,7 @@ static struct {
 /* Serveral instruction copies allow optimizations to generate 
    additional instructions.
    The ipslot has to be reset to 0, before using copy_instruction(),
-   ip_singleop() and ip_doubleop(). */
+   ip_singleop() and ip_dualop(). */
 #define MAX_IP_COPIES 4
 static int ipslot;
 static instruction newip[MAX_IP_COPIES];
@@ -377,6 +386,7 @@ void cpu_opts(void *opts)
     case OCMD_OPTDISP: opt_disp=arg; break;
     case OCMD_OPTABS: opt_abs=arg; break;
     case OCMD_OPTMOVEQ: opt_moveq=arg; break;
+    case OCMD_OPTNMOVQ: opt_nmovq=arg; break;
     case OCMD_OPTQUICK: opt_quick=arg; break;
     case OCMD_OPTBRANOP: opt_branop=arg; break;
     case OCMD_OPTBDISP: opt_bdisp=arg; break;
@@ -385,6 +395,7 @@ void cpu_opts(void *opts)
     case OCMD_OPTLQUICK: opt_lquick=arg; break;
     case OCMD_OPTIMMADDR: opt_immaddr=arg; break;
     case OCMD_OPTSPEED: opt_speed=arg; break;
+    case OCMD_OPTSIZE: opt_size=arg; break;
     case OCMD_SMALLCODE: opt_sc=arg; break;
     case OCMD_SMALLDATA: opt_sd=arg; break;
 
@@ -440,6 +451,7 @@ static void cpu_opts_optinit(section *s)
   add_cpu_opt(s,OCMD_OPTDISP,opt_disp);
   add_cpu_opt(s,OCMD_OPTABS,opt_abs);
   add_cpu_opt(s,OCMD_OPTMOVEQ,opt_moveq);
+  add_cpu_opt(s,OCMD_OPTNMOVQ,opt_nmovq);
   add_cpu_opt(s,OCMD_OPTQUICK,opt_quick);
   add_cpu_opt(s,OCMD_OPTBRANOP,opt_branop);
   add_cpu_opt(s,OCMD_OPTBDISP,opt_bdisp);
@@ -448,6 +460,7 @@ static void cpu_opts_optinit(section *s)
   add_cpu_opt(s,OCMD_OPTLQUICK,opt_lquick);
   add_cpu_opt(s,OCMD_OPTIMMADDR,opt_immaddr);
   add_cpu_opt(s,OCMD_OPTSPEED,opt_speed);
+  add_cpu_opt(s,OCMD_OPTSIZE,opt_size);
   add_cpu_opt(s,OCMD_SMALLCODE,opt_sc);
   add_cpu_opt(s,OCMD_SMALLDATA,opt_sd);
 
@@ -476,10 +489,10 @@ void print_cpu_opts(FILE *f,void *opts)
     "opt generic","opt movem","opt pea","opt clr","opt st","opt lsl",
     "opt mul","opt div","opt float const","opt branch to jump",
     "opt jump to longbranch","opt pc-relative","opt branch",
-    "opt displacement","opt absolute","opt moveq","opt quick",
-    "opt branch to nop","opt base disp","opt outer disp",
+    "opt displacement","opt absolute","opt moveq","opt neg.moveq",
+    "opt quick", "opt branch to nop","opt base disp","opt outer disp",
     "opt adda/subq to lea","opt lea to addq/subq","opt immediate areg",
-    "opt for speed","opt small code","opt small data",
+    "opt for speed","opt for size","opt small code","opt small data",
     "warn about optimizations","PIC check","type and range checks",
     "hide all warnings"
   };
@@ -556,12 +569,25 @@ static int cntones(taddr v,int bits)
 }
 
 
-static int bfffo(taddr v,int start,int bits)
-/* return index of first bit set */
+static int lsbit(taddr v,int start,int end)
+/* return index of first least significant bit set */
 {
   int i;
 
-  for (i=start; i<bits; i++) {
+  for (i=start; i<end; i++) {
+    if (v & (1<<i))
+      break;
+  }
+  return i;
+}
+
+
+static int msbit(taddr v,int start,int end)
+/* return index of first most significant bit set */
+{
+  int i;
+
+  for (i=start; i>end; i--) {
     if (v & (1<<i))
       break;
   }
@@ -660,6 +686,41 @@ static int branch_size(char ext)
       return 4;
   }
   return 2;
+}
+
+
+int ext_unary_eval(int type,taddr val,taddr *result,int cnst)
+{
+  switch (type) {
+    case CNTONES:
+      *result = cnst ? (taddr)cntones(val,32) : 0;
+      return 1;
+    default:
+      break;
+  }
+  return 0;  /* unknown type */
+}
+
+
+static uint16_t eval_rlsymbol(char **start)
+/* Parse and evaluate a register list symbol, return its value.
+   Return zero otherwise. May cause an error message on illegal symbol type. */
+{
+  symbol *sym;
+  char *name;
+  taddr val = 0;
+
+  if (name = parse_symbol(start)) {
+    if ((sym = find_symbol(name)) &&
+        (sym->flags & REGLIST) && sym->type==EXPRESSION) {
+      if (!eval_expr(sym->expr,&val,NULL,0))
+        ierror(0);  /* REGLIST must be constant */
+    }
+    else
+      cpu_error(66);  /* not a valid register list symbol */
+    myfree(name);
+  }
+  return (uint16_t)val;
 }
 
 
@@ -786,7 +847,7 @@ static uint16_t scan_Rnlist(char **start)
     *start = p;
     return list;
   }
-  return 0;
+  return eval_rlsymbol(start);
 }
 
 
@@ -932,7 +993,7 @@ static uint16_t scan_FPnlist(char **start)
     *start = p;
     return list;
   }
-  return 0;
+  return eval_rlsymbol(start);
 }
 
 
@@ -1917,8 +1978,9 @@ int parse_operand(char *p,int len,operand *op,int required)
         }
 
         p = skip(p);
-        if (*p=='\0' || p>=(start+len))
-          return PO_MATCH;
+        if (*p!='\0' && p<(start+len))
+          cpu_error(67);  /* trailing garbage in operand */
+        return PO_MATCH;
       }
     }
   }
@@ -2036,10 +2098,11 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
                           taddr pc,taddr cpc,int final)
 /* evaluate expressions in operand and try to optimize addressing modes */
 {
-  int size16[2]; /* true, when extval[0/1] fits into 16 bits */
+  int size16[2]; /* true, when extval[] fits into 16 bits */
   taddr pcdisp;  /* calculated pc displacement = (label - current_pc) */
   int pcdisp16;  /* true, when pcdisp fits into 16 bits */
-  int undef;     /* true, when base-symbol is still undefined */
+  int absdpc;    /* true, when PC-displ. is const. in a non-absolute sect. */
+  int undef;     /* true, when first base-symbol is still undefined */
   int secrel;    /* pc-relative reference in current section */
   int bdopt;     /* true, when base-displacement optimization allowed */
   int odopt;     /* true, when outer-displacement optimization allowed */
@@ -2057,9 +2120,11 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
   size16[0] = op->extval[0]>=-0x8000 && op->extval[0]<=0x7fff;
   size16[1] = op->extval[1]>=-0x8000 && op->extval[1]<=0x7fff;
   pcdisp = op->extval[0] - cpc;
-  pcdisp16 = (op->base[0]==NULL) ? 0 : (pcdisp>=-0x8000 && pcdisp<=0x7fff);
+  pcdisp16 = pcdisp>=-0x8000 && pcdisp<=0x7fff;
+  absdpc = !(sec->flags & ABSOLUTE) && op->base[0]==NULL;
   undef = (op->base[0]==NULL) ? 0 : EXTREF(op->base[0]);
-  secrel = op->base[0]!=NULL && LOCREF(op->base[0]) && op->base[0]->sec==sec;
+  secrel = (sec->flags & ABSOLUTE) ? op->base[0]==NULL :
+           op->base[0]!=NULL && LOCREF(op->base[0]) && op->base[0]->sec==sec;
 
   if (bdopt) {  /* base displacement optimizations allowed */
 
@@ -2090,8 +2155,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
     else if (op->mode==MODE_Extended && op->reg==REG_PC16Disp &&
              (cpu_type & (m68020up|cpu32)) &&
              (ot->modes & (1<<AM_PC8Format))) {
-      if ((!op->base[0] && !size16[0]) ||
-          (op->base[0] && !pcdisp16 && !undef && secrel)) {
+      if ((absdpc && !size16[0]) || (secrel && !pcdisp16)) {
         /* (d16,PC) --> (bd32,PC,ZDn.w) for 020+ only */
         op->reg = REG_PC8Format;
         op->format = FW_FullFormat | FW_IndexSuppress | FW_BDSize(FW_Long);
@@ -2117,9 +2181,9 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
 
     else if (op->mode==MODE_Extended && op->reg==REG_PC8Format &&
              (op->flags & FL_UsesFormat) && !(op->format & FW_FullFormat)) {
-      int pcdisp8 = (op->base[0]) ?
-                    ((pcdisp>=-0x80 && pcdisp<=0x7f) || undef) :
-                    (op->extval[0]>=-0x80 && op->extval[0]<=0x7f);
+      int pcdisp8 = absdpc ?
+                    (op->extval[0]>=-0x80 && op->extval[0]<=0x7f) :
+                    ((pcdisp>=-0x80 && pcdisp<=0x7f) || undef);
 
       if ((cpu_type & (m68020up|cpu32)) && !pcdisp8) {
         /* (d8,PC,Rn) --> (bd,PC,Rn) */
@@ -2139,8 +2203,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
         if (final && warn_opts>1)
           cpu_error(50,"abs.w->abs.l");
       }
-      else if (op->base[0] && typechk && LOCREF(op->base[0]) &&
-               !(op->base[0]->flags & ABSLABEL)) {
+      else if (op->base[0] && typechk && LOCREF(op->base[0])) {
         /* label.w --> label.l */
         op->reg = REG_AbsLong;
         if (final)
@@ -2149,8 +2212,8 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
     }
 
     else if (op->mode==MODE_Extended && op->reg==REG_AbsLong) {
-      if (opt_abs && (!op->base[0] || (op->base[0]->flags & ABSLABEL)) &&
-          size16[0] && (ot->modes & (1<<AM_AbsShort))) {
+      if (opt_abs && !op->base[0] && size16[0] &&
+          (ot->modes & (1<<AM_AbsShort))) {
         /* absval.l --> absval.w */
         op->reg = REG_AbsShort;
         if (final && warn_opts>1)
@@ -2159,17 +2222,17 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
       else if (sdreg>=0 && op->base[0]!=NULL &&
                (ot->modes & (1<<AM_An16Disp)) &&
                ((opt_gen && (op->base[0]->flags&NEAR)) ||
-                (opt_sd && op->base[0]->type==LABSYM && op->base[0]->sec!=NULL
-                 && (op->base[0]->sec->flags&NEAR_ADDRESSING))) &&
+                (opt_sd && LOCREF(op->base[0]) &&
+                 (op->base[0]->sec->flags&NEAR_ADDRESSING))) &&
                op->extval[0]>=0 && op->extval[0]<=0xffff) {
         /* label.l --> label(An) base relative near addressing */
         op->mode = MODE_An16Disp;
         op->reg = sdreg;
         if (final && warn_opts>1)
-	  cpu_error(49,"label->(label,An)");
+          cpu_error(49,"label->(label,An)");
       }
-      else if (opt_pc && op->base[0] && (ot->modes & (1<<AM_PC16Disp))) {
-        if (!undef && pcdisp16 && secrel) {
+      else if (opt_pc && (ot->modes & (1<<AM_PC16Disp))) {
+        if (secrel && pcdisp16) {
           /* label.l --> d16(PC) */
           op->reg = REG_PC16Disp;
           if (final && warn_opts>1)
@@ -2292,15 +2355,14 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
 
     if (FW_getIndSize(op->format)==FW_None) {  /* no memory indirection */
       if (FW_getBDSize(op->format) > FW_Null) {
-        if (opt_bdisp && bdopt && !op->base[0] && op->extval[0]==0) {
+        if (opt_bdisp && bdopt && absdpc && op->extval[0]==0) {
           /* (0,PC,...) --> (PC,...) */
           op->format &= ~FW_BDSize(FW_SizeMask);
           op->format |= FW_BDSize(FW_Null);
           if (final && warn_opts>1)
              cpu_error(49,"(0,PC,...)->(PC,...)");
         }
-        else if (bdopt && ((op->base[0] && !pcdisp16 && !undef && secrel) ||
-                  (!op->base[0] && !size16[0]))
+        else if (bdopt && ((secrel && !pcdisp16) || (absdpc && !size16[0]))
                  && FW_getBDSize(op->format)==FW_Word) {
           /* (bd16,PC,...) --> (bd32,PC,...) */
           op->format &= ~FW_BDSize(FW_SizeMask);
@@ -2309,8 +2371,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
              cpu_error(50,"(bd16,PC,...)->(bd32,PC,...)");
         }
         else if (opt_bdisp && bdopt &&
-                 ((op->base[0] && pcdisp16 && !undef && secrel) ||
-                  (!op->base[0] && size16[0]))
+                 ((secrel && pcdisp16) || (absdpc && size16[0]))
                  && FW_getBDSize(op->format)==FW_Long) {
           if ((op->format & FW_IndexSuppress) &&
               (ot->modes & (1<<AM_PC16Disp)) &&
@@ -2334,7 +2395,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
     }
 
     else {  /* memory indirection */
-      if (opt_bdisp && !op->base[0] && bdopt &&
+      if (opt_bdisp && bdopt && absdpc &&
           FW_getBDSize(op->format)>FW_Null && op->extval[0]==0) {
         /* ([0,PC,...],...) --> ([PC,...],...) */
         op->format &= ~FW_BDSize(FW_SizeMask);
@@ -2342,8 +2403,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
         if (final && warn_opts>1)
             cpu_error(49,"([0,PC,...],...)->([PC,...],...)");
       }
-      else if (bdopt && ((op->base[0] && !pcdisp16 && !undef && secrel) ||
-               (!op->base[0] && !size16[0])) &&
+      else if (bdopt && ((secrel && !pcdisp16) || (absdpc && !size16[0])) &&
                FW_getBDSize(op->format)==FW_Word) {
         /* ([bd16,PC,...],...) --> ([bd32,PC,...],...) */
         op->format &= ~FW_BDSize(FW_SizeMask);
@@ -2352,8 +2412,7 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
             cpu_error(50,"([bd16,PC,...],...)->([bd32,PC,...],...)");
       }
       else if (opt_bdisp && bdopt &&
-               ((op->base[0] && pcdisp16 && !undef && secrel) ||
-                (!op->base[0] && size16[0])) &&
+               ((secrel && pcdisp16) || (absdpc && size16[0])) &&
                FW_getBDSize(op->format)==FW_Long) {
         /* ([bd32,PC,...],...) --> ([bd16,PC,...],...) */
         op->format &= ~FW_BDSize(FW_SizeMask);
@@ -2421,12 +2480,12 @@ static int optypes_subset(mnemonic *mold,mnemonic *mnew)
 }
 
 
-static instruction *ip_doubleop(int code,char *q,signed char mode1,
-                                signed char reg1,uint16_t flags1,
-                                uint16_t format1,expr *exp1,
-                                signed char mode2, signed char reg2,
-                                uint16_t flags2, uint16_t format2,
-                                expr *exp2)
+static instruction *ip_dualop(int code,char *q,signed char mode1,
+                              signed char reg1,uint16_t flags1,
+                              uint16_t format1,expr *exp1,
+                              signed char mode2, signed char reg2,
+                              uint16_t flags2, uint16_t format2,
+                              expr *exp2)
 {
   instruction *ip;
 
@@ -2458,7 +2517,7 @@ static instruction *ip_singleop(int code,char *q,signed char mode,
                                 signed char reg,uint16_t flags,
                                 uint16_t format,expr *exp)
 {
-  return ip_doubleop(code,q,mode,reg,flags,format,exp,-1,0,0,0,NULL);
+  return ip_dualop(code,q,mode,reg,flags,format,exp,-1,0,0,0,NULL);
 }
 
 
@@ -2540,7 +2599,7 @@ static unsigned char optimize_instruction(instruction *iplist,section *sec,
   char orig_ext = (char)ip->ext.un.real.orig_ext;
   uint16_t oc;
   taddr val,cpc;
-  int abs,i;
+  int abs,pcrelok,i;
 
   /* See if the next instruction fits as well, and includes the
      addressing modes of the current one. Following instructions
@@ -2635,6 +2694,20 @@ static unsigned char optimize_instruction(instruction *iplist,section *sec,
 dontswap:
   ip->ext.un.copy.next = NULL;
 
+  /* assign _MOVEMBYTES and _MOVEMREGS when opcode is MOVEM */
+  if ((mnemo->ext.opcode[0] & 0xfbff) == 0x4880) {
+    expr *rlexp = (mnemo->ext.opcode[0] & 0x0400) ?
+                  ip->op[1]->value[0] : ip->op[0]->value[0];
+    taddr val;
+
+    if (!eval_expr(rlexp,&val,NULL,0) && final)
+      general_error(30);  /* expression must be constant */
+    movemregs->expr = rlexp;
+    if (movemsize->expr->type != NUM)
+      ierror(0);
+    movemsize->expr->c.val = ext=='w' ? 2 : 4;
+  }
+
   if (no_opt)
     return ipflags;   /* no optimizations wanted */
 
@@ -2644,6 +2717,9 @@ dontswap:
   if (ip->op[0]) {
     val = ip->op[0]->extval[0];
     abs = ip->op[0]->base[0]==NULL;
+    pcrelok = (sec->flags&ABSOLUTE) ? abs :
+              !abs && LOCREF(ip->op[0]->base[0])
+              && ip->op[0]->base[0]->sec==sec;
   }
 
   if (opt_mul && abs && (oc==0xc0c0 || oc==0xc1c0 || oc==0x4c00) &&
@@ -2727,7 +2803,7 @@ dontswap:
     }
 
     else if (val>=2 && val<=0x100 && cntones(val,9)==1) {
-      val = bfffo(val,1,9);
+      val = lsbit(val,1,9);
       if (ext=='w' && muls && opt_speed) {
         /* muls.w #x,Dn -> ext.l Dn + asl.l #x,Dn */
         instruction *ip2 = copy_instruction(ip);
@@ -2788,7 +2864,7 @@ dontswap:
     }
 
     else if (val<=-2 && val>=-0x100 && muls && cntones(-val,9)==1) {
-      val = bfffo(-val,1,9);
+      val = lsbit(-val,1,9);
       if (opt_speed && ext=='w') {
         /* muls.w #-x,Dn -> ext.l Dn + asl.l #x,Dn + neg.l Dn */
         instruction *ip2 = copy_instruction(ip);
@@ -2842,14 +2918,113 @@ dontswap:
 
   if ((ip->code==OC_MOVE || oc==0x0040) &&
       ip->op[0]->mode==MODE_Extended && ip->op[0]->reg==REG_Immediate) {
+    int movqabsl = opt_moveq && abs && ext=='l' && ip->op[1]->mode==MODE_Dn;
+
     /* MOVE/MOVEA immediate instruction */
-    if (opt_moveq && abs && ext=='l' && val>=-0x80 && val<=0x7f &&
-        ip->op[1]->mode==MODE_Dn) {
+    if (movqabsl && val>=-0x80 && val<=0x7f) {
       /* move.l #x,Dn --> moveq #x,Dn */
       ip->code = OC_MOVEQ;
       ip->qualifiers[0] = l_str;
       if (final && warn_opts>1)
         cpu_error(51,"move.l #x,Dn -> moveq #x,Dn");
+    }
+    else if (movqabsl && !(cpu_type & m68040) &&
+             val>=0x80 && val<=0xfe && !(val&1)) {
+      /* move.l #x,Dn --> moveq #x>>1,Dn ; add.w Dn,Dn */
+      ip->code = OC_MOVEQ;
+      ip->qualifiers[0] = l_str;
+      if (final) {
+        free_expr(ip->op[0]->value[0]);
+        ip->op[0]->value[0] = number_expr(val >> 1);
+        if (warn_opts > 1)
+          cpu_error(51,"move.l #x,Dn -> moveq #x,Dn + add.w Dn,Dn");
+      }
+      else
+        ip->op[0]->flags |= FL_DoNotEval;
+      ip->op[0]->extval[0] = val >> 1;
+      ip->ext.un.copy.next = ip_dualop(OC_ADD,w_str,
+                                       MODE_Dn,ip->op[1]->reg,0,0,NULL,
+                                       MODE_Dn,ip->op[1]->reg,0,0,NULL);
+    }
+    else if (opt_nmovq && abs && ext=='l' && ip->op[1]->mode==MODE_Dn &&
+             !(cpu_type & m68040) && val>=0x80 && val<=0xff) {
+      /* move.l #x,Dn --> moveq #x^$ff,Dn ; not.b Dn */
+      ip->code = OC_MOVEQ;
+      ip->qualifiers[0] = l_str;
+      if (final) {
+        free_expr(ip->op[0]->value[0]);
+        ip->op[0]->value[0] = number_expr(val^0xff);
+        if (warn_opts)
+          cpu_error(51,"move.l #x,Dn -> moveq #y,Dn + not.b Dn");
+      }
+      else
+        ip->op[0]->flags |= FL_DoNotEval;
+      ip->op[0]->extval[0] = val^0xff;
+      ip->ext.un.copy.next = ip_singleop(OC_NOT,b_str,
+                                         MODE_Dn,ip->op[1]->reg,0,0,NULL);
+    }
+    else if (movqabsl && !(cpu_type & m68040) &&
+             (((val&0xffff)==0 && val>=0x10000 && val<=0x7f0000) ||
+              ((val&0xffff)==0xffff && val>=0xff80ffff && val<=0xfffeffff))) {
+      /* move.l #x,Dn --> moveq #x>>16,Dn ; swap Dn */
+      ip->code = OC_MOVEQ;
+      ip->qualifiers[0] = l_str;
+      if (final) {
+        free_expr(ip->op[0]->value[0]);
+        ip->op[0]->value[0] = number_expr(val >> 16);
+        if (warn_opts > 1)
+          cpu_error(51,"move.l #x,Dn -> moveq #y,Dn + swap Dn");
+      }
+      else
+        ip->op[0]->flags |= FL_DoNotEval;
+      ip->op[0]->extval[0] = val >> 16;
+      ip->ext.un.copy.next = ip_singleop(OC_SWAP,w_str,
+                                         MODE_Dn,ip->op[1]->reg,0,0,NULL);
+    }
+    else if (opt_nmovq && abs && ext=='l' && ip->op[1]->mode==MODE_Dn &&
+             !(cpu_type & m68040) &&
+             ((val>=0xff81 && val<=0xffff) ||
+              (val>=0xffff0001 && val<=0xffff0080))) {
+      /* move.l #x,Dn --> moveq #-x,Dn ; neg.w Dn */
+      ip->code = OC_MOVEQ;
+      ip->qualifiers[0] = l_str;
+      if (final) {
+        free_expr(ip->op[0]->value[0]);
+        ip->op[0]->value[0] = number_expr(-((int16_t)val));
+        if (warn_opts)
+          cpu_error(51,"move.l #x,Dn -> moveq #y,Dn + neg.w Dn");
+      }
+      else
+        ip->op[0]->flags |= FL_DoNotEval;
+      ip->op[0]->extval[0] = -((int16_t)val);
+      ip->ext.un.copy.next = ip_singleop(OC_NEG,w_str,
+                                         MODE_Dn,ip->op[1]->reg,0,0,NULL);
+    }
+    else if (opt_size && movqabsl && (val&0xff)==0 &&
+             val>=0x100 && val<=0x7f00) {
+      /* move.l #x,Dn --> moveq #x>>n,Dn ; lsl.w #n,Dn */
+      instruction *ip2 = ip_dualop(OC_LSLI,w_str,
+                                   MODE_Extended,REG_Immediate,
+                                   FL_NoOpt,0,ip->op[0]->value[0], /* dummy */
+                                   MODE_Dn,ip->op[1]->reg,FL_NoOpt,0,NULL);
+      int shift = msbit(val,14,8) - 6;
+
+      ip->code = OC_MOVEQ;
+      ip->qualifiers[0] = l_str;
+      if (final) {
+        free_expr(ip->op[0]->value[0]);
+        ip->op[0]->value[0] = number_expr(val >> shift);
+        ip2->op[0]->value[0] = number_expr(shift);
+        if (warn_opts)
+          cpu_error(51,"move.l #x,Dn -> moveq #x>>n,Dn + lsl.w #n,Dn");
+      }
+      else {
+        ip->op[0]->flags |= FL_DoNotEval;
+        ip2->op[0]->flags |= FL_DoNotEval;
+      }
+      ip->op[0]->extval[0] = val >> shift;
+      ip2->op[0]->extval[0] = shift;
+      ip->ext.un.copy.next = ip2;
     }
     else if (opt_gen && abs && val==0 && !(oc&0x0040) &&
              ((cpu_type & (m68010up|mcf|cpu32)) || opt_clr)) {
@@ -2935,7 +3110,7 @@ dontswap:
       cpu_error(51,"mvs/mvz #x,Dn -> moveq #x,Dn");
   }
 
-  else if ((opt_gen || opt_movem) && !strcmp(mnemo->name,"movem")) {
+  else if ((opt_gen || opt_movem) && (oc & 0xfbff) == 0x4880) {
     /* MOVEM */
     int o = (oc & 0x0400) ? 1 : 0;
 
@@ -2955,7 +3130,7 @@ dontswap:
         /* a single register - MOVEM <ea>,Rn --> MOVE <ea>,Rn */
         if ((opt_movem || (!(list&0xff) && o==1)) &&
             !aindir_in_list(ip->op[o^1],list)) {
-          signed char r = bfffo(list,0,16);
+          signed char r = lsbit(list,0,16);
 
           ip->code = OC_MOVE;
           ip->op[o]->mode = REGisAn(r) ? MODE_An : MODE_Dn;
@@ -2975,7 +3150,7 @@ dontswap:
         if ((opt_movem || (!(list&0xff) && o==1)) &&
             test_incr_ea(ip->op[o^1],offs) &&
             !aindir_in_list(ip->op[o^1],list)) {
-          signed char r = bfffo(list,0,16);
+          signed char r = lsbit(list,0,16);
           instruction *ip2;
 
           /* make two identical move instructions */
@@ -2983,7 +3158,7 @@ dontswap:
           ip->op[o]->mode = REGisAn(r) ? MODE_An : MODE_Dn;
           ip->op[o]->reg = REGget(r);
           ip2 = copy_instruction(ip);
-          r = bfffo(list,r+1,16);
+          r = lsbit(list,r+1,16);
           /* determine which register to move first */
           if (o==0 && ip->op[1]->mode==MODE_AnPreDec) {
             ip->op[o]->mode = REGisAn(r) ? MODE_An : MODE_Dn;
@@ -3132,10 +3307,9 @@ dontswap:
             free_expr(ip->op[0]->value[0]);
             ip->op[0]->value[0] = number_expr(val);
           }
-          else {
+          else
             ip->op[0]->flags |= FL_DoNotEval;
-            ip->op[0]->extval[0] = val;
-          }
+          ip->op[0]->extval[0] = val;
           if (final && warn_opts>1)
             cpu_error(51,"adda/suba #x,An -> lea (d,An),An");
         }
@@ -3181,13 +3355,11 @@ dontswap:
           ip->op[0]->flags |= FL_NoOpt;
         }
         else {
-          instruction *ip2;
- 
-          ip2 = ip_doubleop(OC_ADDA,l_str,
-                            MODE_Extended,REG_Immediate,
-                            FL_NoOpt,0,ip->op[0]->value[0],
-                            MODE_An,ip->op[1]->reg,
-                            FL_NoOpt,0,NULL);
+          instruction *ip2 = ip_dualop(OC_ADDA,l_str,
+                                       MODE_Extended,REG_Immediate,
+                                       FL_NoOpt,0,ip->op[0]->value[0],
+                                       MODE_An,ip->op[1]->reg,
+                                       FL_NoOpt,0,NULL);
           ip->code = OC_MOVEA;
           ip->op[0]->mode = MODE_An;
           ip->ext.un.copy.next = ip2;  /* append the ADDA */
@@ -3458,9 +3630,9 @@ dontswap:
       }
       ip->op[0] = ip->op[1];
       ip->op[1] = NULL;
-      ip->ext.un.copy.next = ip_doubleop(OC_MVZ,w_str,
-                                         MODE_Dn,ip->op[0]->reg,0,0,NULL,
-                                         MODE_Dn,ip->op[0]->reg,0,0,NULL);
+      ip->ext.un.copy.next = ip_dualop(OC_MVZ,w_str,
+                                       MODE_Dn,ip->op[0]->reg,0,0,NULL,
+                                       MODE_Dn,ip->op[0]->reg,0,0,NULL);
     }
   }
 
@@ -3501,7 +3673,7 @@ dontswap:
                  cntones(val,9)==1) {
           /* divu.l #x,Dn -> lsr.l #x,Dn */
           ip->code = OC_LSRI;
-          val = bfffo(val,1,9);
+          val = lsbit(val,1,9);
           if (final) {
             free_expr(ip->op[0]->value[0]);
             ip->op[0]->value[0] = number_expr(val);
@@ -3520,11 +3692,10 @@ dontswap:
       cpu_error(65);  /* Dr and Dq are identical! */
   }
 
-  else if ((oc==0x4ec0 || oc==0x4e80) && !abs) {
-    if (opt_pc && !(ip->op[0]->flags & FL_NoOpt) &&
+  else if (oc==0x4ec0 || oc==0x4e80) {
+    if (pcrelok && opt_pc && !(ip->op[0]->flags & FL_NoOpt) &&
         ip->op[0]->mode==MODE_Extended &&
-        (ip->op[0]->reg==REG_AbsLong || ip->op[0]->reg==REG_PC16Disp) &&
-        LOCREF(ip->op[0]->base[0]) && ip->op[0]->base[0]->sec==sec) {
+        (ip->op[0]->reg==REG_AbsLong || ip->op[0]->reg==REG_PC16Disp)) {
       /* JMP/JSR label --> BRA/BSR label */
       taddr diff = val - cpc;
 
@@ -3554,7 +3725,7 @@ dontswap:
     }
     else if (!(ip->op[0]->flags & FL_NoOpt) &&
              ip->op[0]->mode==MODE_Extended && ip->op[0]->reg==REG_AbsLong &&
-             EXTREF(ip->op[0]->base[0])) {
+             !abs && EXTREF(ip->op[0]->base[0])) {
       if (opt_sc) {
         /* JMP/JSR extlabel --> JMP/JSR extlabel(PC) */
         ip->op[0]->reg = REG_PC16Disp;
@@ -3571,10 +3742,9 @@ dontswap:
     }
   }
 
-  else if ((oc & 0xf000)==0x6000 && !abs) {
+  else if ((oc & 0xf000)==0x6000) {
     /* Bcc label */
-    if (opt_bra && ((ipflags&IFL_UNSIZED) || opt_allbra) &&
-        LOCREF(ip->op[0]->base[0]) && ip->op[0]->base[0]->sec==sec) {
+    if (opt_bra && ((ipflags&IFL_UNSIZED) || opt_allbra) && pcrelok) {
       taddr diff = val - cpc;
       int resolvewarn = (sec->flags&RESOLVE_WARN)!=0;
 
@@ -3670,9 +3840,8 @@ dontswap:
         }        
       }
     }
-    else if (opt_branop && oc!=0x6100 && val-cpc==0 &&
-             (ext=='b' || ext=='s') && LOCREF(ip->op[0]->base[0]) &&
-             ip->op[0]->base[0]->sec==sec) {
+    else if (opt_branop && oc!=0x6100 && pcrelok && val-cpc==0 &&
+             (ext=='b' || ext=='s')) {
       /* short-branch with zero-distance which cannot be optimized
          is turned into a NOP */
       ip->qualifiers[0] = emptystr;
@@ -3683,7 +3852,7 @@ dontswap:
       if (final)
         cpu_error(57);  /* bra.b *+2 turned into a nop */
     }
-    else if (opt_brajmp && ip->op[0]->base[0]->sec!=sec &&
+    else if (opt_brajmp && !abs && ip->op[0]->base[0]->sec!=sec &&
              LOCREF(ip->op[0]->base[0])) {
       /* reference to label from different section */
       ip->qualifiers[0] = emptystr;
@@ -3718,8 +3887,7 @@ dontswap:
 
   else if ((oc & 0xff80)==0xf080 && ip->code!=OC_FNOP) {
     /* cpBcc label */
-    if (opt_bra && ((ipflags&IFL_UNSIZED) || opt_allbra) &&
-        LOCREF(ip->op[0]->base[0]) && ip->op[0]->base[0]->sec==sec) {
+    if (opt_bra && ((ipflags&IFL_UNSIZED) || opt_allbra) && pcrelok) {
       taddr diff = val - cpc;
 
       switch (lastsize) {
@@ -4076,83 +4244,78 @@ static unsigned char *write_branch(dblock *db,unsigned char *d,operand *op,
   if (!bcc && ext!='w' && ext!='l')
     ierror(0);
 
-  if (op->base[0]) {
+  if (op->base[0] && is_pc_reloc(op->base[0],sec)) {
+    /* external branch label, or label from different section */
+    taddr addend = op->extval[0];
+    int size,offset;
 
-    if (is_pc_reloc(op->base[0],sec)) {
-      /* external branch label, or label from different section */
-      taddr addend = op->extval[0];
-      int size,offset;
+    switch (ext) {
+      case 'b':
+      case 's':
+        addend--;   /* reloc-offset is stored 1 byte before PC-location */
+        *(d-1) = addend & 0xff;
+        size = 8;
+        offset = 1;
+        break;
+      case 'l':
+        if (cpu_type & (m68020up|cpu32|mcfb|mcfc|m68881|m68882|m68851)) {
+          if (bcc)
+            *(d-1) = 0xff;
+          offset = d - (unsigned char *)db->data;
+          d = setval(1,d,4,addend);
+          size = 32;
+        }
+        else
+          cpu_error(0);  /* instruction not supported */
+        break;
+      case 'w':
+        if (bcc)
+          *(d-1) = 0;
+        offset = d - (unsigned char *)db->data;
+        d = setval(1,d,2,addend);
+        size = 16;
+        break;
+      default:
+        cpu_error(34);  /* illegal opcode extension */
+        break;
+    }
+    add_extnreloc(&db->relocs,op->base[0],addend,REL_PC,0,size,offset);
+  }
+  else {
+    /* known label from the same section - can be resolved immediately */
+    taddr diff = op->extval[0] - pc;
 
-      switch (ext) {
-        case 'b':
-        case 's':
-          addend--;   /* reloc-offset is stored 1 byte before PC-location */
-          *(d-1) = addend & 0xff;
-          size = 8;
-          offset = 1;
-          break;
-        case 'l':
-          if (cpu_type & (m68020up|cpu32|mcfb|mcfc|m68881|m68882|m68851)) {
-            if (bcc)
-              *(d-1) = 0xff;
-            offset = d - (unsigned char *)db->data;
-            d = setval(1,d,4,addend);
-            size = 32;
-          }
-          else
-            cpu_error(0);  /* instruction not supported */
-          break;
-        case 'w':
+    switch (ext) {
+      case 'b':
+      case 's':
+        if (diff>=-0x80 && diff<=0x7f && diff!=0)
+          *(d-1) = diff & 0xff;
+        else
+          cpu_error(28);  /* branch destination out of range */
+        break;
+      case 'l':
+        if (cpu_type & (m68020up|cpu32|mcfb|mcfc|m68881|m68882|m68851)) {
+          if (bcc)
+            *(d-1) = 0xff;
+          d = setval(1,d,4,diff);
+        }
+        else
+          cpu_error(0);  /* instruction not supported */
+        break;
+      case 'w':
+        if (diff>=-0x8000 && diff<=0x7fff) {
           if (bcc)
             *(d-1) = 0;
-          offset = d - (unsigned char *)db->data;
-          d = setval(1,d,2,addend);
-          size = 16;
-          break;
-        default:
-          cpu_error(34);  /* illegal opcode extension */
-          break;
-      }
-      add_extnreloc(&db->relocs,op->base[0],addend,REL_PC,0,size,offset);
-    }
-
-    else {  /* known label from same section, can be resolved immediately */
-      taddr diff = op->extval[0] - pc;
-
-      switch (ext) {
-        case 'b':
-        case 's':
-          if (diff>=-0x80 && diff<=0x7f && diff!=0)
-            *(d-1) = diff & 0xff;
-          else
-            cpu_error(28);  /* branch destination out of range */
-          break;
-        case 'l':
-          if (cpu_type & (m68020up|cpu32|mcfb|mcfc|m68881|m68882|m68851)) {
-            if (bcc)
-              *(d-1) = 0xff;
-            d = setval(1,d,4,diff);
-          }
-          else
-            cpu_error(0);  /* instruction not supported */
-          break;
-        case 'w':
-          if (diff>=-0x8000 && diff<=0x7fff) {
-            if (bcc)
-              *(d-1) = 0;
-            d = setval(1,d,2,diff);
-          }
-          else
-            cpu_error(28);  /* branch destination out of range */
-          break;
-        default:
-          cpu_error(34);  /* illegal opcode extension */
-          break;
-      }
+          d = setval(1,d,2,diff);
+        }
+        else
+          cpu_error(28);  /* branch destination out of range */
+        break;
+      default:
+        cpu_error(34);  /* illegal opcode extension */
+        break;
     }
   }
-  else
-    cpu_error(26);  /* label in operand required */
 
   return d;
 }
@@ -4287,14 +4450,14 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
         /* d16(PC) needs one extension word */
         taddr disp = op->extval[0];
 
-        if (op->base[0]) {
-          if (is_pc_reloc(op->base[0],sec)) {
-            rtype = REL_PC;
-            rsize = 16;
-          }
-          else
-            disp = op->extval[0] - pc;
+        if (op->base[0]!=NULL && is_pc_reloc(op->base[0],sec)) {
+          rtype = REL_PC;
+          rsize = 16;
         }
+        else if (op->base[0]!=NULL || (sec->flags&ABSOLUTE))
+          disp = op->extval[0] - pc;
+        else
+          cpu_error(no_dpc ? 26 : 68);  /* absolute PC-displacement */
         if (typechk && (disp<-0x8000 || disp>0x7fff))
           cpu_error(29);  /* displacement out of range */
         d = setval(1,d,2,disp);
@@ -4310,31 +4473,31 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
           d = setval(1,d,2,op->format);
           roffs += 2;
           if (FW_getBDSize(op->format) == FW_Word) {
-            if (op->base[0]) {
-              if (is_pc_reloc(op->base[0],sec)) {
-                rtype = REL_PC;
-                rsize = 16;
-                op->extval[0] += 2;  /* pc-relative xref fix */
-                disp += 2;
-              }
-              else
-                disp = op->extval[0] - pc;
+            if (op->base[0]!=NULL && is_pc_reloc(op->base[0],sec)) {
+              rtype = REL_PC;
+              rsize = 16;
+              op->extval[0] += 2;  /* pc-relative xref fix */
+              disp += 2;
             }
+            else if (op->base[0]!=NULL || (sec->flags&ABSOLUTE))
+              disp = op->extval[0] - pc;
+            else
+              cpu_error(no_dpc ? 26 : 68);  /* absolute PC-displacement */
             if (typechk && (disp<-0x8000 || disp>0x7fff))
               cpu_error(29);  /* displacement out of range */
             d = setval(1,d,2,disp);
           }
           else if (FW_getBDSize(op->format) == FW_Long) {
-            if (op->base[0]) {
-              if (is_pc_reloc(op->base[0],sec)) {
-                rtype = REL_PC;
-                rsize = 32;
-                op->extval[0] += 2;  /* pc-relative xref fix */
-                disp += 2;
-              }
-              else
-                disp = op->extval[0] - pc;
+            if (op->base[0]!=NULL && is_pc_reloc(op->base[0],sec)) {
+              rtype = REL_PC;
+              rsize = 32;
+              op->extval[0] += 2;  /* pc-relative xref fix */
+              disp += 2;
             }
+            else if (op->base[0]!=NULL || (sec->flags&ABSOLUTE))
+              disp = op->extval[0] - pc;
+            else
+              cpu_error(no_dpc ? 26 : 68);  /* absolute PC-displacement */
             d = setval(1,d,4,disp);
           }
           if (FW_getIndSize(op->format) == FW_Word) {
@@ -4360,17 +4523,17 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
         }
         else {
           /* (d8,PC,Rn.x*s) needs one format word as extension */
-          if (op->base[0]) {
-            if (is_pc_reloc(op->base[0],sec)) {
-              rtype = REL_PC;
-              rsize = 8;
-              roffs++;
-              op->extval[0] += 1;  /* pc-relative xref fix */
-              disp += 1;
-            }
-            else
-              disp = op->extval[0] - pc;
+          if (op->base[0]!=NULL && is_pc_reloc(op->base[0],sec)) {
+            rtype = REL_PC;
+            rsize = 8;
+            roffs++;
+            op->extval[0] += 1;  /* pc-relative xref fix */
+            disp += 1;
           }
+          else if (op->base[0]!=NULL || (sec->flags&ABSOLUTE))
+            disp = op->extval[0] - pc;
+          else
+            cpu_error(no_dpc ? 26 : 68);  /* absolute PC-displacement */
           if (typechk && (disp<-0x80 || disp>0x7f))
             cpu_error(29);  /* displacement out of range */
           *d++ = (op->format>>8) & 0xff;
@@ -4383,7 +4546,6 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
         if (typechk && (op->extval[0]<-0x8000 || op->extval[0]>0x7fff))
           cpu_error(32);  /* absolute short address out of range */
         if (op->base[0]) {
-          /* @@@ should we allow 16-bit address relocations? */
           rtype = REL_ABS;
           rsize = 16;
         }
@@ -4950,6 +5112,15 @@ int init_cpu()
       f = 3;
     set_internal_abs(lk_name,f);
   }
+
+  /* for BAsm compatibility */
+  movemregs = internal_abs(movemregs_name);
+  movemsize = internal_abs(movemsize_name);
+  movembytes = internal_abs(movembytes_name);
+  movembytes->expr = make_expr(MUL,new_sym_expr(movemsize),
+                       make_expr(CNTONES,new_sym_expr(movemregs),NULL));
+
+  /* __VASM */
   set_internal_abs(vasmsym_name,cpu_type&CPUMASK);
 
   return 1;
@@ -5008,9 +5179,9 @@ static void clear_all_opts(void)
 {
   opt_movem = opt_pea = opt_clr = opt_st = opt_lsl = opt_mul = opt_div = 0;
   opt_fconst = opt_brajmp = opt_pc = opt_bra = opt_allbra = opt_jbra = 0;
-  opt_disp = opt_abs = opt_moveq = opt_quick = opt_branop = 0;
+  opt_disp = opt_abs = opt_moveq = opt_nmovq = opt_quick = opt_branop = 0;
   opt_bdisp = opt_odisp = opt_lea = opt_lquick = opt_immaddr = 0;
-  opt_gen = opt_speed = 0;
+  opt_gen = opt_speed = opt_size = 0;
 }
 
 
@@ -5031,13 +5202,14 @@ int cpu_args(char *arg)
     /* set all options to Devpac-compatible defaults */
     devpac_compat = 1;
 #ifdef OUTTOS
-    tos_hisoft_dri = 0;  /* no extended symbol names until OPT X+ is given */
+    tos_hisoft_dri = 0;  /* no extended symbol names unless OPT X+ is given */
 #endif
     clear_all_opts();
     no_symbols = 1;
     warn_opts = 2;
     ign_unambig_ext = 1;
     unsigned_shift = 1;
+    no_dpc = 1;
     return 0;  /* leave option visible for syntax modules */
   }
 
@@ -5093,6 +5265,8 @@ nofpu:
     elfregs = 1;
   else if (!strcmp(p,"-guess-ext"))
     ign_unambig_ext = 1;
+  else if (!strcmp(p,"-nodpc"))
+    no_dpc = 1;
   else if (!strcmp(p,"-showcrit"))
     warn_opts = 1;
   else if (!strcmp(p,"-showopt"))
@@ -5117,6 +5291,8 @@ nofpu:
     opt_div = !no_opt;
   else if (!strcmp(p,"-opt-fconst"))
     opt_fconst = !no_opt;
+  else if (!strcmp(p,"-opt-nmoveq"))
+    opt_nmovq = !no_opt;
   else if (!strcmp(p,"-opt-brajmp"))
     opt_brajmp = !no_opt;
   else if (!strcmp(p,"-opt-allbra"))
@@ -5125,6 +5301,8 @@ nofpu:
     opt_jbra = !no_opt;
   else if (!strcmp(p,"-opt-speed"))
     opt_speed = !no_opt;
+  else if (!strcmp(p,"-opt-size"))
+    opt_size = !no_opt;
   else
     return 0;
 
@@ -5445,6 +5623,9 @@ static char *devpac_option(char *s)
               case 'p': /* vasm-specific */
                 add_cpu_opt(0,OCMD_OPTPEA,flag);
                 break;
+              case 'q': /* vasm-specific */
+                add_cpu_opt(0,OCMD_OPTNMOVQ,flag);
+                break;
               case 's': /* vasm-specific */
                 add_cpu_opt(0,OCMD_OPTSPEED,flag);
                 break;
@@ -5456,6 +5637,9 @@ static char *devpac_option(char *s)
                 break;
               case 'x': /* vasm-specific */
                 add_cpu_opt(0,OCMD_OPTMUL,flag);
+                break;
+              case 'z': /* vasm-specific */
+                add_cpu_opt(0,OCMD_OPTSIZE,flag);
                 break;
               default:
                 cpu_error(31,opt,ext);  /* unknown option ignored */

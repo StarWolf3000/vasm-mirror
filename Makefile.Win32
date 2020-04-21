@@ -16,7 +16,7 @@ OUTFMTS = -DOUTAOUT -DOUTBIN -DOUTELF -DOUTHUNK -DOUTSREC -DOUTTOS -DOUTVOBJ \
 
 CC = cl 
 CCOUT = /Fo
-COPTS = $(OUTFMTS) /nologo /O2 /MT /Zp1 /c 
+COPTS = $(OUTFMTS) /nologo /O2 /MT /c 
 COPTS = $(COPTS) /wd4996				# Disable warning regarding deprecated functions 
 							# ("use strcpy_s instead of strcpy" etc)
 COPTS = $(COPTS) $(WIN32_PLATFORMSDK_INCLUDE)

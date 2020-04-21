@@ -11,9 +11,9 @@
   "identifier expected",ERROR,                                       /* 10 */
   "invalid numeric expansion",ERROR,
   "unexpected \"%s\" without \"%s\"",ERROR,
-  "",ERROR,
-  "",ERROR,
-  "",ERROR,                                                          /* 15 */
+  "dsect already active",ERROR,
+  "dend without dsect",ERROR,
+  "missing dend",ERROR,                                              /* 15 */
   "",ERROR,
   "",ERROR,
   "",ERROR,

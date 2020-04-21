@@ -1,6 +1,6 @@
 /*
 ** cpu.c 650x/65C02/6510/6280 cpu-description file
-** (c) in 2002,2006,2008-2012,2014-2018 by Frank Wille
+** (c) in 2002,2006,2008-2012,2014-2020 by Frank Wille
 */
 
 #include "vasm.h"
@@ -11,7 +11,7 @@ mnemonic mnemonics[] = {
 
 int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright="vasm 6502 cpu backend 0.8 (c) 2002,2006,2008-2012,2014-2018 Frank Wille";
+char *cpu_copyright="vasm 6502 cpu backend 0.8c (c) 2002,2006,2008-2012,2014-2020 Frank Wille";
 char *cpuname = "6502";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -20,6 +20,15 @@ static uint16_t cpu_type = M6502;
 static int branchopt = 0;
 static int modifier;      /* set by find_base() */
 static utaddr dpage = 0;  /* default zero/direct page - set with SETDP */
+static int bbcade;        /* GMGM - set for BBC ADE compatibility */
+
+
+int ext_unary_type(char *s)
+{
+  if (bbcade)  /* GMGM - BBC ADE assembler swaps meaning of < and > */
+    return *s=='<' ? HIBYTE : LOBYTE;
+  return *s=='<' ? LOBYTE : HIBYTE;
+}
 
 
 int ext_unary_eval(int type,taddr val,taddr *result,int cnst)
@@ -155,6 +164,19 @@ char *parse_cpu_special(char *start)
       eol(s);
       return skip_line(s);
     }
+    else if (s-name==5 && !strnicmp(name,"zpage",5)) {
+      char *name;
+      s = skip(s);
+      if (name = parse_identifier(&s)) {
+        symbol *sym = new_import(name);
+        myfree(name);
+        sym->flags |= ZPAGESYM;
+        eol(s);
+      }
+      else
+        cpu_error(8);  /* identifier expected */
+      return skip_line(s);
+    }
   }
   return start;
 }
@@ -186,42 +208,34 @@ static void optimize_instruction(instruction *ip,section *sec,
                                  taddr pc,int final)
 {
   mnemonic *mnemo = &mnemonics[ip->code];
-  operand *op = ip->op[0];
+  symbol *base;
+  operand *op;
   taddr val;
   int i;
 
   for (i=0; i<MAX_OPERANDS; i++) {
     if ((op = ip->op[i]) != NULL) {
       if (op->value != NULL) {
-        if (eval_expr(op->value,&val,sec,pc)) {
-          if ((op->type==ABS || op->type==ABSX || op->type==ABSY)
+        if (eval_expr(op->value,&val,sec,pc))
+          base = NULL;  /* val is constant/absolute */
+        else
+          find_base(op->value,&base,sec,pc);  /* get base-symbol */
+
+        if ((op->type==ABS || op->type==ABSX || op->type==ABSY) &&
+            ((base==NULL
               && ((val>=0 && val<=0xff) ||
-                  ((utaddr)val>=op->dp && (utaddr)val<=op->dp+0xff))
-              && mnemo->ext.zp_opcode!=0) {
-            /* we can use a zero page addressing mode */
-            op->type += ZPAGE-ABS;
-          }
+                  ((utaddr)val>=op->dp && (utaddr)val<=op->dp+0xff))) ||
+            (base!=NULL && (base->flags&ZPAGESYM)))
+            && mnemo->ext.zp_opcode!=0) {
+          /* we can use a zero page addressing mode for absolute 16-bit */
+          op->type += ZPAGE-ABS;
         }
-        else {
-          symbol *base;
-        
-          if (find_base(op->value,&base,sec,pc) == BASE_OK) {
-            if ((op->type==ABS || op->type==ABSX || op->type==ABSY)
-                && base->sec!=NULL && (base->sec->flags & ABSOLUTE)
-                && ((val>=0 && val<=0xff) ||
-                    ((utaddr)val>=op->dp && (utaddr)val<=op->dp+0xff))
-                && mnemo->ext.zp_opcode!=0) {
-              /* we can use a zero page addressing mode */
-              op->type += ZPAGE-ABS;
-            }
-            else if (op->type==REL && LOCREF(base) && base->sec==sec) {
-              taddr bd = val - (pc + 2);
-    
-              if ((bd<-0x80 || bd>0x7f) && branchopt) {
-                /* branch dest. out of range: use a B!cc/JMP combination */
-                op->type = RELJMP;
-              }
-            }
+        else if (op->type==REL && (base==NULL || !is_pc_reloc(base,sec))) {
+          taddr bd = val - (pc + 2);
+
+          if ((bd<-0x80 || bd>0x7f) && branchopt) {
+            /* branch dest. out of range: use a B!cc/JMP combination */
+            op->type = RELJMP;
           }
         }
       }
@@ -317,15 +331,15 @@ static void rangecheck(taddr val,operand *op)
         break;
     case IMMED:
       if (val<-0x80 || val>0xff)
-        cpu_error(5);  /* operand doesn't fit into 8-bits */
+        cpu_error(5,8); /* operand doesn't fit into 8-bits */
       break;
     case REL:
       if (val<-0x80 || val>0x7f)
-        cpu_error(6);  /* branch destination out of range */
+        cpu_error(6);   /* branch destination out of range */
       break;
     case WBIT:
       if (val<0 || val>7)
-        cpu_error(7);  /* illegal bit number */
+        cpu_error(7);   /* illegal bit number */
       break;
   }
 }
@@ -428,6 +442,11 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
           else
             general_error(38);  /* illegal relocation */
         }
+        else {
+          /* constant/absolute value */
+          if (optype == REL)
+            val = val - (pc + offs + 1);
+        }
 
         rangecheck(val,op);
 
@@ -436,7 +455,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
           case ABSX:
           case ABSY:
             if (!*(db->data)) /* STX/STY allow only ZeroPage addressing mode */
-              cpu_error(5);   /* operand doesn't fit into 8-bits */
+              cpu_error(5,8); /* operand doesn't fit into 8 bits */
           case ABS:
           case INDIR:
           case INDIRX:
@@ -480,7 +499,7 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
   dblock *db = new_dblock();
   taddr val;
 
-  if (bitsize!=8 && bitsize!=16)
+  if (bitsize!=8 && bitsize!=16 && bitsize!=32)
     cpu_error(3,bitsize);  /* data size not supported */
 
   db->size = bitsize >> 3;
@@ -513,20 +532,13 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
   }
   if (bitsize < 16) {
     if (val<-0x80 || val>0xff)
-      cpu_error(5);  /* operand doesn't fit into 8-bits */
+      cpu_error(5,8);  /* operand doesn't fit into 8-bits */
+  } else if (bitsize < 32) {
+    if (val<-0x8000 || val>0xffff)
+      cpu_error(5,16);  /* operand doesn't fit into 16-bits */
   }
 
-  switch (db->size) {
-    case 2:
-      db->data[1] = (val>>8) & 0xff;
-    case 1:
-      db->data[0] = val & 0xff;
-      break;
-    default:
-      ierror(0);
-      break;
-  }
-
+  setval(0,db->data,db->size,val);
   return db;
 }
 
@@ -555,6 +567,8 @@ int cpu_args(char *p)
 {
   if (!strcmp(p,"-opt-branch"))
     branchopt = 1;
+  else if (!strcmp(p,"-bbcade")) /* GMGM */
+    bbcade = 1;
   else if (!strcmp(p,"-illegal"))
     cpu_type |= ILL;
   else if (!strcmp(p,"-dtv"))

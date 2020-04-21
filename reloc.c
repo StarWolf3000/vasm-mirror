@@ -1,5 +1,5 @@
 /* reloc.c - relocation support functions */
-/* (c) in 2010-2016 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2016,2020 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -71,23 +71,28 @@ int is_pc_reloc(symbol *sym,section *cur_sec)
   if (EXTREF(sym))
     return 1;
   else if (LOCREF(sym))
-    return (sym->sec!=cur_sec &&
-            (!(sym->flags & ABSLABEL) || !(cur_sec->flags & ABSOLUTE)));
+    return (cur_sec->flags & ABSOLUTE) ? 0 : sym->sec != cur_sec;
   ierror(0);
   return 0;
 }
 
 
-void do_pic_check(rlist *r)
+void do_pic_check(rlist *rl)
 /* generate an error on a non-PC-relative relocation */
 {
+  nreloc *r;
   int t;
 
-  while (r) {
-    t = r->type;
-    if (t==REL_ABS || t==REL_UABS)
-      general_error(34);  /* relocation not allowed */
-    r = r->next;
+  while (rl) {
+    t = rl->type;
+    if (t==REL_ABS || t==REL_UABS) {
+      r = (nreloc *)rl->reloc;
+
+      if (r->sym->type==LABSYM ||
+          (r->sym->type==IMPORT && (r->sym->flags&EXPORT)))
+        general_error(34);  /* relocation not allowed */
+    }
+    rl = rl->next;
   }
 }
 

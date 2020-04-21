@@ -1,11 +1,11 @@
 /* output_hunk.c AmigaOS hunk format output driver for vasm */
-/* (c) in 2002-2019 by Frank Wille */
+/* (c) in 2002-2020 by Frank Wille */
 
 #include "vasm.h"
 #include "osdep.h"
 #include "output_hunk.h"
 #if defined(OUTHUNK) && (defined(VASM_CPU_M68K) || defined(VASM_CPU_PPC))
-static char *copyright="vasm hunk format output module 2.11 (c) 2002-2019 Frank Wille";
+static char *copyright="vasm hunk format output module 2.12 (c) 2002-2020 Frank Wille";
 int hunk_onlyglobal;
 
 /* (currenty two-byte only) padding value for not 32-bit aligned code hunks */
@@ -266,30 +266,44 @@ static utaddr file_size(section *sec)
 
 
 static utaddr sect_size(section *sec)
-/* determine full section size, subtracted by the space explicitely
+/* recalculate full section size, subtracted by the space explicitely
    reserved for databss (DX directive) */
 {
-  utaddr dbss = 0;
-
-  utaddr pc=0,zpc=0,npc;
+  utaddr pc=0,dxpc=0;
   atom *a;
 
   for (a=sec->first; a; a=a->next) {
+    unsigned char *d;
+    taddr sz;
+
+    pc = pcalign(a,pc);
+    sz = atom_size(a,sec,pc);
+
     if (a->type == SPACE) {
       sblock *sb = a->content.sb;
     
       if (sb->flags & SPC_DATABSS) {
-        dbss += sb->space * sb->size;
-        continue;
+        if (dxpc == 0)
+          dxpc = pc;
+      }
+      else if (sz > 0 && dxpc != 0) {
+        output_atom_error(13,a); /* warn about data following a DX directive */
+        dxpc = 0;
       }
     }
-    if (dbss>0 && (a->type==SPACE || a->type==DATA)) {
-      output_atom_error(13,a);  /* warn about data following a DX directive */
-      dbss = 0;
+    else if (a->type == DATA) {
+      if (dxpc != 0) {
+        output_atom_error(13,a); /* warn about data following a DX directive */
+        dxpc = 0;
+      }
     }
+    else if (sz != 0 && dxpc != 0)
+      ierror(0);  /* only DATA and SPACE can have a size!? */
+
+    pc += sz;
   }
 
-  return get_sec_size(sec) - dbss;
+  return dxpc ? dxpc : pc;
 }
 
 
@@ -1032,6 +1046,7 @@ int init_output_hunk(char **cp,void (**wo)(FILE *,section *,symbol *),
   *cp = copyright;
   *wo = write_output;
   *oa = exec_out ? exec_args : object_args;
+  secname_attr = 1; /* attribute is used to differentiate between sections */
   return 1;
 }
 
