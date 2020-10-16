@@ -67,7 +67,7 @@ static void make_file_lists(struct source_file *first_source)
   struct source_file *srcnode;
   struct include_path *incnode;
   struct DWfile *newfil,*dwfil;
-  struct DWinclude *newinc,*dwinc;
+  struct DWinclude *dwinc;
   char pathbuf[MAXPATHLEN];
   char *filepart;
   int include_idx = 0;

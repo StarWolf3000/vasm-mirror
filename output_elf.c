@@ -406,9 +406,6 @@ static utaddr make_stabreloc(utaddr pc,struct stabdef *nlist,
   rlist dummyrl;
   rlist *rl = &dummyrl;
   nreloc nrel;
-  utaddr rtype,offset;
-  taddr addend;
-  symbol *refsym;
 
   nrel.byteoffset = offsetof(struct nlist32,n_value);
   nrel.bitoffset = 0;

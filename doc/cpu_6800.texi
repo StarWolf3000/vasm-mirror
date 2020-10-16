@@ -32,7 +32,7 @@ This backend accepts 6800 family instructions for the following CPUs:
 
 @end itemize
 
-The 6804, 6805, 68HC08 and 6809 are not supported, they use a similar
+The 6804, 6805 and 68HC08 are not supported, they use a similar
 instruction set, but are not opcode compatible.
 
 The target address type is 16 bit.

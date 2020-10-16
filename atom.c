@@ -11,7 +11,7 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
 {
 #if MAX_OPERANDS!=0
   operand ops[MAX_OPERANDS];
-  int j,k,mnemo_opcnt,omitted,skipped;
+  int j,k,mnemo_opcnt,omitted,skipped,again;
 #endif
   int i,inst_found=0;
   hashdata data;
@@ -21,7 +21,7 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
 #if HAVE_INSTRUCTION_EXTENSION
   init_instruction_ext(&new->ext);
 #endif
-#if MAX_OPERANDS!=0 && NEED_CLEARED_OPERANDS!=0
+#if MAX_OPERANDS!=0 && CLEAR_OPERANDS_ON_START!=0
   /* reset operands to allow the cpu-backend to parse them only once */
   memset(ops,0,sizeof(ops));
 #endif
@@ -39,7 +39,12 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
 
 #if MAX_OPERANDS!=0
 
-#if ALLOW_EMPTY_OPS
+#if CLEAR_OPERANDS_ON_MNEMO!=0
+  /* reset all operands for every new mnemonic */
+  memset(ops,0,sizeof(ops));
+#endif
+
+#if 0 /* @@@ was ALLOW_EMPTY_OPS */
       mnemo_opcnt = op_cnt<MAX_OPERANDS ? op_cnt : MAX_OPERANDS;
 #else
       for (j=0; j<MAX_OPERANDS; j++)
@@ -50,7 +55,7 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
       inst_found = 2;
       save_symbols();  /* make sure we can restore symbols to this point */
 
-      for (j=k=omitted=skipped=0; j<mnemo_opcnt; j++) {
+      for (j=k=omitted=skipped=0,again=-1; j<mnemo_opcnt; j++) {
 
         if (op_cnt+omitted < mnemo_opcnt &&
             OPERAND_OPTIONAL(&ops[j],mnemonics[i].operand_type[j])) {
@@ -59,33 +64,43 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
         else {
           int rc;
 
-          if (k >= op_cnt)  /* missing mandatory operands */
+          if (k >= op_cnt) {
+            /* we may be missing mandatory operands */
+            if (j == again)
+              j++;  /* but probably not after PO_AGAIN */
             break;
+          }
 
           rc = parse_operand(op[k],op_len[k],&ops[j],
-                                 mnemonics[i].operand_type[j]);
+                             mnemonics[i].operand_type[j]);
 
           if (rc == PO_CORRUPT) {
+            /* operand has errors and will never match */
             myfree(new);
             restore_symbols();
             return 0;
           }
           if (rc == PO_NOMATCH)
-              break;
+            break;     /* operand type does not match */
+          if (rc == PO_NEXT)
+            continue;  /* after PO_AGAIN: use this arg. on the next operand */
 
-          /* MATCH, move to next parsed operand */
+          /* MATCH, proceed to next parsed operand */
           k++;
-          if (rc == PO_SKIP) {	/* but skip next operand type from table */
+          if (rc == PO_SKIP) {
+            /* but skip next operand type from table */
             j++;
             skipped++;
+          }
+          else if (rc == PO_AGAIN) {
+            /* try to work on the same operand again with next arg. */
+            again = j--;
           }
         }
       }
 
-#if IGNORE_FIRST_EXTRA_OP
-      if (mnemo_opcnt > 0)
-#endif
-      if (j<mnemo_opcnt || k<op_cnt) {
+      if ((!IGNORE_FIRST_EXTRA_OP || mnemo_opcnt>0) &&
+          (j<mnemo_opcnt || k<op_cnt)) {
         /* No match. Try next mnemonic. */
         i++;
         restore_symbols();
@@ -99,7 +114,7 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
         *new->op[j] = ops[j];
       }
       for(; j<MAX_OPERANDS; j++)
-        new->op[j] = 0;
+        new->op[j] = NULL;
 
 #endif /* MAX_OPERANDS!=0 */
 
@@ -123,6 +138,36 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
   }
   myfree(new);
   return 0;
+}
+
+
+instruction *copy_inst(instruction *ip)
+{
+#if MAX_OPERANDS!=0
+  static operand newop[MAX_OPERANDS];
+#endif
+  static instruction newip;
+  int i;
+
+  newip.code = ip->code;
+#if MAX_QUALIFIERS!=0
+  for (i=0; i<MAX_QUALIFIERS; i++)
+    newip.qualifiers[i] = ip->qualifiers[i];
+#endif
+#if MAX_OPERANDS!=0
+  for (i=0; i<MAX_OPERANDS; i++) {
+    if (ip->op[i] != NULL) {
+      newip.op[i] = &newop[i];
+      *newip.op[i] = *ip->op[i];
+    }
+    else
+      newip.op[i] = NULL;
+  }
+#endif
+#if HAVE_INSTRUCTION_EXTENSION
+  memcpy(&newip.ext,&ip->ext,sizeof(instruction_ext));
+#endif
+  return &newip;
 }
 
 
@@ -157,7 +202,7 @@ static size_t space_size(sblock *sb,section *sec,taddr pc)
 {
   utaddr space=0;
 
-  if (eval_expr(sb->space_exp,&space,sec,pc) || !final_pass)
+  if (eval_expr(sb->space_exp,(taddr *)&space,sec,pc) || !final_pass)
     sb->space = space;
   else
     general_error(30);  /* expression must be constant */
@@ -556,7 +601,6 @@ atom *new_label_atom(symbol *p)
 atom *new_space_atom(expr *space,size_t size,expr *fill)
 {
   atom *new = new_atom(SPACE,1);
-  int i;
 
   if (size<1)
     ierror(0);  /* usually an error in syntax-module */

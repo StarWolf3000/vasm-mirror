@@ -29,6 +29,9 @@ typedef uint32_t utaddr;
 /* returns true when instruction is valid for selected cpu */
 #define MNEMONIC_VALID(i) cpu_available(i)
 
+/* parse cpu-specific directives with label */
+#define PARSE_CPU_LABEL(l,s) parse_cpu_label(l,s)
+
 /* we define two additional unary operations, '<' and '>' */
 int ext_unary_type(char *);
 int ext_unary_eval(int,taddr,taddr *,int);
@@ -87,10 +90,10 @@ typedef struct {
 #define DUMX     18      /* dummy X as 'second' operand */
 #define DUMY     19      /* dummy Y as 'second' operand */
 
-
 /* cpu-specific symbol-flags */
 #define ZPAGESYM (RSRVD_C<<0)   /* symbol will reside in the zero/direct-page */
 
 
 /* exported by cpu.c */
 int cpu_available(int);
+int parse_cpu_label(char *,char **);

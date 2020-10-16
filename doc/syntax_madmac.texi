@@ -70,6 +70,10 @@ equals-character, may be optionally preceded by a dot (@code{.}).
       Equivalent to @code{<symbol> equ <expression>}, but declare <symbol>
       as externally visible.
 
+@item abs [<expression>]
+      Equivaluent to @code{offset} for compatibility with older Madmac
+      versions.
+
 @item assert <expresion>[,<expression>...]
       Assert that all conditions are true (non-zero), otherwise issue a
       warning.
@@ -237,10 +241,18 @@ equals-character, may be optionally preceded by a dot (@code{.}).
 @item nolist
       The following lines will not be visible in a listing file.
 
+@item offset [<expression>]
+      Switches to a special offset-section. The contents of such a section
+      is not included in the output. Their labels may be referenced as
+      absolute offset symbols. Can be used to define structure offsets.
+      The optional @code{<expression>} gives the start offset for this
+      section. Defaults to zero when omitted.
+      @code{<expression>} must evaluate as a constant!
+
 @item org <expression>
       Sets the base address for the subsequent code and switch into
       absolute mode. Such a block is terminated by any section directive
-      or by @code{.68000} (Jaguar only).
+      or by @code{.68000}.
 
 @item phrase
       Align the program counter to the next integral phrase

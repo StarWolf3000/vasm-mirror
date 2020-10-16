@@ -56,14 +56,6 @@ char *skip_operand(char *s)
   return s;
 }
 
-static void prident(char *p,int len)
-{
-  int olen=len;
-  while(len--)
-    putchar(*p++);
-  printf("(len=%d)",olen);
-}
-
 static void handle_section(char *s)
 {
   char *name,*attr;
@@ -125,7 +117,7 @@ static char *string(char *s,dblock **result)
   db->size=size;
   db->data=mymalloc(db->size);
   s=p;
-  p=db->data;
+  p=(char *)db->data;
   while(*s&&*s!='\"'){
     if(*s=='\\')
       s=escape(s,p++);
@@ -142,7 +134,6 @@ static char *string(char *s,dblock **result)
 
 static void handle_data(char *s,int size,int noalign,int zeroterm)
 {
-  expr *tree;
   dblock *db;
   do{
     char *opstart=s;
@@ -278,14 +269,14 @@ void parse(void)
 {
   char *s,*line,*inst,*ext[MAX_QUALIFIERS?MAX_QUALIFIERS:1],*op[MAX_OPERANDS];
   int inst_len,ext_len[MAX_QUALIFIERS?MAX_QUALIFIERS:1],op_len[MAX_OPERANDS];
-  int i,ext_cnt,op_cnt,par_cnt;
+  int i,ext_cnt,op_cnt;
   instruction *ip;
   while(line=read_next_line()){
     s=line;
 
     if(isalnum((unsigned char)*s)){
       /* Handle labels at beginning of line */
-      char *labname,*equ;
+      char *labname;
       symbol *label;
       while(*s&&!isspace((unsigned char)*s)&&*s!=':')
         s++;

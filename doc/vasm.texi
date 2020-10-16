@@ -140,6 +140,10 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @chapter Motorola srecord output module
 @include output_srec.texi
 
+@node C #define output module
+@chapter C #define output module
+@include output_cdef.texi
+
 @node m68k cpu module
 @chapter m68k cpu module
 @include cpu_m68k.texi
@@ -171,6 +175,10 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @node 6800 cpu module
 @chapter 6800 cpu module
 @include cpu_6800.texi
+
+@node 6809 cpu module
+@chapter 6809/6309/68HC12 cpu module
+@include cpu_6809.texi
 
 @node Jaguar RISC cpu module
 @chapter Jaguar RISC cpu module

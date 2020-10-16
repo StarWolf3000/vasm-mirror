@@ -1,6 +1,6 @@
 /*
 ** cpu.c ARM cpu-description file
-** (c) in 2004,2006,2010,2011,2014-2019 by Frank Wille
+** (c) in 2004,2006,2010,2011,2014-2020 by Frank Wille
 */
 
 #include "vasm.h"
@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm ARM cpu backend 0.4f (c) 2004,2006,2010,2011,2014-2019 Frank Wille";
+char *cpu_copyright = "vasm ARM cpu backend 0.4h (c) 2004,2006,2010,2011,2014-2020 Frank Wille";
 char *cpuname = "ARM";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -265,6 +265,9 @@ int parse_operand(char *p,int len,operand *op,int optype)
   if (optype == DATA64_OP) {
     op->value = parse_expr_huge(&p);
   }
+  else if (op->type == DATA_OP) {
+    op->value = parse_expr(&p);
+  }
 
   else if (thumb_mode) {
     if (ARMOPER(optype)) {   /* standard ARM instruction */
@@ -501,10 +504,10 @@ int parse_operand(char *p,int len,operand *op,int optype)
         name += 5;
         while (name < p) {
           switch (tolower((unsigned char)*name++)) {
-            case 'f': fields |= 1; break;
-            case 's': fields |= 2; break;
-            case 'x': fields |= 4; break;
-            case 'c': fields |= 8; break;
+            case 'f': fields |= 8; break;
+            case 's': fields |= 4; break;
+            case 'x': fields |= 2; break;
+            case 'c': fields |= 1; break;
             default: return PO_NOMATCH;
           }
         }
@@ -823,11 +826,15 @@ static uint32_t rotated_immediate(uint32_t val)
 /* check if a 32-bit value can be represented as 8-bit-rotated,
    return ROTFAIL when impossible */
 {
-  uint32_t i,a;
+  uint32_t a;
+  int i;
 
-  for (i=0; i<32; i+=2) {
+  if (val <= 0xff)
+    return val;  /* no rotation needed */
+
+  for (i=2; i<32; i+=2) {
     if ((a = val<<i | val>>(32-i)) <= 0xff)
-      return (i<<7) | a;
+      return ((uint32_t)i << 7) | a;
   }
   return ROTFAIL;
 }
@@ -877,26 +884,20 @@ static uint32_t double_rot_immediate(uint32_t val,uint32_t *hi)
 /* check if a 32-bit value can be represented by combining two
    8-bit rotated values, return ROTFAIL otherwise */
 {
-  uint32_t i,a;
+  static uint32_t masks[] = { 0x000000ff,0xc000003f,0xf000000f,0xfc000003,
+                              0xff000000,0x3fc00000,0x0ff00000,0x03fc0000,
+                              0x00ff0000,0x003fc000,0x000ff000,0x0003fc00,
+                              0x0000ff00,0x00003fc0,0x00000ff0,0x000003fc };
+  uint32_t a,m;
+  int i;
 
-  for (i=0; i<32; i+=2) {
-    if (((a = val<<i | val>>(32-i)) & 0xff) != 0) {
-      if (a & 0xff00) {
-        if (a & 0xffff0000)
-          continue;
-        *hi = ((i+24)<<7) | (a>>8);
-      }
-      else if (a & 0xff0000) {
-        if (a & 0xff000000)
-          continue;
-        *hi = ((i+16)<<7) | (a>>16);
-      }
-      else if (a & 0xff000000)
-        *hi = ((i+8)<<7) | (a>>24);
-      else
-        ierror(0);
-
-      return (i<<7) | (a&0xff);
+  for (i=0; i<16; i++) {
+    m = masks[i];
+    if ((val & m) && (a = rotated_immediate(val & ~m)) != ROTFAIL) {
+      *hi = a;
+      i <<= 1;
+      a = i==0 ? val : (val<<i | val>>(32-i));
+      return ((uint32_t)i << 7) | (a & 0xff);
     }
   }
 
@@ -1074,8 +1075,9 @@ size_t eval_arm_operands(instruction *ip,section *sec,taddr pc,
   }
 
   for (opcnt=0; opcnt<MAX_OPERANDS && ip->op[opcnt]!=NULL; opcnt++) {
-    taddr val;
     symbol *base = NULL;
+    uint32_t rotval;
+    taddr val;
     int btype;
 
     op = *(ip->op[opcnt]);
@@ -1182,9 +1184,10 @@ size_t eval_arm_operands(instruction *ip,section *sec,taddr pc,
                 *insn ^= 0x00c00000;
               val = -val;
             }
-            if ((val = rotated_immediate(val)) != ROTFAIL) {
+            if (am!=AM_L && (rotval = rotated_immediate(val))!=ROTFAIL &&
+                !(opt_adr && (sec->flags&RESOLVE_WARN))) {
               if (insn)
-                *insn |= val;
+                *insn |= rotval;
             }
             else if (opt_adr || am==AM_L) {
               /* ADRL or optimize ADR automatically to ADRL */
@@ -1270,8 +1273,6 @@ size_t eval_arm_operands(instruction *ip,section *sec,taddr pc,
       op.type = NOOP;  /* is handled here */
 
       if (base == NULL) {
-        uint32_t rotval;
-
         if ((rotval = rotated_immediate(val)) != ROTFAIL) {
           if (insn)
             *insn |= rotval;

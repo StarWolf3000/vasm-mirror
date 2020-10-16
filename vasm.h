@@ -48,6 +48,10 @@ typedef struct regsym regsym;
 #define OPERAND_OPTIONAL(p,t) 0
 #endif
 
+#ifndef IGNORE_FIRST_EXTRA_OP
+#define IGNORE_FIRST_EXTRA_OP 0
+#endif
+
 #ifndef START_PARENTH
 #define START_PARENTH(x) ((x)=='(')
 #endif
@@ -126,15 +130,15 @@ struct source {
 };
 
 /* section flags */
-#define HAS_SYMBOLS 1
-#define RESOLVE_WARN 2
-#define UNALLOCATED 4
-#define LABELS_ARE_LOCAL 8
-#define ABSOLUTE 16
-#define PREVABS 32          /* saved ABSOLUTE-flag during RORG-block */
-#define IN_RORG 64
-#define NEAR_ADDRESSING 128
-#define SECRSRVD (1L<<24)   /* bits 24..31 are reserved for output modules */
+#define HAS_SYMBOLS      (1<<0)
+#define RESOLVE_WARN     (1<<1)
+#define UNALLOCATED      (1<<2)
+#define LABELS_ARE_LOCAL (1<<3)
+#define ABSOLUTE         (1<<4)
+#define PREVABS          (1<<5) /* saved ABSOLUTE-flag during RORG-block */
+#define IN_RORG          (1<<6)       
+#define NEAR_ADDRESSING  (1<<7)
+#define SECRSRVD       (1L<<24) /* bits 24-31 are reserved for output modules */
 
 /* section description */
 struct section {
@@ -152,7 +156,6 @@ struct section {
   taddr org;
   taddr pc;
   unsigned long idx; /* usable by output module */
-  
 };
 
 /* mnemonic description */
@@ -225,6 +228,8 @@ void switch_section(char *,char *);
 void switch_offset_section(char *,taddr);
 void add_align(section *,taddr,expr *,int,unsigned char *);
 section *default_section(void);
+void push_section(void);
+section *pop_section(void);
 #if NOT_NEEDED
 section *restore_section(void);
 section *restore_org(void);
@@ -233,6 +238,7 @@ int end_rorg(void);
 void try_end_rorg(void);
 void start_rorg(taddr);
 void print_section(FILE *,section *);
+void main_include_path(char *);
 struct include_path *new_include_path(char *);
 void set_listing(int);
 void set_list_title(char *,int);
@@ -256,6 +262,7 @@ void output_atom_error(int,atom *,...);
 void modify_gen_err(int,...);
 void modify_syntax_err(int,...);
 void modify_cpu_err(int,...);
+void disable_message(int);
 void disable_warning(int);
 
 #define ierror(x) general_error(4,(x),__LINE__,__FILE__)
@@ -273,10 +280,6 @@ int cpu_args(char *);
 char *parse_cpu_special(char *);
 operand *new_operand();
 int parse_operand(char *text,int len,operand *out,int requires);
-#define PO_SKIP 2
-#define PO_MATCH 1
-#define PO_NOMATCH 0
-#define PO_CORRUPT -1
 size_t instruction_size(instruction *,section *,taddr);
 dblock *eval_instruction(instruction *,section *,taddr);
 dblock *eval_data(operand *,size_t,section *,taddr);
@@ -306,7 +309,6 @@ void parse(void);
 char *parse_macro_arg(struct macro *,char *,struct namelen *,struct namelen *);
 int expand_macro(source *,char **,char *,int);
 char *skip(char *);
-char *skip_operand(char *);
 void eol(char *);
 char *const_prefix(char *,int *);
 char *const_suffix(char *,char *);
@@ -329,3 +331,4 @@ int init_output_hunk(char **,void (**)(FILE *,section *,symbol *),int (**)(char 
 int init_output_aout(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_tos(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_xfile(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
+int init_output_cdef(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));

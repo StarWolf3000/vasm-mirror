@@ -3,21 +3,41 @@ selected with the @option{-Fbin} option.
 
 @section Legal
 
-    This module is written in 2002-2009,2013 by Volker Barthelmann and
-    is covered by the vasm copyright without modifications.
+    This module is written in 2002-2020 by Volker Barthelmann and
+    Frank Wille and is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
  
 @table @option
-    @item -cbm-prg
-        Writes a Commodore PRG header in front of the output file, which
-        consists of two bytes in little-endian order, defining the load
-        address of the program.
+    @item -exec=<symbol>
+        Use the given symbol @code{<symbol>} as entry point of the program,
+        for those output format headers which support it. Otherwise this
+        option will be silently ignored.
+        Omitting this option will usually define the execution address
+        to be the same as the load address.
     @item -atari-com
-        Writes a Atari DOS COM header in front of the output file, which
-        consists of standard header (0xFFFF) followed by each section,
+        Writes a Atari DOS COM header preceding the output file, which
+        consists of standard header (@code{0xFFFF}) followed by each section,
         starting with four bytes in little-endian order, defining the load
         address begin and end of each section.
+    @item -apple-bin
+        Writes an Apple DOS 3.3 binary file header preceding the output
+        file, which consists of a 16-bit start/load address and a 16-bit
+        file length in little-endian order.
+    @item -cbm-prg
+        Writes a Commodore PRG header preceding the output file, which
+        consists of two bytes in little-endian order, defining the load
+        address of the program.
+    @item -coco-ml
+        Writes a Tandy Color Computer machine language file, which has
+        a header with load address and length for each section and is
+        terminated by a trailer with the execution address.
+    @item -dragon-bin
+        Writes a Dragon DOS header preceding the output file, where the
+        file type is set to @code{$02} for binary. The load address is
+        taken from the first section's start address. This will also be
+        the execute-address, when not specified otherwise. Refer to
+        option @option{-exec}.
 @end table
  
 @section General

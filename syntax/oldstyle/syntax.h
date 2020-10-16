@@ -1,9 +1,10 @@
 /* syntax.h  syntax header file for vasm */
-/* (c) in 2002,2012,2014,2017 by Frank Wille */
+/* (c) in 2002,2012,2014,2017,2020 by Frank Wille */
 
 /* macros to recognize identifiers */
+int isidchar(char);
 #define ISIDSTART(x) ((x)=='.'||(x)=='_'||isalpha((unsigned char)(x)))
-#define ISIDCHAR(x) ((x)=='_'||isalnum((unsigned char)(x)))
+#define ISIDCHAR(x) isidchar(x)
 #define ISBADID(p,l) ((l)==1&&(*(p)=='.'||*(p)=='_'))
 #define ISEOL(p) (*(p)=='\0' || *(p)==commentchar)
 
@@ -21,6 +22,10 @@ char *exp_skip(char *);
 #ifndef OPERSEP_BLANK
 #define OPERSEP_BLANK 0
 #endif
+
+/* ignore operand field, when the instruction has no operands */
+extern int igntrail;
+#define IGNORE_FIRST_EXTRA_OP (igntrail)
 
 /* symbol which contains the current rept-endr iteration count */
 #define REPTNSYM "__RPTCNT"

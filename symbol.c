@@ -13,7 +13,10 @@ static char *last_global_label=emptystr;
 #define SYMHTABSIZE 0x10000
 #endif
 static hashtable *symhash;
+
+#ifdef HAVE_REGSYMS
 static hashtable *regsymhash;
+#endif
 
 
 static void print_type(FILE *f,symbol *p)

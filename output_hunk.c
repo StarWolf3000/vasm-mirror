@@ -273,7 +273,6 @@ static utaddr sect_size(section *sec)
   atom *a;
 
   for (a=sec->first; a; a=a->next) {
-    unsigned char *d;
     taddr sz;
 
     pc = pcalign(a,pc);
@@ -818,11 +817,9 @@ static void write_object(FILE *f,section *sec,symbol *sym)
 
         if (type != HUNK_BSS) {
           /* write contents */
-          utaddr pc=0,npc,i;
+          utaddr pc=0,npc;
 
           for (a=sec->first; a; a=a->next) {
-            rlist *rl;
-
             npc = fwpcalign(f,a,sec,pc);
 
             if (genlinedebug && (a->type==DATA || a->type==SPACE))
@@ -926,13 +923,11 @@ static void write_exec(FILE *f,section *sec,symbol *sym)
 
         if (type != HUNK_BSS) {
           /* write contents */
-          utaddr pc,npc,size,i;
+          utaddr pc,npc,size;
 
           size = databss ? file_size(sec) : sect_size(sec);
           fw32(f,(size+3)>>2,1);
           for (a=sec->first,pc=0; a!=NULL&&pc<size; a=a->next) {
-            rlist *rl;
-
             npc = fwpcalign(f,a,sec,pc);
 
             if (genlinedebug && (a->type==DATA || a->type==SPACE))

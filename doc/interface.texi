@@ -77,17 +77,30 @@ Directory the object modules will be stored in.
        Here you will usually define an option like @option{-c} to instruct
        the compiler to generate an object file.
        Additional options, like the optimization level, should also be
-       inserted here as well. When the host operating system is different
-       from a Unix (MacOSX and MiNT are Unix), you have to define one of the
-       following preprocessor macros:
+       inserted here as well. Specifying the host OS helps to determine
+       work-directories for DWARF and defines the appropriate internal
+       symbol for the host's file system path style. The following are
+       supported:
        @table @code
           @item -DAMIGA
           AmigaOS (M68k or PPC), MorphOS, AROS.
+          Defines the internal symbol @code{__AMIGAFS}.
           @item -DATARI
           Atari TOS.
+          Defines the internal symbol @code{__MSDOSFS}.
           @item -DMSDOS
           CP/M, MS-DOS, Windows.
+          Defines the internal symbol @code{__MSDOSFS}.
+          @item -DUNIX
+          All kinds of Unix (Linux, BSD) including MacOSX and Atari-MiNT.
+          Defines the internal symbol @code{__UNIXFS}.
+          @item -D_WIN32
+          Windows.
+          Defines the internal symbol @code{__MSDOSFS}.
        @end table
+       Building without specifying a host-OS is allowed. Then vasm
+       defaults to Unix-style path handling and will not define a
+       file system symbol for conditional assembly.
 
     @item CCOUT
        Here you define the option which is used to specify the name of
@@ -1006,9 +1019,9 @@ ignore the rest of the line (e.g. to treat the rest as comment). The
 function is defined as @code{char *exp_skip(char *stream)}.
 
 @item #define IGNORE_FIRST_EXTRA_OP 1
-Should be defined when the syntax module wants to ignore the operand field
-on instructions without an operand. Useful, when everything following
-an operand should be regarded as comment, without a comment character.
+Should be defined as non-zero (true) when the syntax module wants to ignore
+the operand field on instructions without an operand. Useful, when everything
+following an operand should be regarded as comment, without a comment character.
 
 @item #define MAXMACPARAMS 35
 Optionally defines the maximum number of macro arguments, if you need more than
@@ -1094,11 +1107,6 @@ return non-zero.
 
 @item char *skip(char *);
 A function to skip whitespace etc.
-
-@item char *skip_operand(char *);
-A function to skip an instruction's operand. Will terminate at end of line
-or the next comma, returning a pointer to the rest of the line behind
-the comma.
 
 @item void eol(char *);
 This function should check that the argument points to the end of a line
@@ -1219,9 +1227,16 @@ If cpu-specific data should be added to all instruction atoms.
 @item typedef ... instruction_ext;
 Type for the above extension.
 
-@item #define NEED_CLEARED_OPERANDS 1
-Backend requires a zeroed operand structure when calling @code{parse_operand()}
-for the first time. Defaults to undefined.
+@item #define CLEAR_OPERANDS_ON_START 1
+Backend requires zeroed operand structures when calling @code{parse_operand()}
+for the first time. Might be useful to parse operands only once.
+Defaults to undefined.
+
+@item #define CLEAR_OPERANDS_ON_MNEMO 1
+Backend requires zeroed operand structures when calling @code{parse_operand()}
+for any new mnemonic. Useful to parse the same operand multiple times on
+the current mnemonic, but reset everything for the next mnemonic.
+Defaults to undefined.
 
 @item START_PARENTH(x)
 Valid opening parenthesis for instruction operands. Defaults to @code{'('}.
@@ -1317,16 +1332,33 @@ keep the syntax consistent.
 @item operand *new_operand();
 Allocate and initialize a new operand structure.
 
-@item int parse_operand(char *text,int len,operand *out,int requires);
+@item int parse_operand(char *text,int len,operand *op,int requires);
 Parses the source at @code{text} with length @code{len} to fill the target
-specific operand structure pointed to by @code{out}. Returns @code{PO_MATCH}
-when the operand matches the operand-type passed in @code{requires} and
-@code{PO_NOMATCH} otherwise. When the source is definitely identified as
-garbage, the function may return @code{PO_CORRUPT} to tell the assembler
-that it is useless to try matching against any other operand types.
-Another special case is @code{PO_SKIP}, which is also a match, but skips
-the next operand from the mnemonic table (because it was already handled
-together with the current operand).
+specific operand structure pointed to by @code{op}. Return with one
+of the following codes:
+@table @code
+@item PO_NOMATCH
+The source did no match the operand type passed in @code{requires}.
+@item PO_CORRUPT
+The source was definitely identified as garbage making it useless to
+try matching it against any other operand types.
+@item PO_MATCH
+The parsed source matches the operand type in @code{requires}. As soon
+as all the instruction's operand matched it is successfully recognized.
+@item PO_SKIP
+Works like @code{PO_MATCH}, but skips the next operand from the mnemonic
+table (because it was already handled together with the current operand).
+@item PO_AGAIN
+Works like @code{PO_MATCH}, but requests parsing of the next chunk of
+source text, if any, with a pointer to the same @code{operand} structure
+as before. This makes it possible to merge multiple operands into a
+single operand structure.
+@item PO_NEXT
+Source did not match the given operand type in @code{requires}. Request
+parsing the same chunk of source text again, but using the following
+operand type. Can be used to break a @code{PO_AGAIN} attempt and
+continue normally.
+@end table
 
 @item taddr instruction_size(instruction *ip, section *sec, taddr pc);
 Returns the size of the instruction @code{ip} in bytes, which must be

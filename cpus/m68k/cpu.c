@@ -25,7 +25,7 @@ struct cpu_models models[] = {
 int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3k (c) 2002-2020 Frank Wille";
+char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3m (c) 2002-2020 Frank Wille";
 char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -80,6 +80,7 @@ static unsigned char ign_unambig_ext = 0;  /* don't check unambig. size ext. */
 static unsigned char regsymredef = 0; /* allow redefinition of reg. symbols */
 static unsigned char kick1hunks = 0;  /* no optim. to 32-bit PC-displacem. */
 static unsigned char no_dpc = 0;      /* abs. PC-displacments not allowed */
+static unsigned char extsd = 0;       /* small-data with ext. addr. modes */
 static char current_ext;              /* extension of current parsed inst. */
 
 static char b_str[] = "b";
@@ -1277,8 +1278,10 @@ static void set_index(operand *op,short i)
     op->flags |= FL_UsesFormat;
 
     if (REGisZero(i)) {
-      op->format |= FW_FullFormat | FW_IndexSuppress;
       op->flags |= FL_020up;
+      op->format |= FW_FullFormat | FW_IndexSuppress;
+      /* clear Postindexed, even when zero-reg. was specified as post-index */
+      op->format &= ~FW_Postindexed;
     }
     else if (s) {
       /* ColdFire allows scale factors *2 and *4 (*8 when FPU is present),
@@ -1507,7 +1510,6 @@ int parse_operand(char *p,int len,operand *op,int required)
       /* no direct register */
       int disp_size = 0;
       int od_size;
-      int base;
       char *start_term = NULL;
 
       if (*p=='-' && *(p+1)=='(') {
@@ -2928,8 +2930,9 @@ dontswap:
       if (final && warn_opts>1)
         cpu_error(51,"move.l #x,Dn -> moveq #x,Dn");
     }
-    else if (movqabsl && !(cpu_type & m68040) &&
-             val>=0x80 && val<=0xfe && !(val&1)) {
+    else if (movqabsl && (!(cpu_type & (m68040|mcf)) || opt_size) &&
+             ((val>=0x80 && val<=0xfe) || (val>=-0x100 && val<=-0x82)) &&
+             !(val&1)) {
       /* move.l #x,Dn --> moveq #x>>1,Dn ; add.w Dn,Dn */
       ip->code = OC_MOVEQ;
       ip->qualifiers[0] = l_str;
@@ -2942,12 +2945,12 @@ dontswap:
       else
         ip->op[0]->flags |= FL_DoNotEval;
       ip->op[0]->extval[0] = val >> 1;
-      ip->ext.un.copy.next = ip_dualop(OC_ADD,w_str,
+      ip->ext.un.copy.next = ip_dualop(OC_ADD,(cpu_type & mcf)?l_str:w_str,
                                        MODE_Dn,ip->op[1]->reg,0,0,NULL,
                                        MODE_Dn,ip->op[1]->reg,0,0,NULL);
     }
     else if (opt_nmovq && abs && ext=='l' && ip->op[1]->mode==MODE_Dn &&
-             !(cpu_type & m68040) && val>=0x80 && val<=0xff) {
+             !(cpu_type & (m68040|mcf)) && val>=0x80 && val<=0xff) {
       /* move.l #x,Dn --> moveq #x^$ff,Dn ; not.b Dn */
       ip->code = OC_MOVEQ;
       ip->qualifiers[0] = l_str;
@@ -2982,7 +2985,7 @@ dontswap:
                                          MODE_Dn,ip->op[1]->reg,0,0,NULL);
     }
     else if (opt_nmovq && abs && ext=='l' && ip->op[1]->mode==MODE_Dn &&
-             !(cpu_type & m68040) &&
+             !(cpu_type & (m68040|mcf)) &&
              ((val>=0xff81 && val<=0xffff) ||
               (val>=0xffff0001 && val<=0xffff0080))) {
       /* move.l #x,Dn --> moveq #-x,Dn ; neg.w Dn */
@@ -3000,7 +3003,7 @@ dontswap:
       ip->ext.un.copy.next = ip_singleop(OC_NEG,w_str,
                                          MODE_Dn,ip->op[1]->reg,0,0,NULL);
     }
-    else if (opt_size && movqabsl && (val&0xff)==0 &&
+    else if (opt_size && movqabsl && (val&0xff)==0 && !(cpu_type & mcf) &&
              val>=0x100 && val<=0x7f00) {
       /* move.l #x,Dn --> moveq #x>>n,Dn ; lsl.w #n,Dn */
       instruction *ip2 = ip_dualop(OC_LSLI,w_str,
@@ -4368,7 +4371,7 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
         else
           general_error(38);  /* illegal relocation */
       }
-      if (rtype == REL_SD) {
+      if (rtype==REL_SD && LOCREF(op->base[0])) {
         if (typechk && (op->extval[0]<0 || op->extval[0]>0xffff))
           cpu_error(29);  /* displacement out of range */
       }
@@ -4387,15 +4390,23 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
         d = setval(1,d,2,op->format);
         roffs += 2;
         if (FW_getBDSize(op->format) == FW_Word) {
-          if (typechk && (op->extval[0]<-0x8000 || op->extval[0]>0x7fff))
-            cpu_error(29);  /* displacement out of range */
           if (op->base[0]) {
             rsize = 16;
-            if (EXTREF(op->base[0]) ||
-                (LOCREF(op->base[0]) && op->basetype[0]==BASE_PCREL))
+            if ((EXTREF(op->base[0]) && (!extsd || op->reg!=sdreg)) ||
+                op->basetype[0]==BASE_PCREL)
               rtype = REL_ABS;
+            else if (extsd && op->reg==sdreg && op->basetype[0]==BASE_OK)
+              rtype = REL_SD;
             else
-              cpu_error(30);  /* absolute displacement expected */
+              general_error(38);  /* illegal relocation */
+          }
+          if (rtype==REL_SD && LOCREF(op->base[0])) {
+            if (typechk && (op->extval[0]<0 || op->extval[0]>0xffff))
+              cpu_error(29);  /* displacement out of range */
+          }
+          else {
+            if (typechk && (op->extval[0]<-0x8000 || op->extval[0]>0x7fff))
+              cpu_error(29);  /* displacement out of range */
           }
           d = write_extval(0,2,db,d,op,rtype);
         }
@@ -5048,7 +5059,6 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
 int init_cpu()
 {
   int i,j,code_tab_cnt;
-  hashdata data;
 
   if (!gas) {
     /* remove gas mnemonics from the hash table */
@@ -5233,7 +5243,7 @@ int cpu_args(char *arg)
   }
   else if (!strncmp(p,"-sdreg=",7)) {
     i = atoi(p+7);
-    if (i>=2 && i<=6)
+    if (i>=0 && i<=6)
       sdreg = i;
     else
       cpu_error(58);  /* not a valid small data register */
@@ -5255,6 +5265,8 @@ nofpu:
   }
   else if (!strcmp(p,"-sgs"))
     sgs = 1;
+  else if (!strcmp(p,"-extsd"))
+    extsd = 1;
   else if (!strcmp(p,"-rangewarnings"))
     modify_cpu_err(WARNING,25,29,32,36,0);
   else if (!strcmp(p,"-conv-brackets"))
@@ -5704,7 +5716,7 @@ char *parse_cpu_special(char *start)
       s = skip(s);
       r = getreg(&s,0);
       if (r >= 0) {
-        if (r>=(REGAn+2) && r<=(REGAn+6))  /* a2-a6 */
+        if (r>=(REGAn+0) && r<=(REGAn+6))  /* a0-a6 */
           sdreg = REGget(r);
         else
           cpu_error(58);  /* not a valid small data register */
@@ -5945,7 +5957,6 @@ int parse_cpu_label(char *labname,char **start)
    return zero when no valid directive was recognized */
 {
   char *dir=*start,*s=*start;
-  hashdata data;
 
   if (ISIDSTART(*s)) {
     s++;

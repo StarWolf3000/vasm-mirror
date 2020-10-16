@@ -1817,7 +1817,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
     symbol *base;
     unsigned char *d;
     taddr val = 0;
-    int   size = 0, reg,offs = 0; 
+    int size = 0, offs = 0; 
     int error = 0;
 
 
@@ -1944,7 +1944,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
 
     if (((cpu_type & CPU_80OS) == CPU_80OS) && 
         (opcode->ext.modifier_flags & F_80OS_CHECK) == F_80OS_CHECK) {
-        char* warn[2];
+        char *warn[2];
         switch (opcode->ext.opcode) {
         case 0xc3:
         case 0xf2:
@@ -1958,9 +1958,11 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
             warn[0] =  "cp";
             warn[1] =  "call when positive";
             break;
+        default:
+            warn[0] = NULL;
+            break;
         }
-
-        if ((cpu_type & CPU_8080) == CPU_8080 && warn)
+        if (((cpu_type & CPU_8080) == CPU_8080) && warn[0])
             cpu_error(26, warn[0], warn[1]);
     }
 
@@ -2069,7 +2071,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                 offs = (ip->op[0]->reg & REG_PLAIN) * 16;
             }
         }
-        reg = ip->op[0]->reg & (REG_IX | REG_IY);
+        /* reg = ip->op[0]->reg & (REG_IX | REG_IY); not needed? */
         break;
     case TYPE_IDX32:
         offs = 0;

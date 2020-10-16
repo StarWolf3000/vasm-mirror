@@ -81,8 +81,6 @@ new_operand()
 int
 parse_operand(char *p, int len, operand *op, int required)
 {
-	char *start = p;
-
 	op->value = NULL;
 
 	switch (required) {

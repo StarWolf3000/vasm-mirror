@@ -30,7 +30,7 @@ int x86_data_operand(int);
 #define DATA_OPERAND(n) x86_data_operand(n)
 
 /* make sure operand is cleared upon first entry into parse_operand() */
-#define NEED_CLEARED_OPERANDS 1
+#define CLEAR_OPERANDS_ON_START 1
 
 
 /* register symbols */

@@ -261,6 +261,12 @@ vasm performs the following optimizations:
         Register names are preceded by a '%' to prevent confusion
         with symbol names.
 
+    @item -extsd
+        Recognize small data references in 020+ extended addressing modes
+        using 16-bit displacements on the base register. By default only the
+        16-bit address register displacement addressing mode can be used
+        with small data (for compatibility reasons).
+
     @item -gas
         Enable additional GNU-as compatibility mnemonics, like
         @code{mov}, @code{movm} and @code{jra}. Also accepts @code{|}
@@ -298,7 +304,7 @@ vasm performs the following optimizations:
 
     @item -sdreg=<n>
         Set the small data base register to @code{An}. <n> is valid
-        between 2 and 6.
+        between 0 and 6.
 
     @item -sgs
         Additionally allow immediate operands to be prefixed by
@@ -381,7 +387,7 @@ a value defined by the following bits:
 
 The following symbols are defined for compatibility with other assemblers,
 so their function is not described here.
-@table asis
+@table @asis
 @item Devpac
       @code{__G2}, @code{_LK}
 @item PhxAss
@@ -1006,6 +1012,7 @@ and @code{NEG.L Dn} (@option{-opt-mul} and @option{-opt-speed}).
 
 @itemize @minus
 
+@item Packed Decimal floating point constants are not yet supported!
 @item In some rare cases, mainly by stupid input sources, the optimizer
 might oscillate forever between two states. When this happens, assembly
 will be terminated automatically after some time.

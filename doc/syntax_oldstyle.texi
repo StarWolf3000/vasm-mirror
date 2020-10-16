@@ -17,6 +17,11 @@ This syntax module provides the following additional options:
  Automatically export all non-local symbols, making them visible
  to other modules during linking.
 
+@item -ast
+ Allow the asterisk (@code{*}) for starting comments in the first
+ column. This disables the possibility to set the code origin with
+ @code{*=addr} in the first column.
+
 @item -dotdir
  Directives have to be preceded by a dot (@code{.}).
 
@@ -24,6 +29,9 @@ This syntax module provides the following additional options:
  Ignore everything after a blank in the operand field and treat it as a
  comment. This option is only available when the backend does not separate
  its operands with blanks as well.
+
+@item -ldots
+ Allow dots (@code{.}) within all identifiers.
 
 @item -noc
  Disable C-style constant prefixes.
@@ -47,6 +55,9 @@ Local labels are valid between two global label definitions.
 It is allowed, but not recommended, to refer to any local symbol starting with
 '@code{.}' in the source, by preceding its name with the name of the last
 global symbol, which was defined before it: @code{global_name.local_name}.
+
+The option @option{-ldots} allows dots (@code{.}) within labels and other
+identifiers, but will disable the above mentioned feature.
 
 The operands are separated from the mnemonic by whitespace. Multiple
 operands are separated by comma (@code{,}).
@@ -234,6 +245,9 @@ CPU- and output-module allow it):
 @item ei
       Equivalent to @code{endif}. (Not available for Z80 CPU)
 
+@item einline
+      End a block of isolated local labels, started by @code{inline}.
+
 @item endm
       Ends a macro definition.
 
@@ -287,6 +301,11 @@ CPU- and output-module allow it):
 
 @item fcc "<string>"
       Equivalent to @code{text}.
+
+@item fcs "<string>"
+      Works like @code{text} and @code{fcc}, but additionally sets the
+      most significant bit of the last byte. This can be used as a
+      string terminator on some systems.
 
 @item fdb <exp1>[,<exp2>,"<string1>"...]
       Equivalent to @code{word <exp1>[,<exp2>...]}.
@@ -360,6 +379,10 @@ CPU- and output-module allow it):
       paths defined by @option{-I} or @code{incdir} in the order of
       occurence.
 
+@item inline
+      Local labels in the following block are isolated from previous
+      local labels and those after @code{einline}.
+
 @item mac <name>
       Equivalent to @code{macro <name>}.
 
@@ -396,9 +419,10 @@ CPU- and output-module allow it):
 @item nolist
       The following lines will not be visible in a listing file.
 
-@item org <expression>
+@item org [#]<expression>
       Sets the base address for the subsequent code. This is equivalent
-      to @code{*=<expression>}.
+      to @code{*=<expression>}. An optional @code{#} is supported for
+      compatibility reasons.
 
 @item phase <expression>
       Equivalent to @code{rorg <expression>}.
@@ -631,6 +655,11 @@ This module has the following error messages:
 @item 1011: identifier expected
 @item 1012: illegal escape sequence %c
 @item 1013: unexpected "%s" without "%s"
+@item 1014: dsect already active
+@item 1015: dend without dsect
+@item 1016: missing dend
+@item 1018: maximum inline nesting depth exceeded (%d)
+@item 1017: einline without inline
 @item 1021: cannot open binary file "%s"
 @item 1023: alignment too big
 @item 1024: label <%s> has already been defined

@@ -484,26 +484,6 @@ static void fix_reloctype(dblock *db,int rtype)
 }
 
 
-static int cnt_insn_ops(instruction *p)
-{
-  int cnt = 0;
-
-  while (cnt<MAX_OPERANDS && p->op[cnt]!=NULL)
-    cnt++;
-  return cnt;
-}
-
-
-static int cnt_mnemo_ops(mnemonic *p)
-{
-  int cnt = 0;
-
-  while (cnt<MAX_OPERANDS && p->operand_type[cnt]!=UNUSED)
-    cnt++;
-  return cnt;
-}
-
-
 static void range_check(taddr val,const struct powerpc_operand *o,dblock *db)
 /* checks if a value fits the allowed range for this operand field */
 {
@@ -573,7 +553,7 @@ size_t eval_operands(instruction *ip,section *sec,taddr pc,
 {
   mnemonic *mnemo = &mnemonics[ip->code];
   size_t isize = 4;
-  int i,j,omitted;
+  int i;
   operand op;
 
   if (insn != NULL)

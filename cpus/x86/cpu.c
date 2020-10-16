@@ -1406,28 +1406,6 @@ static unsigned char *output_imm(dblock *db,unsigned char *d,
 }
 
 
-static instruction *copy_instruction(instruction *ip)
-/* copy an instruction and its operands */
-{
-  static instruction newip;
-  static operand newop[MAX_OPERANDS];
-  int i;
-
-  newip.code = ip->code;
-  newip.qualifiers[0] = ip->qualifiers[0];
-  for (i=0; i<MAX_OPERANDS; i++) {
-    if (ip->op[i] != NULL) {
-      newip.op[i] = &newop[i];
-      *newip.op[i] = *ip->op[i];
-    }
-    else
-      newip.op[i] = NULL;
-  }
-  memcpy(&newip.ext,&ip->ext,sizeof(instruction_ext));
-  return &newip;
-}
-
-
 char *parse_cpu_special(char *start)
 /* parse cpu-specific directives; return pointer to end of
    cpu-specific text */
@@ -1779,7 +1757,7 @@ size_t instruction_size(instruction *realip,section *sec,taddr pc)
   }
 
   /* work on a copy of the current instruction and finalize it */
-  size = finalize_instruction(copy_instruction(realip),sec,pc,0);
+  size = finalize_instruction(copy_inst(realip),sec,pc,0);
 
   if (realip->ext.last_size>=0 && (diff=realip->ext.last_size-(int)size)!=0) {
     if (diff > 0) {

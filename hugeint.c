@@ -124,7 +124,6 @@ void *huge_to_mem(int be,void *dest,size_t size,thuge h)
 int huge_chkrange(thuge h,int bits)
 {
   uint64_t v,mask;
-  int b;
 
   if (bits & 7)
     ierror(0);
@@ -317,20 +316,20 @@ thuge hshl(thuge a,int b)
 
 thuge hmuli(thuge a,int64_t b)
 {
-  uint64_t tmp1,tmp2,carry,ub;
+  uint64_t tmp,carry,ub;
   thuge r;
 
   ub = (uint64_t)b;
   r.lo = a.lo * ub;
   r.hi = a.hi * ub;
-  tmp1 = HIHALF(a.lo) * LOHALF(ub);
-  carry = tmp1 + LOHALF(a.lo) * HIHALF(ub);
-  if (carry < tmp1)
+  tmp = HIHALF(a.lo) * LOHALF(ub);
+  carry = tmp + LOHALF(a.lo) * HIHALF(ub);
+  if (carry < tmp)
     r.hi += BASE;
   r.hi += HIHALF(carry);
-  tmp1 = HIHALF(a.lo) * HIHALF(ub);
-  r.hi += tmp1;
-  if (tmp1 + (carry << HALF_BITS) < tmp1)
+  tmp = HIHALF(a.lo) * HIHALF(ub);
+  r.hi += tmp;
+  if (tmp + (carry << HALF_BITS) < tmp)
     r.hi++;
   return r;
 }
@@ -338,19 +337,19 @@ thuge hmuli(thuge a,int64_t b)
 
 thuge hmul(thuge a,thuge b)
 {
-  uint64_t tmp1,tmp2,carry;
+  uint64_t tmp,carry;
   thuge r;
 
   r.lo = a.lo * b.lo;
   r.hi = a.hi * b.lo + b.hi * a.lo;
-  tmp1 = HIHALF(a.lo) * LOHALF(b.lo);
-  carry = tmp1 + LOHALF(a.lo) * HIHALF(b.lo);
-  if (carry < tmp1)
+  tmp = HIHALF(a.lo) * LOHALF(b.lo);
+  carry = tmp + LOHALF(a.lo) * HIHALF(b.lo);
+  if (carry < tmp)
     r.hi += BASE;
   r.hi += HIHALF(carry);
-  tmp1 = HIHALF(a.lo) * HIHALF(b.lo);
-  r.hi += tmp1;
-  if (tmp1 + (carry << HALF_BITS) < tmp1)
+  tmp = HIHALF(a.lo) * HIHALF(b.lo);
+  r.hi += tmp;
+  if (tmp + (carry << HALF_BITS) < tmp)
     r.hi++;
   return r;
 }

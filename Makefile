@@ -1,13 +1,13 @@
-# Unix
-# Define CC, when no compiler with the name "cc" exists.
+# Unix, using gcc
 
+CC = gcc
 TARGET =
 TARGETEXTENSION = 
 OUTFMTS = -DOUTAOUT -DOUTBIN -DOUTELF -DOUTHUNK -DOUTSREC -DOUTTOS -DOUTVOBJ \
           -DOUTXFIL
 
 CCOUT = -o 
-COPTS = -c -O2 -DUNIX $(OUTFMTS)
+COPTS = -c -std=c99 -O2 -Wpedantic -DUNIX $(OUTFMTS)
 
 LD = $(CC)
 LDOUT = $(CCOUT)

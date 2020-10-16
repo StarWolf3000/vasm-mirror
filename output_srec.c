@@ -284,9 +284,8 @@ static void addralign(FILE *f,atom *a,section *sec)
 
 static void write_output(FILE *f,section *sec,symbol *sym)
 {
-  section *s,*s2,**seclist,**slp;
+  section *s;
   atom *p;
-  size_t nsecs;
   unsigned long long i, j;
 
   if (!sec)
