@@ -1,5 +1,5 @@
 /* error.c - error output and modification routines */
-/* (c) in 2002-2019 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2020 by Volker Barthelmann and Frank Wille */
 
 #include <stdarg.h>
 #include "vasm.h"
@@ -71,12 +71,16 @@ static void print_source_line(FILE *f)
 
 static void print_source_file(FILE *f, source *src)
 {
-  if (src->srcfile)
-    fprintf(f,"\"%s%s%s\"",
-            src->srcfile->incpath->compdir_based
-            ? compile_dir : "",
-            src->srcfile->incpath->path,
-            src->srcfile->name);
+  if (src->srcfile) {
+    if (src->srcfile->incpath != NULL)
+      fprintf(f,"\"%s%s%s\"",
+              src->srcfile->incpath->compdir_based
+              ? compile_dir : emptystr,
+              src->srcfile->incpath->path,
+              src->srcfile->name);
+    else
+      fprintf(f,"\"%s\"",src->srcfile->name);
+  }
   else
     fprintf(f,"\"%s\"",src->name);
 }
@@ -90,7 +94,7 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
   FILE *f;
   int flags=errlist[n].flags;
 
-  if ((flags&DONTWARN) || ((flags&WARNING) && no_warn))
+  if ((flags&DISABLED) || ((flags&WARNING) && no_warn))
     return;
 
   if ((flags&MESSAGE) && !(flags&(WARNING|ERROR|FATAL))) {
@@ -265,28 +269,40 @@ void modify_cpu_err(int flags,...)
 }
 
 
-static void dontwarn(struct err_out *err,int errnum,int first,int max)
+static void disable(int type,struct err_out *err,int errnum,int first,int max)
 {
   int n = errnum-first;
 
   if (n>=0 && n<max) {
-    if (err[n].flags & WARNING) {
-      err[n].flags |= DONTWARN;
+    if (err[n].flags & type) {
+      err[n].flags |= DISABLED;
       return;
     }
   }
-  general_error(33,errnum);
+  general_error(33,errnum,type==WARNING?"warning":emptystr);
+}
+
+
+static void disable_type(int type,int n)
+{
+  if (n >= FIRST_OUTPUT_ERROR)
+    disable(type,output_err_out,n,FIRST_OUTPUT_ERROR,output_errors);
+  else if (n >= FIRST_CPU_ERROR)
+    disable(type,cpu_err_out,n,FIRST_CPU_ERROR,cpu_errors);
+  else if (n >= FIRST_SYNTAX_ERROR)
+    disable(type,syntax_err_out,n,FIRST_SYNTAX_ERROR,syntax_errors);
+  else if (n >= FIRST_GENERAL_ERROR)
+    disable(type,general_err_out,n,FIRST_GENERAL_ERROR,general_errors);
+}
+
+
+void disable_message(int n)
+{
+  disable_type(MESSAGE,n);
 }
 
 
 void disable_warning(int n)
 {
-  if (n >= FIRST_OUTPUT_ERROR)
-    dontwarn(output_err_out,n,FIRST_OUTPUT_ERROR,output_errors);
-  else if (n >= FIRST_CPU_ERROR)
-    dontwarn(cpu_err_out,n,FIRST_CPU_ERROR,cpu_errors);
-  else if (n >= FIRST_SYNTAX_ERROR)
-    dontwarn(syntax_err_out,n,FIRST_SYNTAX_ERROR,syntax_errors);
-  else if (n >= FIRST_GENERAL_ERROR)
-    dontwarn(general_err_out,n,FIRST_GENERAL_ERROR,general_errors);
+  disable_type(WARNING,n);
 }

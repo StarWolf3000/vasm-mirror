@@ -274,7 +274,6 @@ dblock *parse_string(char **str,char delim,int width)
 {
   size_t size;
   dblock *db;
-  char *p,c;
   char *s = *str;
 
   if (width & 7)
@@ -290,7 +289,7 @@ dblock *parse_string(char **str,char delim,int width)
   db->data = db->size ? mymalloc(db->size) : NULL;
 
   /* now copy the string for real into the dblock */
-  s = read_string(db->data,s,delim,width);
+  s = read_string((char *)db->data,s,delim,width);
   *str = s;
   return db;
 }
@@ -389,7 +388,8 @@ void include_binary_file(char *inname,long nbskip,unsigned long nbkeep)
         if (nbskip > 0)
           fseek(f,nbskip,SEEK_SET);
 
-        fread(db->data,1,db->size,f);
+        if (fread(db->data,1,db->size,f) != db->size)
+          general_error(29,filename);  /* read error */
         add_atom(0,new_data_atom(db,1));
       }
       else
@@ -947,8 +947,7 @@ int copy_macro_param(source *src,int n,char *d,int len)
 
     return i==src->param_len[n] ? i : -1;
   }
-  else
-    return 0;
+  return 0;
 }
 
 

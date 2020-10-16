@@ -131,7 +131,7 @@ static int write_reloc68k(atom *a,rlist *rl,int signedval,taddr val)
   }
 
   if (a->type == DATA)
-    p = a->content.db->data + nrel->byteoffset;
+    p = (char *)a->content.db->data + nrel->byteoffset;
   else if (a->type == SPACE)
     p = (char *)a->content.sb->fill;  /* @@@ ignore offset completely? */
   else

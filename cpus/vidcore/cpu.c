@@ -46,6 +46,7 @@ static size_t oplen(int op)
   else if(op<=EN_VARITHI80)
     return 10;
   ierror(0);
+  return 0;
 }
 
 static char *skip_reg(char *s,int *reg)
@@ -94,7 +95,6 @@ int parse_operand(char *p,int len,operand *op,int req)
   p=skip(p);
 
   if(req>=OP_REG&&req<=OP_LR){
-    int reg;
     s=skip_reg(p,&r);
     if(s!=p){
       if((req==OP_REG&&r<=31)||
@@ -304,7 +304,7 @@ int parse_operand(char *p,int len,operand *op,int req)
       expr *e;
       if(*p=='H'||*p=='h')
 	vert=0;
-      // Disable vertical registers in 48-bit instructions for now
+      /* Disable vertical registers in 48-bit instructions for now */
       else if((req!=OP_VREG)&&(*p=='V'||*p=='v'))
 	vert=1;
       else
@@ -624,16 +624,14 @@ static int translate(instruction *p,section *sec,taddr pc)
     if(find_base(p->op[0]->offset,&base,sec,pc)!=BASE_OK||!LOCREF(base)||base->sec!=sec)
       c=replace(c,EN_RBRANCH32);
     else{
-      int i;
-      i=eval_expr(p->op[0]->offset,&val,sec,pc);
+      eval_expr(p->op[0]->offset,&val,sec,pc);
       val-=pc;
       if(val>126||val<-128)
 	c=replace(c,EN_RBRANCH32);
     }
   }
   if(e==EN_ADDCMPB32){
-    int i;
-    i=eval_expr(p->op[3]->offset,&val,sec,pc);
+    eval_expr(p->op[3]->offset,&val,sec,pc);
     val-=pc;
     if(val>1022||val<-1024)
       c+=4;
@@ -751,12 +749,12 @@ dblock *eval_instruction(instruction *p,section *sec,taddr pc)
     code|=cc<<7;
     break;
   case EN_ADDCMPB64:
-    // Large offset: invert CC, place a long branch after
-    // so we really generate the following:
-    //   addcmpb<~cc> d, a, b, skip
-    //   b <destination>
-    // skip:
-    //   <rest of code>
+    /* Large offset: invert CC, place a long branch after
+       so we really generate the following:
+         addcmpb<~cc> d, a, b, skip
+         b <destination>
+       skip:
+         <rest of code> */
     m=1;
     if(cc&1) cc--; else cc++;
   case EN_ADDCMPB32:
@@ -935,7 +933,7 @@ dblock *eval_instruction(instruction *p,section *sec,taddr pc)
       code2=(p->op[0]->reg<<22)|absval(p->op[1]->offset,sec,pc,6,0)|(1<<10);
     }
     break;
-  // TODO: Check these!
+  /* TODO: Check these! */
   case EN_VLOAD80:
     code=0xF8000000|(code<<19)|(p->op[1]->vecmod&0x70000);
     code2=(p->op[0]->reg<<22);
@@ -1158,7 +1156,7 @@ int cpu_args(char *p)
    cpu-specific text */
 char *parse_cpu_special(char *s)
 {
-  char *name=s,*merk=s;
+  char *merk=s;
 
   return merk;
 }
@@ -1177,8 +1175,8 @@ char *parse_instruction(char *s,int *inst_len,char **ext,int *ext_len,
                         int *ext_cnt)
 /* parse instruction and save extension locations */
 {
-  char *inst = s, l, i;
-  int cnt = 0;
+  char *inst = s;
+  int cnt = 0, l, i;
 
   while (*s && *s!='.' && !isspace((unsigned char)*s))
     s++;

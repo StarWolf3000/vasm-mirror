@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm motorola syntax module 3.14 (c) 2002-2020 Frank Wille";
+char *syntax_copyright="vasm motorola syntax module 3.14a (c) 2002-2020 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 
@@ -1878,28 +1878,7 @@ static char *skip_local(char *p)
 }
 
 
-static char *parse_local_label(char **start)
-{
-  char *s = *start;
-  char *p = skip_local(s);
-  char *name = NULL;
-
-  if (p > (s+1)) {  /* identifier with at least 2 characters */
-    if (*s == local_char) {
-      /* .label */
-      name = make_local_label(NULL,0,s,p-s);
-      *start = p;
-    }
-    else if (*(p-1) == '$') {
-      /* label$ */
-      name = make_local_label(NULL,0,s,(p-1)-s);
-      *start = p;
-    }
-  }
-  return name;
-}
-
-
+#if STRUCT
 /* When a structure with this name exists, insert its atoms and either
    initialize with new values or accept its default values. */
 static int execute_struct(char *name,int name_len,char *s)
@@ -1999,6 +1978,7 @@ static int execute_struct(char *name,int name_len,char *s)
 
   return 1;
 }
+#endif
 
 
 void parse(void)
@@ -2008,7 +1988,7 @@ void parse(void)
   char *op[MAX_OPERANDS];
   int ext_len[MAX_QUALIFIERS?MAX_QUALIFIERS:1];
   int op_len[MAX_OPERANDS];
-  int i,ext_cnt,op_cnt,inst_len;
+  int ext_cnt,op_cnt,inst_len;
   instruction *ip;
 
   while (line = read_next_line()) {
@@ -2044,7 +2024,6 @@ void parse(void)
 
     if (labname = parse_labeldef(&s,0)) {
       /* we have found a global or local label */
-      int lablen = strlen(labname);
       uint32_t symflags = 0;
       symbol *label;
 
@@ -2194,6 +2173,7 @@ void parse(void)
 
 #if MAX_QUALIFIERS>0
     if (ip) {
+      int i;
       for (i=0; i<ext_cnt; i++)
         ip->qualifiers[i] = cnvstr(ext[i],ext_len[i]);
       for(; i<MAX_QUALIFIERS; i++)
@@ -2500,9 +2480,12 @@ char *get_local_label(char **start)
   if (p!=NULL && *p=='\\' && ISIDSTART(*s) && *s!=local_char && *(p-1)!='$') {
     /* skip local part of global\local label */
     s = p + 1;
-    p = skip_local(s);
-    name = make_local_label(*start,(s-1)-*start,s,*(p-1)=='$'?(p-1)-s:p-s);
-    *start = skip(p);
+    if (p = skip_local(s)) {
+      name = make_local_label(*start,(s-1)-*start,s,*(p-1)=='$'?(p-1)-s:p-s);
+      *start = skip(p);
+    }
+    else
+      return NULL;
   }
   else if (p!=NULL && p>(s+1)) {  /* identifier with at least 2 characters */
     if (*s == local_char) {
@@ -2590,6 +2573,7 @@ int syntax_args(char *p)
     devpac_compat = 1;
     align_data = 1;
     esc_sequences = 0;
+    dot_idchar = 1;
     allmp = 1;
     warn_unalloc_ini_dat = 1;
     return 1;

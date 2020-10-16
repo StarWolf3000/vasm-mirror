@@ -14,8 +14,8 @@
   "dsect already active",ERROR,
   "dend without dsect",ERROR,
   "missing dend",ERROR,                                              /* 15 */
-  "",ERROR,
-  "",ERROR,
+  "maximum inline nesting depth exceeded (%d)",ERROR,
+  "einline without inline",ERROR,
   "",ERROR,
   "",ERROR,
   "",WARNING,                                                        /* 20 */

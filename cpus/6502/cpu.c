@@ -11,7 +11,7 @@ mnemonic mnemonics[] = {
 
 int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright="vasm 6502 cpu backend 0.8c (c) 2002,2006,2008-2012,2014-2020 Frank Wille";
+char *cpu_copyright="vasm 6502 cpu backend 0.9 (c) 2002,2006,2008-2012,2014-2020 Frank Wille";
 char *cpuname = "6502";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -21,6 +21,7 @@ static int branchopt = 0;
 static int modifier;      /* set by find_base() */
 static utaddr dpage = 0;  /* default zero/direct page - set with SETDP */
 static int bbcade;        /* GMGM - set for BBC ADE compatibility */
+static int OC_JMPABS,OC_BRA;
 
 
 int ext_unary_type(char *s)
@@ -166,15 +167,24 @@ char *parse_cpu_special(char *start)
     }
     else if (s-name==5 && !strnicmp(name,"zpage",5)) {
       char *name;
-      s = skip(s);
-      if (name = parse_identifier(&s)) {
-        symbol *sym = new_import(name);
-        myfree(name);
-        sym->flags |= ZPAGESYM;
-        eol(s);
-      }
-      else
-        cpu_error(8);  /* identifier expected */
+      int done;
+      do{
+	s = skip(s);
+	if (name = parse_identifier(&s)) {
+	  symbol *sym = new_import(name);
+	  myfree(name);
+	  sym->flags |= ZPAGESYM;
+	}
+	else
+	  cpu_error(8);  /* identifier expected */
+	s = skip(s);
+	if(*s==','){
+	  s++;
+	  done = 0;
+	}else
+	  done = 1;
+      }while(!done);
+      eol(s);
       return skip_line(s);
     }
   }
@@ -182,25 +192,30 @@ char *parse_cpu_special(char *start)
 }
 
 
-static instruction *copy_instruction(instruction *ip)
-/* copy an instruction and its operands */
+int parse_cpu_label(char *labname,char **start)
+/* parse cpu-specific directives following a label field,
+   return zero when no valid directive was recognized */
 {
-  static instruction newip;
-  static operand newop[MAX_OPERANDS];
-  int i;
+  char *dir=*start,*s=*start;
 
-  newip.code = ip->code;
+  if (ISIDSTART(*s)) {
+    s++;
+    while (ISIDCHAR(*s))
+      s++;
 
-  for (i=0; i<MAX_OPERANDS; i++) {
-    if (ip->op[i] != NULL) {
-      newip.op[i] = &newop[i];
-      *newip.op[i] = *ip->op[i];
+    if (s-dir==3 && !strnicmp(dir,"ezp",3)) {
+      /* label EZP <expression> */
+      symbol *sym;
+
+      s = skip(s);
+      sym = new_equate(labname,parse_expr_tmplab(&s));
+      sym->flags |= ZPAGESYM;
+      eol(s);
+      *start = skip_line(s);
+      return 1;
     }
-    else
-      newip.op[i] = NULL;
   }
-
-  return &newip;
+  return 0;
 }
 
 
@@ -234,8 +249,23 @@ static void optimize_instruction(instruction *ip,section *sec,
           taddr bd = val - (pc + 2);
 
           if ((bd<-0x80 || bd>0x7f) && branchopt) {
-            /* branch dest. out of range: use a B!cc/JMP combination */
-            op->type = RELJMP;
+            if (mnemo->ext.opcode==0x80 || mnemo->ext.opcode==0x12) {
+              /* translate out of range 65C02/DTV BRA to JMP */
+              ip->code = OC_JMPABS;
+              op->type = ABS;
+            }
+            else  /* branch dest. out of range: use a B!cc/JMP combination */
+              op->type = RELJMP;
+          }
+        }
+        else if (ip->code==OC_JMPABS && (cpu_type&(DTV|M65C02))!=0 &&
+                 branchopt && !(base!=NULL && is_pc_reloc(base,sec))) {
+          taddr bd = val - (pc + 2);
+
+          if (bd>=-128 && bd<=128) {
+            /* JMP may be optimized to a BRA */
+            ip->code = OC_BRA;
+            op->type = REL;
           }
         }
       }
@@ -312,7 +342,7 @@ size_t instruction_size(instruction *ip,section *sec,taddr pc)
     ip->op[i] = NULL;
   }
 
-  ipcopy = copy_instruction(ip);
+  ipcopy = copy_inst(ip);
   optimize_instruction(ipcopy,sec,pc,0);
   return get_inst_size(ipcopy);
 }
@@ -383,6 +413,8 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
       optype = (int)op->type;
       if (op->value != NULL) {
         if (!eval_expr(op->value,&val,sec,pc)) {
+          taddr add = 0;
+
           modifier = 0;
           if (optype!=WBIT && find_base(op->value,&base,sec,pc) == BASE_OK) {
             if (optype==REL && !is_pc_reloc(base,sec)) {
@@ -418,13 +450,14 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                 case REL:
                   type = REL_PC;
                   size = 8;
+                  add = -1;  /* 6502 addend correction */
                   break;
                 default:
                   ierror(0);
                   break;
               }
 
-              rl = add_extnreloc(&db->relocs,base,val,type,0,size,offs);
+              rl = add_extnreloc(&db->relocs,base,val+add,type,0,size,offs);
               switch (modifier) {
                 case LOBYTE:
                   if (rl)
@@ -559,6 +592,16 @@ int cpu_available(int idx)
 
 int init_cpu()
 {
+  int i;
+
+  for (i=0; i<mnemonic_cnt; i++) {
+    if (mnemonics[i].ext.available & cpu_type) {
+      if (!strcmp(mnemonics[i].name,"jmp") && mnemonics[i].operand_type[0]==ABS)
+        OC_JMPABS = i;
+      else if (!strcmp(mnemonics[i].name,"bra"))
+        OC_BRA = i;
+    }
+  }
   return 1;
 }
 

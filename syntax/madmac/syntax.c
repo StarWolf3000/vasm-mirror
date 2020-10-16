@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm madmac syntax module 0.4f (c) 2015-2020 Frank Wille";
+char *syntax_copyright="vasm madmac syntax module 0.4g (c) 2015-2020 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 
@@ -241,13 +241,11 @@ static void handle_org(char *s)
 }
 
 
-#ifdef VASM_CPU_JAGRISC
 static void handle_68000(char *s)
 {
   try_end_rorg();  /* works like ending the last RORG-block */
   eol(s);
 }
-#endif
 
 
 static void handle_globl(char *s)
@@ -634,6 +632,21 @@ static void handle_print(char *s)
 }
 
 
+static void handle_offset(char *s)
+{
+  taddr offs;
+
+  if (!ISEOL(s))
+    offs = parse_constexpr(&s);
+  else
+    offs = 0;
+
+  try_end_rorg();
+  switch_offset_section(NULL,offs);
+}
+
+
+
 struct {
   char *name;
   void (*func)(char *);
@@ -654,9 +667,7 @@ struct {
   "data",handle_data,
   "bss",handle_bss,
   "org",handle_org,
-#ifdef VASM_CPU_JAGRISC
   "68000",handle_68000,
-#endif
   "globl",handle_globl,
   "extern",handle_globl,
   "assert",handle_assert,
@@ -684,7 +695,9 @@ struct {
   "list",handle_list,
   "nlist",handle_nlist,
   "nolist",handle_nlist,
-  "print",handle_print
+  "print",handle_print,
+  "abs",handle_offset,
+  "offset",handle_offset
 };
 
 int dir_cnt = sizeof(directives) / sizeof(directives[0]);

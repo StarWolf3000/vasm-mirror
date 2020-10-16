@@ -117,7 +117,11 @@ typedef struct atom {
 
 #define MAXSIZECHANGES 5  /* warning, when atom changed size so many times */
 
+enum {
+  PO_CORRUPT=-1,PO_NOMATCH=0,PO_MATCH,PO_SKIP,PO_AGAIN,PO_NEXT
+};
 instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len);
+instruction *copy_inst(instruction *);
 dblock *new_dblock();
 sblock *new_sblock(expr *,size_t,expr *);
 

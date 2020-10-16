@@ -159,8 +159,9 @@ static int operand_code(operand *p)
   if(p->type==OP_IMM32)
     return 9;
   ierror(0);
+  return 0;
 }
-static char *fill_operand(operand *p,section *sec,taddr pc,char *d,rlist **relocs,int roffset)
+static unsigned char *fill_operand(operand *p,section *sec,taddr pc,unsigned char *d,rlist **relocs,int roffset)
 {
   taddr val;
   if(!p||p->type==OP_REG)
@@ -189,7 +190,6 @@ dblock *eval_instruction(instruction *p,section *sec,taddr pc)
   dblock *db=new_dblock();
   int c=opt_inst(p,sec,pc);
   unsigned char *d;
-  taddr val;
   db->size=size;
   d=db->data=mymalloc(size);
   *d=c;

@@ -10,19 +10,18 @@ static symbol *cpc;
 static int make_tmp_lab;
 static int exp_type;
 
-#ifndef EXPSKIP
-#define EXPSKIP() s=expskip(s)
-#endif
-
 static expr *expression();
 
 
+#ifndef EXPSKIP
+#define EXPSKIP() s=expskip(s)
 static char *expskip(char *s)
 {
   s=skip(s);
   if(*s==commentchar) *s='\0';  /* rest of line is commented out */
   return s;
 }
+#endif
 
 expr *new_expr(void)
 {
@@ -177,6 +176,10 @@ static expr *primary_expr(void)
       ierror(0);
       break;
     }
+    if(s==m){
+      general_error(75,base);
+      goto dummyexp;
+    }
     s=const_suffix(start,s);
     EXPSKIP();
     new=new_expr();
@@ -251,6 +254,7 @@ static expr *primary_expr(void)
     return new;
   }
   general_error(9);
+dummyexp:
   new=new_expr();
   new->type=NUM;
   new->c.val=-1;
@@ -1006,20 +1010,24 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     break;
   case DIV:
     if(rval==0){
-      general_error(41);
+      if (final_pass)
+        general_error(41);
       val=0;
     }else if(lval==taddrmin&&rval==-1){
-      general_error(21,sizeof(taddr)*8);  /* target data type overflow */
+      if (final_pass)
+        general_error(21,sizeof(taddr)*8);  /* target data type overflow */
       val=taddrmin;
     }else
       val=(lval/rval);
     break;
   case MOD:
     if(rval==0){
-      general_error(41);
+      if (final_pass)
+        general_error(41);
       val=0;
     }else if(lval==taddrmin&&rval==-1){
-      general_error(21,sizeof(taddr)*8);  /* target data type overflow */
+      if (final_pass)
+        general_error(21,sizeof(taddr)*8);  /* target data type overflow */
       val=taddrmin;
     }else
       val=(lval%rval);
@@ -1099,12 +1107,12 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     val=tree->c.val;
     break;
   case HUG:
-    if (!huge_chkrange(tree->c.huge,bytespertaddr*8))
+    if (!huge_chkrange(tree->c.huge,bytespertaddr*8) && final_pass)
       general_error(21,bytespertaddr*8);  /* target data type overflow */
     val=huge_to_int(tree->c.huge);
     break;
   case FLT:
-    if (!flt_chkrange(tree->c.flt,bytespertaddr*8))
+    if (!flt_chkrange(tree->c.flt,bytespertaddr*8) && final_pass)
       general_error(21,bytespertaddr*8);  /* target data type overflow */
     val=(taddr)tree->c.flt;
     break;
@@ -1145,14 +1153,16 @@ int eval_expr_huge(expr *tree,thuge *result)
     break;
   case DIV:
     if(hcmp(rval,huge_zero())==0){
-      general_error(41);
+      if (final_pass)
+        general_error(41);
       val=huge_zero();
     }else
       val=hdiv(lval,rval);
     break;
   case MOD:
     if(hcmp(rval,huge_zero())==0){
-      general_error(41);
+      if (final_pass)
+        general_error(41);
       val=huge_zero();
     }else
       val=hmod(lval,rval);
@@ -1269,7 +1279,8 @@ int eval_expr_float(expr *tree,tfloat *result)
     break;
   case DIV:
     if(rval==0.0){
-      general_error(41);
+      if (final_pass)
+        general_error(41);
       val=0.0;
     }else
       val=(lval/rval);

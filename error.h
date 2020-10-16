@@ -1,5 +1,5 @@
 /* error.h - error output and modification routines */
-/* (c) in 2002-2009,2015,2018 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2009,2015,2018,2020 by Volker Barthelmann and Frank Wille */
 
 #ifndef ERROR_H
 #define ERROR_H
@@ -19,7 +19,7 @@ struct err_out {
 #define INTERNAL    8
 #define FATAL      16
 #define MESSAGE    32
-#define DONTWARN   64
+#define DISABLED   64
 #define NOLINE    256
 
 #endif

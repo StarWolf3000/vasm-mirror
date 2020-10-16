@@ -1,12 +1,10 @@
 /* osdep.c - OS-dependant routines */
-/* (c) in 2018 by Frank Wille */
+/* (c) in 2018,2020 by Frank Wille */
 
-#include <stdlib.h>
 #include <string.h>
-
-/* from supp.c */
-extern void *mymalloc(size_t);
-extern char *mystrdup(char *);
+char *mystrdup(char *);
+void *mymalloc(size_t);
+struct symbol *internal_abs(char *);
 
 #define MAX_WORKDIR_LEN 1024
 
@@ -204,3 +202,15 @@ char *get_workdir(void)
   return "";
 }
 #endif
+
+int init_osdep(void)
+{
+#if defined(UNIX)
+  internal_abs("__UNIXFS");
+#elif defined(AMIGA)
+  internal_abs("__AMIGAFS");
+#elif defined(MSDOS) || defined(ATARI) || defined(_WIN32)
+  internal_abs("__MSDOSFS");
+#endif
+  return 1;
+}

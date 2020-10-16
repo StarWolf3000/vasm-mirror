@@ -1,10 +1,10 @@
 /* output_vasm.c vobj format output driver for vasm */
-/* (c) in 2002-2018 by Volker Barthelmann */
+/* (c) in 2002-2020 by Volker Barthelmann */
 
 #include "vasm.h"
 
 #ifdef OUTVOBJ
-static char *copyright="vasm vobj output module 0.9b (c) 2002-2018 Volker Barthelmann";
+static char *copyright="vasm vobj output module 1.0 (c) 2002-2020 Volker Barthelmann";
 
 /*
   Format (WILL CHANGE!):
@@ -65,19 +65,11 @@ static void write_number(FILE *f,taddr val)
     fw8(f,val);
     return;
   }
-  fw8(f,0x80+bytespertaddr);
-  for(i=bytespertaddr;i>0;i--){
+  fw8(f,0x80+sizeof(taddr));
+  for(i=sizeof(taddr);i>0;i--){
     fw8(f,val&0xff);
     val>>=8;
   }
-}
-
-static int size_number(taddr val)
-{
-  if(val>=0&&val<=127)
-    return 1;
-  else
-    return bytespertaddr+1;
 }
 
 static void write_string(FILE *f,char *p)
@@ -120,7 +112,6 @@ static void get_section_sizes(section *sec,taddr *rsize,taddr *rdata,taddr *rnre
 {
   taddr data=0,nrelocs=0;
   atom *p;
-  rlist *rl;
   int i;
 
   sec->pc=0;
@@ -188,7 +179,6 @@ static void write_rlist(FILE *f,section *sec,rlist *rl)
 static void write_relocs(FILE *f,section *sec)
 {
   atom *p;
-  rlist *rl;
   sec->pc=0;
   for(p=sec->first;p;p=p->next){
     sec->pc=pcalign(p,sec->pc);

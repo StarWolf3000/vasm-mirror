@@ -446,7 +446,7 @@ dblock *eval_instruction(instruction *p,section *sec,taddr pc)
   dblock *db=new_dblock();
   int opcode,c,jmpconv=0,osize;
   unsigned long code;
-  char *d;
+  unsigned char *d;
   taddr val;
   rlist *relocs=0;
   operand *jmpaddr;

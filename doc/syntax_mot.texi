@@ -18,9 +18,9 @@ This syntax module provides the following additional options:
  offset directives (@code{rs.?}, @code{so.?}, @code{fo.?}).
 
 @item -allmp
- Makes all 35 macro arguments available. Default is 9 (@code{\1} to
+ Makes all 35 macro arguments available. Default is 9 arguments (@code{\1} to
  @code{\9}). More arguments can be accessed through @code{\a} to
- @code{\z}) which may conflict with escape characters or named arguments,
+ @code{\z}), which may conflict with escape characters or named arguments,
  therefore they are not enabled by default.
 
 @item -cnop=<code>
@@ -38,7 +38,6 @@ This syntax module provides the following additional options:
   @item Enable dots within identifiers (see @option{-ldots}).
   @item Up to 35 macro arguments.
   @item Do not use @code{NOP} instructions when aligning code.
-  @item Directives unknown to Devpac are no longer supported.
 @end itemize
 
 @item -ldots
@@ -50,16 +49,15 @@ This syntax module provides the following additional options:
 
 @item -phxass
  PhxAss-compatibility mode. Only directives known to PhxAss are recognized.
- Enables the following features:
 @itemize @minus
   @item Enable escape codes handling in strings (see @option{-esc}).
   @item Macro names are treated as case-insensitive.
   @item Up to 35 macro arguments.
   @item Allow blanks in operands.
+  @item Enable dots within identifiers (see @option{-ldots}).
   @item Defines the symbol @code{_PHXASS_} with value 2 (to differentiate
         from the real PhxAss with value 1).
   @item When no output file name is given, construct it from the input name.
-  @item Directives unknown to PhxAss are no longer supported.
 @end itemize
 
 @item -spaces
@@ -624,6 +622,7 @@ CPU- and output-module support them):
       The optional <expression> gives the start offset for this section.
       When missing the last offset of the previous offset-section is used,
       or 0.
+      @code{<expression>} must evaluate as a constant!
 
 @item org <expression>
       Sets the base address for the subsequent code. Note that it is allowed
@@ -644,7 +643,7 @@ CPU- and output-module support them):
       Make sure to start a new page when the maximum page length is reached.
 
 @item plen <len>
-      The the page length for a listing file to <len> lines.
+      Set the page length for a listing file to <len> lines.
       Currently ignored.
 
 @item printt <string>[,<string>...]
@@ -684,20 +683,22 @@ CPU- and output-module support them):
 @item rsreset
       Equivalent to @code{clrso}, but the symbol manipulated is @code{__RS}.
 
-@item rsset
-      Equivalent to @code{setso}, but the symbol manipulated is @code{__RS}.
+@item rsset <expression>
+      Sets the structure offset counter (@code{__RS}) to <expression>.
+      See @code{rs} directive.
+      @code{<expression>} must evaluate as a constant!
 
 @item section <name>[,<sec_type>][,<mem_type>]
       Starts a new section named @code{<name>} or reactivates an old one.
       @code{<sec_type>} defines the section type and may be @code{code},
       @code{text} (same as @code{code}), @code{data} or @code{bss}.
-      If the selected output format does not support section names
-      (e.g. "aout", "tos", "xfile") then a missing @code{<sec_type>}
+      If the selected output format (like "aout", "tos" or "xfile")
+      does not support section names then a missing @code{<sec_type>}
       argument interprets the first argument, @code{<name>}, as section
       type instead. Otherwise a missing @code{<sec_type>} defaults to
       a @code{code} section with the given name.
-      When @code{<mem_type>} is given it defines a 32-bit memory attribute,
-      which specifies where to load the section.
+      The optional, and Amiga-specific, @code{<mem_type>} defines a 32-bit
+      memory attribute, which specifies where to load the section.
       @code{<mem_type>} is either a numerical constant or one of the
       keywords @code{chip} (for Chip-RAM) or @code{fast} (for Fast-RAM).
       Optionally it is also possible to attach the suffix @code{_C}, @code{_F}
@@ -712,12 +713,14 @@ CPU- and output-module support them):
       contain a new value from now on.
 
 @item setfo <expression>
-      Sets the stack-frame offset counter to <expression>.
+      Sets the structure offset counter (@code{__FO}) to <expression>.
       See @code{fo} directive.
+      @code{<expression>} must evaluate as a constant!
 
 @item setso <expression>
-      Sets the structure offset counter to <expression>.
+      Sets the structure offset counter (@code{__SO}) to <expression>.
       See @code{so} directive.
+      @code{<expression>} must evaluate as a constant!
 
 @item <label> so.<size> <expression>
       Assigns the current value of the structure offset counter to <label>.
@@ -742,7 +745,7 @@ CPU- and output-module support them):
 
 @item weak <symbol>[,<symbol>...]
       Flag <symbol> as a weak symbol, which means that <symbol> is
-      visible to all modules in the linking process and may be replaced
+      visible to all modules in the linking process, but may be replaced
       by any global symbol with the same name.
       When a weak symbol remains undefined its value defaults to 0.
 
@@ -766,7 +769,7 @@ CPU- and output-module support them):
 
 @item @code{odd} directive wastes two bytes, when address is already odd.
 @item Some listing file directives have no effect.
-@item Macro parameter replacement also takes place when a line is
+@item Macro parameter replacement is also done when a line is
       commented out. This is a problem for special codes which modify the
       internal state, like \@@@@, \@@!, \@@?, \+, \-.
 

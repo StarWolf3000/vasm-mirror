@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm oldstyle syntax module 0.14a (c) 2002-2020 Frank Wille";
+char *syntax_copyright="vasm oldstyle syntax module 0.15 (c) 2002-2020 Frank Wille";
 hashtable *dirhash;
 
 static char textname[]=".text",textattr[]="acrx";
@@ -61,11 +61,32 @@ static struct namelen dendr_dirlist[] = {
 
 static char local_modif_name[] = "_";  /* ._ for abyte directive */
 
-static int dotdirs,autoexport,parse_end,igntrail,nocprefix,nointelsuffix;
+static int dotdirs,autoexport,parse_end,nocprefix,nointelsuffix;
+static int astcomment,dot_idchar;
 static taddr orgmode = ~0;
 static section *last_alloc_sect;
 static taddr dsect_offs;
 static int dsect_active;
+
+/* isolated local labels block */
+#define INLSTACKSIZE 100
+#define INLLABFMT "=%06d"
+static int inline_stack[INLSTACKSIZE];
+static int inline_stack_index;
+static char *saved_last_global_label;
+static char inl_lab_name[8];
+
+int igntrail;  /* ignore everything after a blank in the operand field */
+
+
+int isidchar(char c)
+{
+  if (isalnum((unsigned char)c) || c=='_')
+    return 1;
+  if (dot_idchar && c=='.')
+    return 1;
+  return 0;
+}
 
 
 char *skip(char *s)
@@ -104,7 +125,7 @@ char *exp_skip(char *s)
 }
 
 
-static char *skip_oper(int instoper,char *s)
+static char *skip_operand(int instoper,char *s)
 {
 #ifdef VASM_CPU_Z80
   unsigned char lastuc = 0;
@@ -113,8 +134,8 @@ static char *skip_oper(int instoper,char *s)
   char c = 0;
 
   for (;;) {
-    s = exp_skip(s);
 #ifdef VASM_CPU_Z80
+    s = exp_skip(s);  /* @@@ why do we need that? */
     if (c)
       lastuc = toupper((unsigned char)*(s-1));
 #endif
@@ -135,14 +156,13 @@ static char *skip_oper(int instoper,char *s)
     else if (c=='\'' || c=='\"')
 #endif
       s = skip_string(s,c,NULL) - 1;
-    else if (instoper && OPERSEP_COMMA && c==',' && par_cnt==0)
+    else if ((!instoper || (instoper && OPERSEP_COMMA)) &&
+             c==',' && par_cnt==0)
       break;
     else if (instoper && OPERSEP_BLANK && isspace((unsigned char)c)
              && par_cnt==0)
       break;
-    else if (!instoper && c==',' && par_cnt==0)
-      break;
-    else if (c == '\0')
+    else if (c=='\0' || c==commentchar)
       break;
 
     s++;
@@ -150,12 +170,6 @@ static char *skip_oper(int instoper,char *s)
   if(par_cnt != 0)
     syntax_error(4);  /* missing closing parentheses */
   return s;
-}
-
-
-char *skip_operand(char *s)
-{
-  return skip_oper(1,s);
 }
 
 
@@ -207,14 +221,13 @@ static void handle_data_mod(char *s,int size,expr *tree)
 
     if (db == NULL) {
       op = new_operand();
-      s = skip_oper(0,s);
+      s = skip_operand(0,s);
       if (parse_operand(opstart,s-opstart,op,DATA_OPERAND(size))) {
-        expr *tmpvalue;
         atom *a;
 
 #if defined(VASM_CPU_650X) || defined(VASM_CPU_Z80) || defined(VASM_CPU_6800)
         if (mod != NULL) {
-          *mod = tmpvalue = op->value;
+          expr *tmpvalue = *mod = op->value;
           op->value = copy_tree(tree);
           free_expr(tmpvalue);
         }
@@ -232,7 +245,7 @@ static void handle_data_mod(char *s,int size,expr *tree)
         /* make a defblock with an operand expression for each character */
         char buf[8];
         expr *tmpvalue;
-        int len,i;
+        int i;
 
         for (i=0; i<db->size; i++) {
           op = new_operand();
@@ -275,34 +288,6 @@ static void handle_data_mod(char *s,int size,expr *tree)
   eol(s);
 }
 
-
-static void handle_text(char *s)
-{
-  char *opstart = s;
-  operand *op;
-  dblock *db = NULL;
-
-  if (db = parse_string(&opstart,*s,8)) {
-    add_atom(0,new_data_atom(db,1));
-    s = opstart;
-  }
-  if (db == NULL) {
-    op = new_operand();
-    s = skip_oper(0,s);
-    if (parse_operand(opstart,s-opstart,op,DATA_OPERAND(8))) {
-      atom *a;
-
-      a = new_datadef_atom(8,op);
-      a->align = 1;
-      add_atom(0,a);
-    }
-    else
-      syntax_error(8);  /* invalid data operand */
-  }
-  eol(s);
-}
-
-
 static void handle_d8(char *s)
 {
   handle_data(s,8);
@@ -341,6 +326,34 @@ static void handle_d8_mod(char *s)
     syntax_error(9);  /* , expected */
 }
 #endif
+
+
+
+static void do_text(char *s,unsigned char add)
+{
+  char *opstart = s;
+  dblock *db = NULL;
+
+  if (db = parse_string(&opstart,*s,8)) {
+    add_atom(0,new_data_atom(db,1));
+    db->data[db->size-1] += add;
+    eol(opstart);
+  }
+  else
+    syntax_error(8);  /* invalid data operand */
+}
+
+
+static void handle_text(char *s)
+{
+  do_text(s,0);
+}
+
+
+static void handle_fcs(char *s)
+{
+  do_text(s,0x80);
+}
 
 
 static void do_alignment(taddr align,expr *offset)
@@ -470,6 +483,8 @@ static void handle_org(char *s)
     }
   }
   else {
+    if (*s == '#')
+      s = skip(s+1);  /* some strange assemblers allow ORG #<addr> */
     if (dsect_active)
       switch_offset_section(NULL,parse_constexpr(&s));
     else
@@ -948,6 +963,40 @@ static void handle_endstruct(char *s)
 }
 
 
+static void handle_inline(char *s)
+{
+  static int id;
+  char *last;
+
+  if (inline_stack_index < INLSTACKSIZE) {
+    sprintf(inl_lab_name,INLLABFMT,id);
+    last = set_last_global_label(inl_lab_name);
+    if (inline_stack_index == 0)
+      saved_last_global_label = last;
+    inline_stack[inline_stack_index++] = id++;
+  }
+  else
+    syntax_error(16,INLSTACKSIZE);  /* maximum inline nesting depth exceeded */
+}
+
+
+static void handle_einline(char *s)
+{
+  if (inline_stack_index > 0 ) {
+    if (--inline_stack_index == 0) {
+      set_last_global_label(saved_last_global_label);
+      saved_last_global_label = NULL;
+    }
+    else {
+      sprintf(inl_lab_name,INLLABFMT,inline_stack[inline_stack_index-1]);
+      set_last_global_label(inl_lab_name);
+    }
+  }
+  else
+    syntax_error(17);  /* einline without inline */
+}
+
+
 struct {
   char *name;
   void (*func)(char *);
@@ -1065,10 +1114,13 @@ struct {
   "structure",handle_struct,
   "endstruct",handle_endstruct,
   "endstructure",handle_endstruct,
+  "inline",handle_inline,
+  "einline",handle_einline,
 #if !defined(VASM_CPU_650X)
   "rmb",handle_spc8,
 #endif
   "fcc",handle_text,
+  "fcs",handle_fcs,
   "fcb",handle_d8,
   "fdb",handle_d16,
   "bsz",handle_spc8,
@@ -1143,7 +1195,7 @@ static int execute_struct(char *name,int name_len,char *s)
 
     if (p->type==DATA || p->type==SPACE || p->type==DATADEF) {
       opp = s = skip(s);
-      s = skip_oper(0,s);
+      s = skip_operand(0,s);
       opl = oplen(s,opp);
 
       if (opl > 0) {
@@ -1313,7 +1365,7 @@ void parse(void)
 #else
   while (line = read_next_line()) {
 #endif
-    if (parse_end)
+    if (parse_end || (astcomment && *line=='*'))
       continue;
 
     if (!cond_state()) {
@@ -1338,7 +1390,7 @@ void parse(void)
     s = line;
     if (labname = parse_label_or_pc(&s)) {
       /* we have found a global or local label, or current-pc character */
-      symbol *label,*labsym;
+      symbol *label;
       int equlen = 0;
 
       if (!strnicmp(s,equname+!dotdirs,3+dotdirs) &&
@@ -1389,7 +1441,11 @@ void parse(void)
         myfree(labname);
         continue;
       }
+#ifdef PARSE_CPU_LABEL
+      else if (!PARSE_CPU_LABEL(labname,&s)) {
+#else
       else {
+#endif
         /* it's just a label */
         label = new_labsym(0,labname);
         add_atom(0,new_label_atom(label));
@@ -1447,7 +1503,7 @@ void parse(void)
     op_cnt = 0;
     while (!ISEOL(s) && op_cnt<MAX_OPERANDS) {
       op[op_cnt] = s;
-      s = skip_oper(1,s);
+      s = skip_operand(1,s);
       op_len[op_cnt] = oplen(s,op[op_cnt]);
 #if !ALLOW_EMPTY_OPS
       if (op_len[op_cnt] <= 0)
@@ -1502,7 +1558,7 @@ char *parse_macro_arg(struct macro *m,char *s,
 {
   arg->len = 0;  /* cannot select specific named arguments */
   param->name = s;
-  s = skip_oper(0,s);
+  s = skip_operand(0,s);
   param->len = s - param->name;
   return s;
 }
@@ -1697,10 +1753,8 @@ char *const_suffix(char *start,char *end)
 
 static char *skip_local(char *p)
 {
-  char *s;
-
   if (ISIDSTART(*p) || isdigit((unsigned char)*p)) {  /* may start with digit */
-    s = p++;
+    p++;
     while (ISIDCHAR(*p))
       p++;
   }
@@ -1788,6 +1842,14 @@ int syntax_args(char *p)
   }
   else if (!strcmp(p,"-noi")) {
     nointelsuffix = 1;
+    return 1;
+  }
+  else if (!strcmp(p,"-ast")) {
+    astcomment = 1;
+    return 1;
+  }
+  else if (!strcmp(p,"-ldots")) {
+    dot_idchar = 1;
     return 1;
   }
   return 0;

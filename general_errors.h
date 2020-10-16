@@ -31,11 +31,11 @@
   "expression must be constant",ERROR,                          /* 30 */
   "initialized data in bss",WARNING,
   "missing end directive in repeat-block",ERROR|FATAL,
-  "#%d is not a valid warning message",NOLINE|ERROR,
+  "#%d is not a valid %smessage",NOLINE|ERROR,
   "relocation not allowed",ERROR,
   "illegal escape sequence \\%c",WARNING,                       /* 35 */
   "no current macro to exit",ERROR,
-  "internal symbol %s redefined by user",FATAL,
+  "internal symbol %s redefined by user",ERROR|FATAL,
   "illegal relocation",ERROR,
   "label name conflicts with mnemonic",WARNING,
   "label name conflicts with directive",WARNING,                /* 40 */
@@ -73,3 +73,6 @@
   "undefined macro argument name",ERROR,
   "required macro argument %d was left out",ERROR,
   "label <%s> redefined",ERROR,
+  "base %d numerical term expected",ERROR,                      /* 75 */
+  "section stack overflow",ERROR,
+  "section stack is empty",ERROR,

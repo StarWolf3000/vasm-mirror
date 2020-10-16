@@ -1,6 +1,56 @@
 vasm history
 =============
 
+- 1.8i (28.09.20)
+o New CPU backend for 6809, 6309 and 68HC12.
+o New output module "cdef" to write all absolute symbols as a series of
+  #define directives for inclusion in a C source.
+o Do not read a source file with the same name from the CWD, when the
+  real source is actually located in a sub directory!
+o Show an error when no numerical term follows a base-prefix.
+o Do not show expression-evalulation errors before the final pass
+  (e.g. division by zero).
+o New option -nomsg= to disable specific informational messages.
+o Define an internal symbol depending on the host file system in use
+  (__UNIXFS, __AMIGAFS, __MSDOSFS).
+o Fixed crash when printing errors from files with an absolute path.
+o m68k: New option -extsd to allow small data with 020 extended addressing
+  modes.
+o m68k: Disabled most of the new MOVE.L #x,Dn optimization from V1.8h for
+  ColdFire, which doesn't support .W and .B operations.
+o m68k: Fixed encoding of ([...],ZRn,...).
+o m68k: Fixed PFLUSHR immediate addressing mode.
+o m68k: Some PMOVE reg,<ea> erroneously allowed immediate and PC-relative
+  addressing modes as destination.
+o m68k: Allow A0 and A1 as small data base registers (near, -sdreg).
+o m68k: External small-data symbol references may have a signed addend.
+o jagrisc: Add more predefined condition codes. Now vasm supports the
+  same condition codes as the SMAC assembler.
+o 6502: Fixed branches to external labels.
+o 6502: New directive EZP. Like EQU, but use advises zero page addressing.
+o 6502: -opt-branch can now also translate/optimize between BRA and JMP.
+o ARM: Fixed a problems with auto-rotated immediate values. Now all
+  possible solutions should be found.
+o ARM: Fixed oscillating optimization for ADR/ADRL (-opt-adr).
+o ARM: Fixed handling of string/data directives with a single character.
+o ARM: Fixed MSR status register bit mask (patch by Luna).
+o mot-syntax: -devpac compatibility mode allows dots ('.') in labels (-ldots).
+o mot-syntax: Fixed crash when reading a label field including '\' and
+  followed by a non-identifier character.
+o oldstyle-syntax: -ast allows * to start comments in the first column.
+o oldstyle-syntax: -i now also works for instructions with no operand.
+o oldstyle-syntax: -ldots allows '.' within identifiers.
+o oldstyle-syntax: added inline and einline directives from mot-syntax.
+o oldstyle-syntax: added FCS directive, which is like FCC but sets the
+  MSB of the last character.
+o madmac-syntax: Added missing .offset and .abs directives to start an
+  offset-section.
+o std-syntax: Added .pushsection and .popsection directives.
+o bin-output: Added support for Apple DOS binaries, Dragon DOS binaries
+  and Tandy Color Computer machine language files.
+o vobj-output: Make some backends support larger sections sizes than
+  their target address allows.
+
 - 1.8h (18.04.20)
 o Reworked absolute ORG sections.
 o -pic no longer reports references to undefined symbols.
@@ -126,9 +176,9 @@ o m68k: Recognize (PC) addressing mode and transform it into (0,PC).
 o m68k: Only "fpu 1..7" may enable FPU code generation.
 o m68k: -kick1hunks also prevents optimizing from absolute to 32-bit
   PC-relative.
-o arm: Fixed instruction alignment in Thumb mode, which was broken since
+o ARM: Fixed instruction alignment in Thumb mode, which was broken since
   1.8b (introduction of -noialign option).
-o arm: Fix for immediate operands like cmp r0,#'A' not working properly in
+o ARM: Fix for immediate operands like cmp r0,#'A' not working properly in
   thumb mode (provided by Peter Petterson).
 o PPC: tlbld is available as general PPC instruction again.
 o z80: SBC addressing modes IX,ss and SBC IY,ss do not exist.
@@ -148,7 +198,7 @@ o The count in repeat-directives is always unsigned, even when given as
 o Check for target address space overflows.
 o Fixed crash when undefining non-existing register symbols.
 o A redefined label is no longer a warning, but an error.
-o arm: Fixed compile-error from last release.
+o ARM: Fixed compile-error from last release.
 o vobj-output: Fixed uninitialized symbol index for internal/local symbols.
 o oldstyle-syntax: New directive ROFFS to set the program counter relative
   to the start of the current section.

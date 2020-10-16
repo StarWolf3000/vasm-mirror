@@ -155,9 +155,9 @@ static void read_section(struct vobj_section *vsect,
   int align,nrelocs,i;
 
   vsect->offs = p - vobj;
-  vsect->name = p;
+  vsect->name = (char *)p;
   skip_string();
-  attr = p;
+  attr = (char *)p;
   skip_string();
   flags = (unsigned long)read_number(0);
   align = (int)read_number(0);
@@ -168,7 +168,7 @@ static void read_section(struct vobj_section *vsect,
   print_sep();
   printf("%08llx: SECTION \"%s\" (attributes=\"%s\")\n"
          "Flags: %-8lx  Alignment: %-6d "
-         "Total size: %-9lld File size: %-9lld\n",
+         "Total size: %-9" PRId64 " File size: %-9" PRId64 "\n",
          BPTMASK(vsect->offs),vsect->name,attr,flags,align,
          vsect->dsize,vsect->fsize);
   if (nrelocs)
@@ -224,7 +224,7 @@ static void read_section(struct vobj_section *vsect,
         basesym = vsect->name;
         /*addend += offs;*/
       }
-      printf("%08llx  %02d %02d %8llx %-8s %s%+lld\n",
+      printf("%08llx  %02d %02d %8llx %-8s %s%+" PRId64 "\n",
              BPTMASK(offs),bpos,bsiz,BPTMASK(mask),
              reloc_name[type],basesym,addend);
     }
@@ -310,7 +310,7 @@ static int vobjdump(void)
     }
     bptmask = makemask(bpt*bpb);
 
-    cpu_name = p;
+    cpu_name = (char *)p;
     skip_string();  /* skip cpu-string */
     nsecs = (int)read_number(0);  /* number of sections */
     nsyms = (int)read_number(0);  /* number of symbols */

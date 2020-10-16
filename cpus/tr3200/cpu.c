@@ -28,7 +28,7 @@ static taddr opsize(operand *p, unsigned char num_operands, section *sec, taddr 
 char *parse_instruction(char *s, int *inst_len, char **ext, int *ext_len,
                         int *ext_cnt)
 {
-  char* inst = s;
+/*  char* inst = s;*/
 #ifdef CPU_DEBUG
     fprintf(stderr, "parse_inst : \"%.*s\"\n", *inst_len, s);
 #endif
@@ -165,7 +165,7 @@ int parse_operand(char *p, int len, operand *op, int requires)
 #endif
       op->type = OP_IMM;
 
-      int parent=0;
+      /*int parent=0;*/
       expr *tree;
 
       /*
@@ -215,7 +215,7 @@ dblock *eval_instruction (instruction *p, section *sec, taddr pc)
   size_t size = instruction_size(p, sec, pc);
   dblock *db = new_dblock();
   mnemonic m = mnemonics[p->code];
-  unsigned char *opcode, *d; /* Data */
+  unsigned char *d; /* Data */
   taddr val;
   unsigned char ml_bits = 0;
   unsigned char num_operands = 0;

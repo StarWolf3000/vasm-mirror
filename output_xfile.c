@@ -17,7 +17,6 @@ static utaddr sdabase,lastoffs;
 
 static void xfile_initwrite(section *sec,symbol *sym)
 {
-  int nsyms = 0;
   int i;
 
   /* find exactly one .text, .data and .bss section for xfile */
@@ -105,7 +104,7 @@ static int write_reloc68k(atom *a,rlist *rl,int signedval,taddr val)
   }
 
   if (a->type == DATA)
-    p = a->content.db->data + nrel->byteoffset;
+    p = (char *)a->content.db->data + nrel->byteoffset;
   else if (a->type == SPACE)
     p = (char *)a->content.sb->fill;  /* @@@ ignore offset completely? */
   else
