@@ -1,6 +1,26 @@
 vasm history
 =============
 
+- 1.8j (31.12.20)
+o New CPU backend for the PDP-11 architecture.
+o Fixed alignments in relocated-org blocks within a section.
+o 6809: 16-bit branch with a negative distance of 127 bytes (-130 encoded)
+  was erroneously optimized to 8-bit branch (-129 encoded). Fixed.
+o 6809: .dpage directive conflicts with .dpage section in std-syntax and
+  was renamed to .direct.
+o 6809: Support label differences in immediate addressing modes, which
+  generate a pc-relative relocation.
+o m68k: Fixed inappropriate cpu-type errors, when using directives or
+  macros starting with "mc", "mcf" or "ac".
+o m68k: Illegal opcode extensions should also be reported in Devpac-
+  compatibility mode. Illegal opcode extensions for unsized instructions
+  are still ignored with -devpac.
+o mot-syntax: pushsection and popsection directives.
+o mot-syntax: msource directive to control source level debugging within
+  a macro (submitted by Soren Hannibal).
+o mot-syntax: if1, if2, ifp1 directives for compatibility with a warning.
+o oldstyle-syntax: org $addr works again for Z80.
+
 - 1.8i (28.09.20)
 o New CPU backend for 6809, 6309 and 68HC12.
 o New output module "cdef" to write all absolute symbols as a series of

@@ -28,7 +28,9 @@ This module provides the following additional options:
         Delete zero offsets in indexed addressing modes, when possible.
     @item -opt-pc
         Convert all extended addressing modes with local or external
-        labels to indexed, PC-relative addressing.
+        labels to indexed, PC-relative addressing. Also translates
+        absolute @code{jmp}/@code{jsr} instructions into PC-relative
+        @code{lbra}/@code{lbsr} (or better).
 @end table
 
 @section General
@@ -77,9 +79,9 @@ directives:
       to decide whether an extended addressing mode can be
       optimized to direct addressing. No effect for 68HC12.
 
-@item dpage <symbol>
-      Mark <symbol> as direct page and use direct addressing for
-      expressions based on this symbol.
+@item direct <symbol>
+      Tell the assembler to use direct addressing for expressions
+      based on this symbol.
 @end table
 
 
@@ -95,6 +97,11 @@ This backend performs the following operand optimizations:
   (@code{Bcc}) when possible.
 @item Optionally optimize @code{JMP} into @code{BRA} and @code{JSR} into
   @code{BSR} when possible (same section, distance representable in 8 bits).
+@item Optionally translate @code{JMP} into @code{LBRA} and @code{JSR} into
+  @code{LBSR} (@option{-opt-pc}).
+@item Optionally translate all extended addressing, refering to local
+  or external labels, to an indexed, PC-relative addressing mode
+  (@option{-opt-pc}).
 @item Optionally optimize indexed addressing modes with a constant zero
   offset into a no-offset addressing mode, which executes faster. Not
   possible on the HC12.

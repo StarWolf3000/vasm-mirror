@@ -1,15 +1,18 @@
 PRE = obj$(TARGET)/$(CPU)_$(SYNTAX)_
 
 OBJS = $(PRE)vasm.o $(PRE)atom.o $(PRE)expr.o $(PRE)symtab.o $(PRE)symbol.o \
-       $(PRE)error.o $(PRE)parse.o $(PRE)reloc.o $(PRE)hugeint.o $(PRE)cond.o \
-       $(PRE)supp.o $(PRE)dwarf.o $(PRE)osdep.o $(PRE)cpu.o $(PRE)syntax.o \
+       $(PRE)error.o $(PRE)parse.o $(PRE)reloc.o $(PRE)hugeint.o \
+       $(PRE)cond.o $(PRE)listing.o $(PRE)source.o \
+       $(PRE)supp.o $(PRE)dwarf.o $(PRE)osdep.o \
+       $(PRE)cpu.o $(PRE)syntax.o \
        $(PRE)output_test.o $(PRE)output_elf.o $(PRE)output_bin.o \
        $(PRE)output_vobj.o $(PRE)output_hunk.o $(PRE)output_aout.o \
-       $(PRE)output_tos.o $(PRE)output_xfile.o $(PRE)output_srec.o $(PRE)output_cdef.o
+       $(PRE)output_tos.o $(PRE)output_xfile.o $(PRE)output_srec.o $(PRE)output_cdef.o \
+	   $(PRE)output_ihex.o
 
 VODOBJS = obj$(TARGET)/vobjdump.o
 
-INCLUDES = -I. -Icpus/$(CPU) -Isyntax/$(SYNTAX) 
+INCLUDES = -I. -Icpus/$(CPU) -Isyntax/$(SYNTAX)
 
 VASMEXE = vasm$(CPU)_$(SYNTAX)$(TARGET)$(TARGETEXTENSION)
 VOBJDMPEXE = vobjdump$(TARGET)$(TARGETEXTENSION)
@@ -27,7 +30,7 @@ clean:
 	$(RM) $(OBJS) $(VASMEXE) $(VODOBJS) $(VOBJDMPEXE)
 
 
-$(PRE)vasm.o: vasm.c vasm.h symbol.h osdep.h stabs.h dwarf.h expr.h supp.h atom.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h
+$(PRE)vasm.o: vasm.c vasm.h symbol.h osdep.h stabs.h dwarf.h expr.h supp.h atom.h source.h listing.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h
 	$(CC) $(INCLUDES) $(COPTS) vasm.c $(CCOUT)$(PRE)vasm.o
 
 $(PRE)atom.o: atom.c vasm.h symbol.h expr.h supp.h reloc.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h
@@ -51,8 +54,14 @@ $(PRE)error.o: error.c vasm.h error.h general_errors.h output_errors.h cpus/$(CP
 $(PRE)reloc.o: reloc.c vasm.h symbol.h expr.h supp.h reloc.h
 	$(CC) $(INCLUDES) $(COPTS) reloc.c $(CCOUT)$(PRE)reloc.o
 
-$(PRE)parse.o: parse.c vasm.h osdep.h symbol.h parse.h atom.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h
+$(PRE)parse.o: parse.c vasm.h symbol.h parse.h atom.h source.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h
 	$(CC) $(INCLUDES) $(COPTS) parse.c $(CCOUT)$(PRE)parse.o
+
+$(PRE)source.o: source.c vasm.h atom.h supp.h parse.h dwarf.h osdep.h syntax/$(SYNTAX)/syntax.h
+	$(CC) $(INCLUDES) $(COPTS) source.c $(CCOUT)$(PRE)source.o
+
+$(PRE)listing.o: listing.c vasm.h atom.h general_errors.h symbol.h
+	$(CC) $(INCLUDES) $(COPTS) listing.c $(CCOUT)$(PRE)listing.o
 
 $(PRE)hugeint.o: hugeint.c hugeint.h tfloat.h
 	$(CC) $(INCLUDES) $(COPTS) hugeint.c $(CCOUT)$(PRE)hugeint.o
@@ -65,6 +74,7 @@ $(PRE)dwarf.o: dwarf.c vasm.h dwarf.h osdep.h symbol.h atom.h
 
 $(PRE)osdep.o: osdep.c vasm.h supp.h symbol.h
 	$(CC) $(INCLUDES) $(COPTS) osdep.c $(CCOUT)$(PRE)osdep.o
+
 
 $(PRE)output_test.o: output_test.c vasm.h symbol.h supp.h atom.h
 	$(CC) $(INCLUDES) $(COPTS) output_test.c $(CCOUT)$(PRE)output_test.o
@@ -99,12 +109,16 @@ $(PRE)output_xfile.o: output_xfile.c output_xfile.h vasm.h symbol.h supp.h atom.
 $(PRE)output_cdef.o: output_cdef.c vasm.h symbol.h supp.h atom.h
 	$(CC) $(INCLUDES) $(COPTS) output_cdef.c $(CCOUT)$(PRE)output_cdef.o
 
+$(PRE)output_ihex.o: output_ihex.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_ihex.c $(CCOUT)$(PRE)output_ihex.o
+
 
 $(PRE)cpu.o: cpus/$(CPU)/cpu.c cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h vasm.h symbol.h expr.h error.h supp.h reloc.h hugeint.h tfloat.h parse.h atom.h
 	$(CC) $(INCLUDES) $(COPTS) cpus/$(CPU)/cpu.c $(CCOUT)$(PRE)cpu.o
 
-$(PRE)syntax.o: syntax/$(SYNTAX)/syntax.c syntax/$(SYNTAX)/syntax.h cpus/$(CPU)/cpu.h vasm.h symbol.h expr.h error.h supp.h parse.h atom.h
+$(PRE)syntax.o: syntax/$(SYNTAX)/syntax.c syntax/$(SYNTAX)/syntax.h cpus/$(CPU)/cpu.h vasm.h symbol.h expr.h error.h supp.h parse.h atom.h source.h listing.h
 	$(CC) $(INCLUDES) $(COPTS) syntax/$(SYNTAX)/syntax.c $(CCOUT)$(PRE)syntax.o
+
 
 obj$(TARGET)/vobjdump.o: vobjdump.c vobjdump.h
 	$(CC) $(COPTS) vobjdump.c $(CCOUT)obj$(TARGET)/vobjdump.o
