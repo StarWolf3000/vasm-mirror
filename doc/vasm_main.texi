@@ -416,13 +416,17 @@ Has to be provided completely by the syntax module.
     @item Bert Jahn
     @item Daniel Illgen
     @item Matthew Hey
+    @item Stefan Haubenthal
+    @item S@o{}ren Hannibal
     @item Philippe Guichardon
     @item Romain Giot
+    @item Daniel Gerdgren
     @item Francois Galea
     @item Tom Duin
     @item Kieran Connell
     @item Fernando Cabrera
     @item Patrick Bricout
+    @item Matthias Bock
     @item Karoly Balogh
 @end itemize
 

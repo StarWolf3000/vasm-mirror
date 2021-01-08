@@ -184,6 +184,10 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @chapter Jaguar RISC cpu module
 @include cpu_jagrisc.texi
 
+@node PDP11 cpu module
+@chapter PDP11 cpu module
+@include cpu_pdp11.texi
+
 @node Trillek TR3200 cpu module
 @chapter Trillek TR3200 cpu module
 @include cpu_tr3200.texi

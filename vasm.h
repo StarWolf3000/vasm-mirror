@@ -28,8 +28,10 @@ typedef struct regsym regsym;
 #include "symtab.h"
 #include "expr.h"
 #include "parse.h"
+#include "source.h"
 #include "atom.h"
 #include "cond.h"
+#include "listing.h"
 #include "supp.h"
 
 #if defined(BIGENDIAN)&&!defined(LITTLEENDIAN)
@@ -74,61 +76,6 @@ typedef unsigned int bvtype;
 #define BCLR(array,bit) (array)[(bit)/BVBITS]&=~(1<<((bit)%BVBITS))
 #define BTST(array,bit) ((array)[(bit)/BVBITS]&(1<<((bit)%BVBITS)))
 
-
-/* include paths */
-struct include_path {
-  struct include_path *next;
-  char *path;
-  int compdir_based;
-};
-
-/* source files */
-struct source_file {
-  struct source_file *next;
-  struct include_path *incpath;
-  int index;
-  char *name;
-  char *text;
-  size_t size;
-};
-
-/* source texts (main file, include files or macros) */
-struct source {
-  struct source *parent;
-  int parent_line;
-  struct source_file *srcfile;
-  char *name;
-  char *text;
-  size_t size;
-  struct source *defsrc;
-  int defline;
-  macro *macro;
-  unsigned long repeat;
-  char *irpname;
-  struct macarg *irpvals;
-  int cond_level;
-  struct macarg *argnames;
-  int num_params;
-  char *param[MAXMACPARAMS+1];
-  int param_len[MAXMACPARAMS+1];
-#if MAX_QUALIFIERS > 0
-  int num_quals;
-  char *qual[MAX_QUALIFIERS];
-  int qual_len[MAX_QUALIFIERS];
-#endif
-  unsigned long id;
-  char *srcptr;
-  int line;
-  size_t bufsize;
-  char *linebuf;
-#ifdef CARGSYM
-  expr *cargexp;
-#endif
-#ifdef REPTNSYM
-  long reptn;
-#endif
-};
-
 /* section flags */
 #define HAS_SYMBOLS      (1<<0)
 #define RESOLVE_WARN     (1<<1)
@@ -172,26 +119,9 @@ typedef struct mnemonic {
 #define OPSZ_FLOAT      0x100  /* operand stored as floating point */
 #define OPSZ_SWAP	0x200  /* operand stored with swapped bytes */
 
-/* listing table */
 
-#define MAXLISTSRC 120
-
-struct listing {
-  listing *next;
-  source *src;
-  int line;
-  int error;
-  atom *atom;
-  section *sec;
-  taddr pc;
-  char txt[MAXLISTSRC];
-};
-
-
-extern listing *first_listing,*last_listing,*cur_listing;
 extern int done,final_pass,nostdout;
 extern int warn_unalloc_ini_dat;
-extern int listena,listformfeed,listlinesperpage,listnosyms;
 extern int mnemonic_cnt;
 extern int nocase,no_symbols,pic_check,exec_out,chklabels;
 extern int secname_attr,unnamed_sections;
@@ -201,7 +131,7 @@ extern source *cur_src;
 extern section *current_section;
 extern char *filename;
 extern char *debug_filename;  /* usually an absolute C source file name */
-extern char *inname,*outname,*listname,*compile_dir;
+extern char *inname,*outname;
 extern char *output_format;
 extern char emptystr[];
 extern char vasmsym_name[];
@@ -216,10 +146,6 @@ extern int debug;
 
 void leave(void);
 void set_default_output_format(char *);
-FILE *locate_file(char *,char *,struct include_path **);
-source *include_source(char *);
-source *new_source(char *,struct source_file *,char *,size_t);
-void end_source(source *);
 void set_section(section *);
 section *new_section(char *,char *,int);
 section *new_org(taddr);
@@ -238,11 +164,6 @@ int end_rorg(void);
 void try_end_rorg(void);
 void start_rorg(taddr);
 void print_section(FILE *,section *);
-void main_include_path(char *);
-struct include_path *new_include_path(char *);
-void set_listing(int);
-void set_list_title(char *,int);
-void write_listing(char *);
 
 #define setfilename(x) filename=(x)
 #define getfilename() filename
@@ -332,3 +253,4 @@ int init_output_aout(char **,void (**)(FILE *,section *,symbol *),int (**)(char 
 int init_output_tos(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_xfile(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_cdef(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
+int init_output_ihex(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));

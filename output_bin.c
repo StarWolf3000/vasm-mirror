@@ -34,7 +34,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
   atom *p;
   size_t nsecs;
   long hdroffs;
-  unsigned long long pc,npc,i;
+  unsigned long long pc=0,npc,i;
 
   if (!sec)
     return;

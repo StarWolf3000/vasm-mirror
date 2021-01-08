@@ -440,6 +440,14 @@ CPU- and output-module support them):
 @item if <expression>
       Conditionally assemble the following lines if <expression> is non-zero.
 
+@item if1
+      Just for compatibility. Not really supported, as vasm parses a
+      source text only once. Always true.
+
+@item if2
+      Just for compatibility. Not really supported, as vasm parses a
+      source text only once. Always false.
+
 @item ifeq <expression>
       Conditionally assemble the following lines if <expression> is zero.
 
@@ -489,6 +497,9 @@ CPU- and output-module support them):
 
 @item ifmacrond <macro>
       Conditionally assemble the following line if <macro> is undefined.
+
+@item ifp1
+      Just for compatibility. Equivalent to @code{if1}.
 
 @item iif <expression> <statement>
       Conditionally assemble the <statement> following <expression>.
@@ -597,6 +608,16 @@ CPU- and output-module support them):
       assembly to a state before the macro was invoked; which means that
       it also works as a 'break' command on all new @code{if} directives.
 
+@item msource on/off
+      Enable or disable source level debugging within a macro context.
+      It can be used before one or more macro definitions.
+      When off, the debugger will show the invoking source text line
+      instead. Defaults to @code{on}. Also numeric expressions like
+      @code{0} or @code{1} are allowed.
+      Note, that this directive currently only has a meaning when using
+      the @option{-linedebug} option with the hunk-format output module
+      (@option{-Fhunk}).
+
 @item nolist
       The following lines will not be visible in a listing file.
 
@@ -658,6 +679,14 @@ CPU- and output-module support them):
       Flag <symbol> as an external symbol, which means that <symbol> is
       visible to all modules in the linking process. It may be either
       defined or undefined.
+
+@item popsection
+      Restore the top section from the internal section-stack and
+      activate it. Also refer to @code{pushsection}.
+
+@item pushsection
+      Pushes the current section onto an internal stack, where it may be
+      restored from by the @code{popsection} directive.
 
 @item rem
       The assembler will ignore everything from encountering the @code{rem}

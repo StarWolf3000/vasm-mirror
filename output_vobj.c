@@ -112,7 +112,7 @@ static void get_section_sizes(section *sec,taddr *rsize,taddr *rdata,taddr *rnre
 {
   taddr data=0,nrelocs=0;
   atom *p;
-  int i;
+  size_t i;
 
   sec->pc=0;
   for(p=sec->first;p;p=p->next){

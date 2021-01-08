@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm oldstyle syntax module 0.15 (c) 2002-2020 Frank Wille";
+char *syntax_copyright="vasm oldstyle syntax module 0.15a (c) 2002-2020 Frank Wille";
 hashtable *dirhash;
 
 static char textname[]=".text",textattr[]="acrx";
@@ -474,7 +474,7 @@ static void handle_fail(char *s)
 
 static void handle_org(char *s)
 {
-  if (*s == current_pc_char) {
+  if (*s==current_pc_char && !isxdigit((unsigned char)s[1])) {
     char *s2 = skip(s+1);
 
     if (*s2++ == '+') {
@@ -483,8 +483,10 @@ static void handle_org(char *s)
     }
   }
   else {
+#if !defined(VASM_CPU_Z80)
     if (*s == '#')
       s = skip(s+1);  /* some strange assemblers allow ORG #<addr> */
+#endif
     if (dsect_active)
       switch_offset_section(NULL,parse_constexpr(&s));
     else

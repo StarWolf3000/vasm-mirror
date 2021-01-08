@@ -261,7 +261,7 @@ dummyexp:
   return new;
 }
     
-static expr *unary_expr()
+static expr *unary_expr(void)
 {
   expr *new;
   char *m;
@@ -291,7 +291,7 @@ static expr *unary_expr()
   return new;
 }  
 
-static expr *shift_expr()
+static expr *shift_expr(void)
 {
   expr *left,*new;
   char m;
@@ -493,7 +493,7 @@ static expr *logical_and_expr(void)
   return left;
 }
 
-static expr *expression()
+static expr *expression(void)
 {
   expr *left,*new;
   left=logical_and_expr();

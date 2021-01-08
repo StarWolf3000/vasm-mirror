@@ -29,7 +29,7 @@ This module provides the following additional options:
         Enables translation of B<cc> branches into sequences of
         "B<!cc> *+5 ; JMP label" when necessary. BRA (DTV, 65C02) is
         directly translated into a JMP when out of range.
-        It also performs optimization of BRA to JMP, whenever possible.
+        It also performs optimization of JMP to BRA, whenever possible.
     @item -wdc02
         Recognize all 65C02 instructions and the WDC65C02 extensions
         (RMB,SMB,BBR,BBS,STP,WAI).
@@ -104,8 +104,13 @@ This backend performs the following operand optimizations:
 
 @itemize @minus
 
-@item Branches, where the destination is out of range, are translated
- into @code{B<!cc> *+5} and an absolute @code{JMP} instruction.
+@item Absolute addressing modes are optimized to zero-page (or direct-page)
+  addressing modes, whenever possible.
+@item Conditional branches, where the destination is out of range, are
+  translated into @code{B<!cc> *+5} and an absolute @code{JMP} instruction
+  (@option{-opt-branch}).
+@item Some CPUs also allow optimization of @code{JMP} to @code{BRA},
+  when @option{-opt-branch} was given.
 
 @end itemize
 

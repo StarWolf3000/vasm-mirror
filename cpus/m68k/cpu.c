@@ -25,7 +25,7 @@ struct cpu_models models[] = {
 int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3m (c) 2002-2020 Frank Wille";
+char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3n (c) 2002-2020 Frank Wille";
 char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -77,6 +77,7 @@ static unsigned char warn_opts = 0;   /* warn on optimizations/translations */
 static unsigned char convert_brackets = 0;  /* convert [ into ( for <020 */
 static unsigned char typechk = 1;     /* check value types and ranges */
 static unsigned char ign_unambig_ext = 0;  /* don't check unambig. size ext. */
+static unsigned char ign_unsized_ext = 0;  /* don't check size on unsized */
 static unsigned char regsymredef = 0; /* allow redefinition of reg. symbols */
 static unsigned char kick1hunks = 0;  /* no optim. to 32-bit PC-displacem. */
 static unsigned char no_dpc = 0;      /* abs. PC-displacments not allowed */
@@ -2600,8 +2601,8 @@ static unsigned char optimize_instruction(instruction *iplist,section *sec,
   signed char lastsize = ip->ext.un.real.last_size;
   char orig_ext = (char)ip->ext.un.real.orig_ext;
   uint16_t oc;
-  taddr val,cpc;
-  int abs,pcrelok,i;
+  taddr val=0,cpc;
+  int abs=0,pcrelok=0,i;
 
   /* See if the next instruction fits as well, and includes the
      addressing modes of the current one. Following instructions
@@ -2968,7 +2969,8 @@ dontswap:
     }
     else if (movqabsl && !(cpu_type & m68040) &&
              (((val&0xffff)==0 && val>=0x10000 && val<=0x7f0000) ||
-              ((val&0xffff)==0xffff && val>=0xff80ffff && val<=0xfffeffff))) {
+              ((val&0xffff)==0xffff && (utaddr)val>=0xff80ffff
+               && (utaddr)val<=0xfffeffff))) {
       /* move.l #x,Dn --> moveq #x>>16,Dn ; swap Dn */
       ip->code = OC_MOVEQ;
       ip->qualifiers[0] = l_str;
@@ -2986,8 +2988,8 @@ dontswap:
     }
     else if (opt_nmovq && abs && ext=='l' && ip->op[1]->mode==MODE_Dn &&
              !(cpu_type & (m68040|mcf)) &&
-             ((val>=0xff81 && val<=0xffff) ||
-              (val>=0xffff0001 && val<=0xffff0080))) {
+             (((utaddr)val>=0xff81 && (utaddr)val<=0xffff) ||
+              ((utaddr)val>=0xffff0001 && (utaddr)val<=0xffff0080))) {
       /* move.l #x,Dn --> moveq #-x,Dn ; neg.w Dn */
       ip->code = OC_MOVEQ;
       ip->qualifiers[0] = l_str;
@@ -4107,7 +4109,7 @@ size_t instruction_size(instruction *realip,section *sec,taddr pc)
   /* check if opcode extension is valid */
   if ((mnemo->ext.size & SIZE_MASK) == SIZE_UNSIZED) {
     if (ext != '\0') {
-      if (!ign_unambig_ext)
+      if (!ign_unsized_ext)
         cpu_error(35);  /* extension for unsized instruction ignored */
       ext = '\0';
       realip->qualifiers[0] = emptystr;
@@ -5177,8 +5179,6 @@ static uint32_t get_cpu_type(char **str)
       break;
     }
   }
-  if (type==0 && cur_src)
-    cpu_error(43);  /* unknown cpu type */
 
   *str = s;
   return type;
@@ -5204,7 +5204,7 @@ int cpu_args(char *arg)
     phxass_compat = 1;
     opt_allbra = opt_brajmp = opt_sd = 1;
     opt_fconst = 0;
-    ign_unambig_ext = 1;
+    ign_unambig_ext = ign_unsized_ext = 1;
     return 0;  /* leave option visible for syntax modules */
   }
 
@@ -5217,7 +5217,7 @@ int cpu_args(char *arg)
     clear_all_opts();
     no_symbols = 1;
     warn_opts = 2;
-    ign_unambig_ext = 1;
+    ign_unsized_ext = 1;
     unsigned_shift = 1;
     no_dpc = 1;
     return 0;  /* leave option visible for syntax modules */
@@ -5276,7 +5276,7 @@ nofpu:
   else if (!strcmp(p,"-elfregs"))
     elfregs = 1;
   else if (!strcmp(p,"-guess-ext"))
-    ign_unambig_ext = 1;
+    ign_unambig_ext = ign_unsized_ext = 1;
   else if (!strcmp(p,"-nodpc"))
     no_dpc = 1;
   else if (!strcmp(p,"-showcrit"))
@@ -5854,10 +5854,9 @@ char *parse_cpu_special(char *start)
       if ((cpu = get_cpu_type(&s)) != 0) {
         set_cpu_type(cpu,1);
         eol(s);
+        return skip_line(s);
       }
-      else
-        cpu_error(43);  /* unknown cpu type */
-      return skip_line(s);
+      return start;
     }
 
     else if (s-name==7 && !strnicmp(name,"mc",2)) {
@@ -5867,10 +5866,9 @@ char *parse_cpu_special(char *start)
       if (cpu!=0 && !(cpu&apollo)) {
         set_cpu_type(cpu,1);
         eol(s);
+        return skip_line(s);
       }
-      else
-        cpu_error(43);  /* unknown cpu type */
-      return skip_line(s);
+      return start;
     }
 
     else if (s-name==7 && !strnicmp(name,"ac",2)) {
@@ -5880,10 +5878,9 @@ char *parse_cpu_special(char *start)
       if (cpu & apollo) {
         set_cpu_type(cpu,1);
         eol(s);
+        return skip_line(s);
       }
-      else
-        cpu_error(43);  /* unknown cpu type */
-      return skip_line(s);
+      return start;
     }
 
     else if (s-name==5 && !strnicmp(name,"cpu32",5)) {
