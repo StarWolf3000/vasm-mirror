@@ -61,10 +61,12 @@ make CPU=m68k SYNTAX=mot
 
 * 6502
 * 6800
+* 6809
 * arm
 * c16x
 * jagrisc
 * m68k
+* pdp11
 * ppc
 * qnice
 * test
