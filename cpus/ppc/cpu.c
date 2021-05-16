@@ -252,11 +252,13 @@ char *parse_cpu_special(char *start)
     s++;
     while (ISIDCHAR(*s))
       s++;
-    if (s-name==6 && !strncmp(name,".sdreg",6)) {
+    if (dotdirs && *name=='.')
+      name++;
+    if (s-name==5 && !strncmp(name,"sdreg",5)) {
       sdreg = read_sdreg(&s,sdreg);
       return s;
     }
-    else if (s-name==7 && !strncmp(name,".sd2reg",7)) {
+    else if (s-name==6 && !strncmp(name,"sd2reg",6)) {
       sd2reg = read_sdreg(&s,sd2reg);
       return s;
     }

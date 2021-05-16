@@ -1,5 +1,5 @@
 /* expr.c expression handling for vasm */
-/* (c) in 2002-2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2021 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -111,7 +111,9 @@ static expr *primary_expr(void)
     char *start=s;
     utaddr val,nval;
     thuge huge;
+#if FLOAT_PARSER
     tfloat flt;
+#endif
     switch(exp_type){
     case NUM:
       s=m;
@@ -123,8 +125,10 @@ static expr *primary_expr(void)
             goto hugeval;  /* taddr overflow, read a thuge value instead */
           val=nval+*s++-'0';
         }
+#if FLOAT_PARSER
         if(base==10&&(*s=='e'||*s=='E'||(*s=='.'&&*(s+1)>='0'&&*(s+1)<='9')))
           goto fltval;  /* decimal point or exponent: read floating point */
+#endif
       }else if(base==16){
         for(;;){
           nval=val<<4;
@@ -150,9 +154,11 @@ static expr *primary_expr(void)
       if(base<=10){
         while(*s>='0'&&*s<base+'0')
           huge=haddi(hmuli(huge,base),*s++-'0');
+#if FLOAT_PARSER
         if(base==10&&(*s=='e'||*s=='E'||
                       (*s=='.'&&*(s+1)>='0'&&*(s+1)<='9')))
           goto fltval;  /* decimal point or exponent: read floating point */
+#endif
       }else if(base==16){
         for(;;){
           if(*s>='0'&&*s<='9')
@@ -165,6 +171,7 @@ static expr *primary_expr(void)
         }
       }else ierror(0);
       break;
+#if FLOAT_PARSER
     fltval:
       exp_type=FLT;
     case FLT:
@@ -172,6 +179,7 @@ static expr *primary_expr(void)
       s=m;
       flt=strtotfloat(s,&s);
       break;
+#endif
     default:
       ierror(0);
       break;
@@ -186,7 +194,9 @@ static expr *primary_expr(void)
     switch(new->type=exp_type){
       case NUM: new->c.val=val; break;
       case HUG: new->c.huge=huge; break;
+#if FLOAT_PARSER
       case FLT: new->c.flt=flt; break;
+#endif
     }
     return new;
   }
@@ -517,7 +527,7 @@ static expr *expression(void)
    Automatically switches to a HUG expression type, when encountering a
    constant which doesn't fit into taddr.
    Automatically switches to a FLT expression type, when reading a decimal
-   point or an exponent in a decimal constant. */
+   point or an exponent in a decimal constant (requires FLOAT_PARSER). */
 expr *parse_expr(char **pp)
 {
   expr *tree;
@@ -561,6 +571,7 @@ expr *parse_expr_huge(char **pp)
    When the constant is not decimal switch to reading a HUG expression type. */
 expr *parse_expr_float(char **pp)
 {
+#if FLOAT_PARSER
   expr *tree;
   s=*pp;
   make_tmp_lab=0;
@@ -569,6 +580,10 @@ expr *parse_expr_float(char **pp)
   simplify_expr(tree);
   *pp=s;
   return tree;
+#else
+  general_error(79,cpuname);  /* backend does not support floating point */
+  return NULL;
+#endif
 }
 
 void free_expr(expr *tree)
@@ -629,7 +644,9 @@ void simplify_expr(expr *tree)
 {
   taddr ival;
   thuge hval;
+#if FLOAT_PARSER
   tfloat fval;
+#endif
   int type=0;
   if(!tree)
     return;
@@ -847,6 +864,7 @@ void simplify_expr(expr *tree)
       return;
     }
   }
+#if FLOAT_PARSER
   else if(type==FLT){
     tfloat lval,rval;
     if(tree->left){
@@ -911,6 +929,7 @@ void simplify_expr(expr *tree)
       return;
     }
   }
+#endif  /* FLOAT_PARSER */
   else{
     if(tree->type==SYM&&tree->c.sym->type==EXPRESSION){
       switch(tree->c.sym->expr->type){
@@ -922,10 +941,12 @@ void simplify_expr(expr *tree)
         hval=tree->c.sym->expr->c.huge;
         type=HUG;
         break;
+#if FLOAT_PARSER
       case FLT:
         fval=tree->c.sym->expr->c.flt;
         type=FLT;
         break;
+#endif
       default:
         return;
       }
@@ -937,7 +958,9 @@ void simplify_expr(expr *tree)
   switch(tree->type=type){
     case NUM: tree->c.val=ival; break;
     case HUG: tree->c.huge=hval; break;
+#if FLOAT_PARSER
     case FLT: tree->c.flt=fval; break;
+#endif
     default: ierror(0); break;
   }
 }
@@ -1111,11 +1134,13 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
       general_error(21,bytespertaddr*8);  /* target data type overflow */
     val=huge_to_int(tree->c.huge);
     break;
+#if FLOAT_PARSER
   case FLT:
     if (!flt_chkrange(tree->c.flt,bytespertaddr*8) && final_pass)
       general_error(21,bytespertaddr*8);  /* target data type overflow */
     val=(taddr)tree->c.flt;
     break;
+#endif
   default:
 #ifdef EXT_UNARY_EVAL
     if (EXT_UNARY_EVAL(tree->type,lval,&val,cnst))
@@ -1243,9 +1268,11 @@ int eval_expr_huge(expr *tree,thuge *result)
   case HUG:
     val=tree->c.huge;
     break;
+#if FLOAT_PARSER
   case FLT:
     val=huge_from_float(tree->c.flt);
     break;
+#endif
   default:
     return 0;
   }
@@ -1253,6 +1280,7 @@ int eval_expr_huge(expr *tree,thuge *result)
   return 1;
 }
 
+#if FLOAT_PARSER
 /* Evaluate a floating point expression using current values of all symbols.
    Result is written to *result. The return value specifies whether all
    operations were valid. */
@@ -1333,6 +1361,7 @@ int eval_expr_float(expr *tree,tfloat *result)
   *result=val;
   return 1;
 }
+#endif  /* FLOAT_PARSER */
 
 void print_expr(FILE *f,expr *p)
 {
@@ -1343,14 +1372,21 @@ void print_expr(FILE *f,expr *p)
     fprintf(f,"%lld=0x%llx",(long long)p->c.val,ULLTADDR(p->c.val));
   else if(p->type==HUG)
     fprintf(f,"0x%016llx%016llx",(long long)p->c.huge.hi,(long long)p->c.huge.lo);
+#if FLOAT_PARSER
   else if(p->type==FLT)
     fprintf(f,"%.8g",(double)p->c.flt);
+#endif
   else
     fprintf(f,"complex expression");
 }
 
 static int _find_base(expr *p,symbol **base,section *sec,taddr pc)
 {
+#ifdef EXT_FIND_BASE
+  int ret;
+  if(ret=EXT_FIND_BASE(base,p,sec,pc))
+    return ret;
+#endif
   if(p->type==SYM){
     update_curpc(p,sec,pc);
     if(p->c.sym->type==EXPRESSION)
@@ -1390,11 +1426,6 @@ static int _find_base(expr *p,symbol **base,section *sec,taddr pc)
    Note: Does not find all possible solutions. */
 int find_base(expr *p,symbol **base,section *sec,taddr pc)
 {
-#ifdef EXT_FIND_BASE
-  int ret;
-  if(ret=EXT_FIND_BASE(base,p,sec,pc))
-    return ret;
-#endif
   if(base)
     *base=NULL;
   return _find_base(p,base,sec,pc);
@@ -1416,6 +1447,7 @@ expr *huge_expr(thuge val)
   return new;
 }
 
+#if FLOAT_PARSER
 expr *float_expr(tfloat val)
 {
   expr *new=new_expr();
@@ -1423,6 +1455,7 @@ expr *float_expr(tfloat val)
   new->c.flt=val;
   return new;
 }
+#endif
 
 taddr parse_constexpr(char **s)
 {

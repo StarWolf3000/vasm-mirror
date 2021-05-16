@@ -1,5 +1,5 @@
 /* error.c - error output and modification routines */
-/* (c) in 2002-2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2021 by Volker Barthelmann and Frank Wille */
 
 #include <stdarg.h>
 #include "vasm.h"
@@ -122,7 +122,7 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
   }
   fprintf(f,"\n");
 
-  if (cur_listing)
+  if (cur_listing && (flags & ERROR))
     cur_listing->error = n + offset;
 
   if (flags & FATAL)

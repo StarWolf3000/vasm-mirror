@@ -1,6 +1,6 @@
 /*
-** cpu.c 650x/65C02/6510/6280 cpu-description file
-** (c) in 2002,2006,2008-2012,2014-2020 by Frank Wille
+** cpu.c 650x/65C02/6510/6280/45gs02 cpu-description file
+** (c) in 2002,2006,2008-2012,2014-2021 by Frank Wille
 */
 
 #include "vasm.h"
@@ -11,24 +11,23 @@ mnemonic mnemonics[] = {
 
 int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright="vasm 6502 cpu backend 0.9 (c) 2002,2006,2008-2012,2014-2020 Frank Wille";
+char *cpu_copyright="vasm 6502 cpu backend 0.9c (c) 2002,2006,2008-2012,2014-2021 Frank Wille";
 char *cpuname = "6502";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
 
-static uint16_t cpu_type = M6502;
+uint16_t cpu_type = M6502;
 static int branchopt = 0;
 static int modifier;      /* set by find_base() */
 static utaddr dpage = 0;  /* default zero/direct page - set with SETDP */
-static int bbcade;        /* GMGM - set for BBC ADE compatibility */
+static char lo_c = '<';
+static char hi_c = '>';
 static int OC_JMPABS,OC_BRA;
 
 
 int ext_unary_type(char *s)
 {
-  if (bbcade)  /* GMGM - BBC ADE assembler swaps meaning of < and > */
-    return *s=='<' ? HIBYTE : LOBYTE;
-  return *s=='<' ? LOBYTE : HIBYTE;
+  return *s==lo_c ? LOBYTE : HIBYTE;
 }
 
 
@@ -66,10 +65,18 @@ int ext_find_base(symbol **base,expr *p,section *sec,taddr pc)
 }
 
 
+void init_instruction_ext(instruction_ext *ext)
+{
+  ext->dp = dpage;  /* current DP defined by SETDP directive */
+}
+
+
 int parse_operand(char *p,int len,operand *op,int required)
 {
   char *start = p;
   int indir = 0;
+
+  op->flags = 0;
 
   p = skip(p);
   if (len>0 && required!=DATAOP && check_indir(p,start+len)) {
@@ -87,20 +94,34 @@ int parse_operand(char *p,int len,operand *op,int required)
     case INDIRX:
     case INDX:
     case INDY:
+    case INDZ:
+    case INDZ32:
+    case IND32:
     case DPINDIR:
       if (!indir)
         return PO_NOMATCH;
       break;
     case WBIT:
       if (*p == '#')  /* # is optional */
-        p = skip(p+1);
+        p = skip(++p);
+      if (indir)
+        return PO_NOMATCH;
+      break;
+    case ABS:
+      if (*p==hi_c || *p=='!' || *p=='|') {
+        p = skip(++p);
+        op->flags |= OF_HI;  /* force absolute addressing mode */
+      }
+      else if (*p == lo_c) {
+        p = skip(++p);
+        op->flags |= OF_LO;  /* force zero/direct page addressing mode */
+      }
     default:
       if (indir)
         return PO_NOMATCH;
       break;
   }
 
-  op->dp = dpage;
   if (required < ACCU)
     op->value = parse_expr(&p);
   else
@@ -131,13 +152,24 @@ int parse_operand(char *p,int len,operand *op,int required)
       if (toupper((unsigned char)*p++) != 'Y')
         return PO_NOMATCH;
       break;
+    case DUMZ:
+      if (toupper((unsigned char)*p++) != 'Z')
+        return PO_NOMATCH;
+      break;
   }
 
-  if (required==INDIR || required==INDX || required==INDY
-      || required==DPINDIR || required==INDIRX) {
+  if (required>=FIRST_INDIR && required<=LAST_INDIR) {
     p = skip(p);
     if (*p++ != ')') {
       cpu_error(2);  /* missing closing parenthesis */
+      return PO_CORRUPT;
+    }
+  }
+
+  if (required==INDZ32 || required==IND32 ) {
+    p = skip(p);
+    if (*p++ != ']') {
+      cpu_error(13);  /* missing closing square bracket */
       return PO_CORRUPT;
     }
   }
@@ -152,8 +184,13 @@ int parse_operand(char *p,int len,operand *op,int required)
 
 char *parse_cpu_special(char *start)
 {
+  const char zeroname[] = ".zero";
   char *name=start,*s=start;
 
+  if (dotdirs && *s=='.') {
+    s++;
+    name++;
+  }
   if (ISIDSTART(*s)) {
     s++;
     while (ISIDCHAR(*s))
@@ -187,6 +224,15 @@ char *parse_cpu_special(char *start)
       eol(s);
       return skip_line(s);
     }
+    else if (s-name==4 && !strnicmp(name,zeroname+1,4)) {  /* zero */
+      section *sec = new_section(dotdirs ?
+                                 (char *)zeroname : (char *)zeroname+1,
+                                 "aurw",1);
+      sec->flags |= NEAR_ADDRESSING;  /* meaning of zero-page addressing */
+      set_section(sec);
+      eol(s);
+      return skip_line(s);
+    }
   }
   return start;
 }
@@ -202,6 +248,8 @@ int parse_cpu_label(char *labname,char **start)
     s++;
     while (ISIDCHAR(*s))
       s++;
+    if (dotdirs && *dir=='.')
+      dir++;
 
     if (s-dir==3 && !strnicmp(dir,"ezp",3)) {
       /* label EZP <expression> */
@@ -236,16 +284,22 @@ static void optimize_instruction(instruction *ip,section *sec,
         else
           find_base(op->value,&base,sec,pc);  /* get base-symbol */
 
-        if ((op->type==ABS || op->type==ABSX || op->type==ABSY) &&
-            ((base==NULL
-              && ((val>=0 && val<=0xff) ||
-                  ((utaddr)val>=op->dp && (utaddr)val<=op->dp+0xff))) ||
-            (base!=NULL && (base->flags&ZPAGESYM)))
-            && mnemo->ext.zp_opcode!=0) {
-          /* we can use a zero page addressing mode for absolute 16-bit */
-          op->type += ZPAGE-ABS;
+        if (IS_ABS(op->type)) {
+          if (!mnemo->ext.zp_opcode && (op->flags & OF_LO))
+            cpu_error(10);  /* zp/dp not available */
+          if (mnemo->ext.zp_opcode && ((op->flags & OF_LO) ||
+                                       (!(op->flags & OF_HI) &&
+              ((base==NULL && ((val>=0 && val<=0xff) ||
+                               ((utaddr)val>=ip->ext.dp &&
+                                (utaddr)val<=ip->ext.dp+0xff))) ||
+               (base!=NULL && ((base->flags & ZPAGESYM) || (LOCREF(base) &&
+                               (base->sec->flags & NEAR_ADDRESSING)))))
+             ))) {
+            /* we can use a zero page addressing mode for absolute 16-bit */
+            op->type += ZPAGE-ABS;
+          }
         }
-        else if (op->type==REL && (base==NULL || !is_pc_reloc(base,sec))) {
+        else if (op->type==REL8 && (base==NULL || !is_pc_reloc(base,sec))) {
           taddr bd = val - (pc + 2);
 
           if ((bd<-0x80 || bd>0x7f) && branchopt) {
@@ -265,7 +319,7 @@ static void optimize_instruction(instruction *ip,section *sec,
           if (bd>=-128 && bd<=128) {
             /* JMP may be optimized to a BRA */
             ip->code = OC_BRA;
-            op->type = REL;
+            op->type = REL8;
           }
         }
       }
@@ -282,19 +336,25 @@ static size_t get_inst_size(instruction *ip)
   for (i=0; i<MAX_OPERANDS; i++) {
     if (ip->op[i] != NULL) {
       switch (ip->op[i]->type) {
-        case REL:
+        case REL8:
         case INDX:
         case INDY:
+        case INDZ:
+        case IND32:
+        case INDZ32:
         case DPINDIR:
         case IMMED:
         case ZPAGE:
         case ZPAGEX:
         case ZPAGEY:
+        case ZPAGEZ:
           sz += 1;
           break;
+        case REL16:
         case ABS:
         case ABSX:
         case ABSY:
+        case ABSZ:
         case INDIR:
         case INDIRX:
           sz += 2;
@@ -315,7 +375,7 @@ size_t instruction_size(instruction *ip,section *sec,taddr pc)
   int i;
 
   for (i=0; i<MAX_OPERANDS-1; i++) {
-    /* convert DUMX/DUMY operands into real addressing modes first */
+    /* convert DUMX/DUMY/DUMZ operands into real addressing modes first */
     if (ip->op[i]!=NULL && ip->op[i+1]!=NULL) {
       if (ip->op[i]->type == ABS) {
         if (ip->op[i+1]->type == DUMX) {
@@ -326,10 +386,18 @@ size_t instruction_size(instruction *ip,section *sec,taddr pc)
           ip->op[i]->type = ABSY;
           break;
         }
+        else if (ip->op[i+1]->type == DUMZ) {
+          ip->op[i]->type = ABSZ;
+          break;
+        }
       }
       else if (ip->op[i]->type == INDIR) {
         if (ip->op[i+1]->type == DUMY) {
-          ip->op[0]->type = INDY;
+          ip->op[i]->type = INDY;
+          break;
+        }
+        else if (ip->op[i+1]->type == DUMZ) {
+          ip->op[i]->type = INDZ;
           break;
         }
       }
@@ -337,7 +405,7 @@ size_t instruction_size(instruction *ip,section *sec,taddr pc)
   }
 
   if (++i < MAX_OPERANDS) {
-    /* we removed a DUMX/DUMY operand at the end */
+    /* we removed a DUMX/DUMY/DUMZ operand at the end */
     myfree(ip->op[i]);
     ip->op[i] = NULL;
   }
@@ -348,22 +416,34 @@ size_t instruction_size(instruction *ip,section *sec,taddr pc)
 }
 
 
-static void rangecheck(taddr val,operand *op)
+static void rangecheck(instruction *ip,symbol *base,taddr val,operand *op)
 {
   switch (op->type) {
     case ZPAGE:
     case ZPAGEX:
     case ZPAGEY:
+    case ZPAGEZ:
     case INDX:
     case INDY:
+    case INDZ:
+    case IND32:
+    case INDZ32:
     case DPINDIR:
-      if ((utaddr)val>=op->dp && (utaddr)val<=op->dp+0xff)
-        break;
+      if (base!=NULL && base->type==IMPORT) {
+        if (val<-0x80 || val>0x7f)
+          cpu_error(12,8); /* addend doesn't fit into 8 bits */
+      }
+      else {
+        if ((val<0 || val>0xff) &&
+            ((utaddr)val<ip->ext.dp || (utaddr)val>ip->ext.dp+0xff))
+          /*cpu_error(11)*/;   /* operand not in zero/direct page */
+      }
+      break;
     case IMMED:
       if (val<-0x80 || val>0xff)
-        cpu_error(5,8); /* operand doesn't fit into 8-bits */
+        cpu_error(5,8); /* operand doesn't fit into 8 bits */
       break;
-    case REL:
+    case REL8:
       if (val<-0x80 || val>0x7f)
         cpu_error(6);   /* branch destination out of range */
       break;
@@ -395,6 +475,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
       case ZPAGE:
       case ZPAGEX:
       case ZPAGEY:
+      case ZPAGEZ:
         oc = mnemonics[ip->code].ext.zp_opcode;
         break;
       case RELJMP:
@@ -414,10 +495,28 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
       if (op->value != NULL) {
         if (!eval_expr(op->value,&val,sec,pc)) {
           taddr add = 0;
+          int btype;
 
           modifier = 0;
-          if (optype!=WBIT && find_base(op->value,&base,sec,pc) == BASE_OK) {
-            if (optype==REL && !is_pc_reloc(base,sec)) {
+          btype = find_base(op->value,&base,sec,pc);
+          if (btype==BASE_PCREL && optype==IMMED)
+            op->flags |= OF_PC;  /* immediate value with pc-rel. relocation */
+
+          if (optype==WBIT || btype==BASE_ILLEGAL ||
+              (btype==BASE_PCREL && !(op->flags & OF_PC))) {
+            general_error(38);  /* illegal relocation */
+          }
+          else {
+            if (modifier) {
+              if (op->flags & (OF_LO|OF_HI))
+                cpu_error(9);  /* multiple hi/lo modifiers */
+              switch (modifier) {
+                case LOBYTE: op->flags |= OF_LO; break;
+                case HIBYTE: op->flags |= OF_HI; break;
+              }
+            }
+
+            if ((optype==REL8 || optype==REL16) && !is_pc_reloc(base,sec)) {
               /* relative branch requires no relocation */
               val = val - (pc + offs + 1);
             }
@@ -430,26 +529,44 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                 case ABS:
                 case ABSX:
                 case ABSY:
+                case ABSZ:
+                  op->flags &= ~(OF_LO|OF_HI);
                 case INDIR:
                 case INDIRX:
                   size = 16;
                   break;
-                case INDX:
-                case INDY:
-                case DPINDIR:
                 case ZPAGE:
                 case ZPAGEX:
                 case ZPAGEY:
+                case ZPAGEZ:
+                  op->flags &= ~(OF_LO|OF_HI);
+                case INDX:
+                case INDY:
+                case INDZ:
+                case INDZ32:
+                case IND32:
+                case DPINDIR:
+                  size = 8;
+                  break;
                 case IMMED:
+                  if (op->flags & OF_PC) {
+                    type = REL_PC;
+                    val += offs;
+                  }
                   size = 8;
                   break;
                 case RELJMP:
                   size = 16;
                   offs = 3;
                   break;
-                case REL:
+                case REL8:
                   type = REL_PC;
                   size = 8;
+                  add = -1;  /* 6502 addend correction */
+                  break;
+                case REL16:
+                  type = REL_PC;
+                  size = 16;
                   add = -1;  /* 6502 addend correction */
                   break;
                 default:
@@ -458,53 +575,55 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
               }
 
               rl = add_extnreloc(&db->relocs,base,val+add,type,0,size,offs);
-              switch (modifier) {
-                case LOBYTE:
-                  if (rl)
-                    ((nreloc *)rl->reloc)->mask = 0xff;
-                  val = val & 0xff;
-                  break;
-                case HIBYTE:
-                  if (rl)
-                    ((nreloc *)rl->reloc)->mask = 0xff00;
-                  val = (val >> 8) & 0xff;
-                  break;
+              if (op->flags & OF_LO) {
+                if (rl)
+                  ((nreloc *)rl->reloc)->mask = 0xff;
+                val = val & 0xff;
+              }
+              else if (op->flags & OF_HI) {
+                if (rl)
+                  ((nreloc *)rl->reloc)->mask = 0xff00;
+                val = (val >> 8) & 0xff;
               }
             }
           }
-          else
-            general_error(38);  /* illegal relocation */
         }
         else {
           /* constant/absolute value */
-          if (optype == REL)
+          base = NULL;
+          if (optype==REL8 || optype==REL16)
             val = val - (pc + offs + 1);
         }
 
-        rangecheck(val,op);
+        rangecheck(ip,base,val,op);
 
         /* write operand data */
         switch (optype) {
           case ABSX:
           case ABSY:
+          case ABSZ:
             if (!*(db->data)) /* STX/STY allow only ZeroPage addressing mode */
               cpu_error(5,8); /* operand doesn't fit into 8 bits */
           case ABS:
           case INDIR:
           case INDIRX:
+          case REL16:
             *d++ = val & 0xff;
             *d++ = (val>>8) & 0xff;
             break;
           case DPINDIR:
           case INDX:
           case INDY:
+          case INDZ:
+          case INDZ32:
+          case IND32:
           case ZPAGE:
           case ZPAGEX:
           case ZPAGEY:
-            if ((utaddr)val>=op->dp && (utaddr)val<=op->dp+0xff)
-              val -= op->dp;
+            if ((utaddr)val>=ip->ext.dp && (utaddr)val<=ip->ext.dp+0xff)
+              val -= ip->ext.dp;
           case IMMED:
-          case REL:
+          case REL8:
             *d++ = val & 0xff;
             break;
           case RELJMP:
@@ -580,6 +699,7 @@ operand *new_operand()
 {
   operand *new = mymalloc(sizeof(*new));
   new->type = -1;
+  new->flags = 0;
   return new;
 }
 
@@ -608,10 +728,13 @@ int init_cpu()
 
 int cpu_args(char *p)
 {
-  if (!strcmp(p,"-opt-branch"))
+  if (!strcmp(p,"-bbcade")) {
+    /* GMGM - BBC ADE assembler swaps meaning of < and > */
+    lo_c = '>';
+    hi_c = '<';
+  }
+  else if (!strcmp(p,"-opt-branch"))
     branchopt = 1;
-  else if (!strcmp(p,"-bbcade")) /* GMGM */
-    bbcade = 1;
   else if (!strcmp(p,"-illegal"))
     cpu_type |= ILL;
   else if (!strcmp(p,"-dtv"))
@@ -619,11 +742,13 @@ int cpu_args(char *p)
   else if (!strcmp(p,"-c02"))
     cpu_type = M6502 | M65C02;
   else if (!strcmp(p,"-wdc02"))
-    cpu_type = M6502 | M65C02 | WDC02;
+    cpu_type = M6502 | M65C02 | WDC02 | WDC02ALL;
   else if (!strcmp(p,"-ce02"))
-    cpu_type = M6502 | M65C02 | WDC02 | CSGCE02;
+    cpu_type = M6502 | M65C02 | WDC02 | WDC02ALL | CSGCE02;
   else if (!strcmp(p,"-6280"))
-    cpu_type = M6502 | M65C02 | WDC02 | HU6280;
+    cpu_type = M6502 | M65C02 | WDC02 | WDC02ALL | HU6280;
+  else if (!strcmp(p,"-mega65"))
+    cpu_type = M6502 | M65C02 | WDC02 | M45GS02;
   else
     return 0;
 

@@ -16,6 +16,7 @@
 char *syntax_copyright="vasm madmac syntax module 0.4g (c) 2015-2020 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
+int dotdirs;
 
 static char text_name[] = ".text";
 static char data_name[] = ".data";
@@ -715,8 +716,12 @@ static int check_directive(char **line)
   name = s++;
   while (ISIDCHAR(*s) || *s=='.')
     s++;
-  if (*name=='.')  /* leading dot is optional for all directives */
+  if (*name=='.') {  /* leading dot is optional for all directives */
     name++;
+    dotdirs = 1;
+  }
+  else
+    dotdirs = 0;
   if (!find_namelen_nc(dirhash,name,s-name,&data))
     return -1;
   *line = s;

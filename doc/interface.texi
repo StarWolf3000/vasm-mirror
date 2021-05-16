@@ -1091,6 +1091,10 @@ A pointer to the hash table with all directives.
 @item char commentchar;
 A character used to introduce a comment until the end of the line.
 
+@item int dotdirs;
+Define @code{dotdirs} as non-zero, when the syntax module works with
+directives starting with a dot (@code{.}).
+
 @item char *defsectname;
 Name of a default section which vasm creates when a label or code occurs
 in the source, but the programmer forgot to specify a section. Assigning
@@ -1230,6 +1234,18 @@ Mnemonic extension for the cpu's instruction table.
 Optional features, which can be enabled by defining the following macros:
 
 @table @code
+@item #define FLOAT_PARSER 1
+Enables the floating point parser and floating point evalulation in the
+expression module. With this option the backend has to be prepared that
+expressions may contain floating point constants, which can be checked
+by testing the result of @code{type_of_expr(expression)} for @code{FLT}.
+The use @code{eval_expr_float(expression,&float_val)} to retrieve the
+floating point value with type @code{tfloat}.
+It is up to the backend to convert the host's floating point format,
+which should be IEEE, into the backend's native format. The vasm frontend
+only supports IEEE to IEEE conversion via @code{conv2ieee32()} and
+@code{conv2ieee64()}.
+
 @item #define HAVE_INSTRUCTION_EXTENSION 1
 If cpu-specific data should be added to all instruction atoms.
 

@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2020 by Frank Wille */
+/* (c) in 2002-2021 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,9 +12,10 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm motorola syntax module 3.14c (c) 2002-2020 Frank Wille";
+char *syntax_copyright="vasm motorola syntax module 3.15a (c) 2002-2021 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
+int dotdirs;
 
 static char code_name[] = "CODE";
 static char data_name[] = "DATA";
@@ -316,10 +317,10 @@ static void handle_space(char *s,int size)
 }
 
 
-static void handle_xspace(char *s,int size)
+static void handle_uspace(char *s,int size)
 {
   atom *a = do_space(size,parse_expr_tmplab(&s),0);
-  a->content.sb->flags |= SPC_DATABSS;
+  a->content.sb->flags |= SPC_UNINITIALIZED;
 }
 
 
@@ -542,7 +543,7 @@ static void handle_org(char *s)
   if (*s == '*') {    /*  "* = * + <expr>" reserves bytes */
     s = skip(s+1);
     if (*s == '+')
-      handle_space(skip(s+1),8);
+      handle_uspace(skip(s+1),8);
     else
       syntax_error(7);  /* syntax error */
   }
@@ -705,6 +706,7 @@ static void handle_d64(char *s)
 }
 
 
+#if FLOAT_PARSER
 static void handle_f32(char *s)
 {
   handle_data(s,OPSZ_FLOAT|32);
@@ -721,6 +723,7 @@ static void handle_f96(char *s)
 {
   handle_data(s,OPSZ_FLOAT|96);
 }
+#endif
 
 
 static void do_alignment(taddr align,expr *offset,size_t pad,expr *fill)
@@ -790,31 +793,31 @@ static void handle_block(char *s,int size)
 
 static void handle_xspc8(char *s)
 {
-  handle_xspace(s,8);
+  handle_uspace(s,8);
 }
 
 
 static void handle_xspc16(char *s)
 {
-  handle_xspace(s,16);
+  handle_uspace(s,16);
 }
 
 
 static void handle_xspc32(char *s)
 {
-  handle_xspace(s,32);
+  handle_uspace(s,32);
 }
 
 
 static void handle_xspc64(char *s)
 {
-  handle_xspace(s,64);
+  handle_uspace(s,64);
 }
 
 
 static void handle_xspc96(char *s)
 {
-  handle_xspace(s,96);
+  handle_uspace(s,96);
 }
 
 
@@ -1701,9 +1704,11 @@ struct {
   "dc.w",P|D,handle_d16,
   "dc.l",P|D,handle_d32,
   "dc.q",P,handle_d64,
+#if FLOAT_PARSER
   "dc.s",P|D,handle_f32,
   "dc.d",P|D,handle_f64,
   "dc.x",P|D,handle_f96,
+#endif
   "ds",P|D,handle_spc16,
   "ds.b",P|D,handle_spc8,
   "ds.w",P|D,handle_spc16,
@@ -2082,6 +2087,7 @@ void parse(void)
         s = skip(s+3);
         label = new_equate(labname,parse_expr_tmplab(&s));
       }
+#if FLOAT_PARSER
       else if (!strnicmp(s,"fequ.",5) && isspace((unsigned char)*(s+6))) {
         s += 5;
         label = fequate(labname,&s);
@@ -2091,11 +2097,16 @@ void parse(void)
         s += 4;
         label = fequate(labname,&s);
       }
+#endif
       else if (*s=='=') {
         ++s;
         if (phxass_compat && *s=='.' && isspace((unsigned char)*(s+2))) {
+#if FLOAT_PARSER
           ++s;
           label = fequate(labname,&s);
+#else
+          syntax_error(7);  /* syntax error */
+#endif
         }
         else {
           s = skip(s);

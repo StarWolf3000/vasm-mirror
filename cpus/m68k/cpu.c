@@ -1,6 +1,6 @@
 /*
 ** cpu.c Motorola M68k, CPU32 and ColdFire cpu-description file
-** (c) in 2002-2020 by Frank Wille
+** (c) in 2002-2021 by Frank Wille
 */
 
 #include <math.h>
@@ -25,7 +25,7 @@ struct cpu_models models[] = {
 int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.3n (c) 2002-2020 Frank Wille";
+char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.4 (c) 2002-2021 Frank Wille";
 char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -534,6 +534,52 @@ void print_cpu_opts(FILE *f,void *opts)
     fprintf(f,"optimizations %sabled",arg?"dis":"en");
   else
     fprintf(f,"%s (%d)",ocmds[cmd-OCMD_OPTGEN],arg);
+}
+
+
+static void conv2ieee80(int be,uint8_t *buf,tfloat f)
+/* extended precision */
+/* @@@ Warning: precision is lost! Converting to double precision. */
+{
+  uint64_t man;
+  uint32_t exp;
+  union {
+    double dp;
+    uint64_t x;
+  } conv;
+
+  conv.dp = (double)f;
+  if (conv.x == 0) {
+    memset(buf,0,12);  /* 0.0 */
+  }
+  else if (conv.x == 0x8000000000000000LL) {
+    if (be) {
+      buf[0] = 0x80;
+      memset(buf+1,0,11);  /* -0.0 */
+    }
+    else {
+      buf[11] = 0x80;
+      memset(buf,0,11);  /* -0.0 */
+    }
+  }
+  else {
+    man = ((conv.x & 0xfffffffffffffLL) << 11) | 0x8000000000000000LL;
+    exp = ((conv.x >> 52) & 0x7ff) - 0x3ff + 0x3fff;
+    if (be) {
+      buf[0] = ((conv.x >> 56) & 0x80) | (exp >> 8);
+      buf[1] = exp & 0xff;
+      buf[2] = 0;
+      buf[3] = 0;
+      setval(1,buf+4,8,man);
+    }
+    else {
+      buf[11] = ((conv.x >> 56) & 0x80) | (exp >> 8);
+      buf[10] = exp & 0xff;
+      buf[9] = 0;
+      buf[8] = 0;
+      setval(0,buf,8,man);
+    }
+  }
 }
 
 
@@ -1235,10 +1281,12 @@ static short getbasereg(char **start)
       if (*s == '.') {  /* read size extension */
         int extcode = getextcode(*(s+1));
 
-        if (extcode) {
+        if (extcode && !ISIDCHAR(*(s+2))) {
           r |= extcode << REGext_Shift;
           s += 2;
         }
+        else
+          return -1;
       }
 
       if (*s == '*') {  /* read scale factor */
@@ -2694,6 +2742,18 @@ static unsigned char optimize_instruction(instruction *iplist,section *sec,
     ip->code = OC_FMOVEMTOSPEC;
     mnemo = &mnemonics[ip->code];
   }
+  else if (mnemo->ext.place[1]==F13 && ip->op[0]->mode==MODE_Extended &&
+           ip->op[0]->reg==REG_Immediate) {
+    /* FMOVEM.L #x,FPcrs - may be 64 or 96 bits for two or three registers */
+    switch (cntones(ip->op[1]->extval[0],16)) {
+      case 2:
+        ip->qualifiers[0] = d_str;  /* two registers: 64 bit immediate */
+        break;
+      case 3:
+        ip->qualifiers[0] = x_str;  /* three registers: 96 bit immediate */
+        break;
+    }
+  }
 dontswap:
   ip->ext.un.copy.next = NULL;
 
@@ -3832,7 +3892,7 @@ dontswap:
           break;
       }
       if (final && warn_opts>1) {
-        /* print the finally performed kind optimization */
+        /* print the finally performed kind of optimization */
         if (ip->code == -1)
           cpu_error(51,"branch deleted");
         else {
@@ -4243,9 +4303,12 @@ static void write_val(unsigned char *d,int pos,int size,taddr val,int sign)
 
 
 static unsigned char *write_branch(dblock *db,unsigned char *d,operand *op,
-                                   char ext,section *sec,taddr pc,int bcc)
+                                   char ext,section *sec,taddr pc,
+                                   mnemonic *mnemo,int bcc)
 /* calculate and write branch displacement of desired size, handle relocs */
 {
+  int lbra = (mnemo->ext.size & SIZE_LONG) != 0;
+
   if (!bcc && ext!='w' && ext!='l')
     ierror(0);
 
@@ -4263,7 +4326,7 @@ static unsigned char *write_branch(dblock *db,unsigned char *d,operand *op,
         offset = 1;
         break;
       case 'l':
-        if (cpu_type & (m68020up|cpu32|mcfb|mcfc|m68881|m68882|m68851)) {
+        if (lbra) {
           if (bcc)
             *(d-1) = 0xff;
           offset = d - (unsigned char *)db->data;
@@ -4293,13 +4356,13 @@ static unsigned char *write_branch(dblock *db,unsigned char *d,operand *op,
     switch (ext) {
       case 'b':
       case 's':
-        if (diff>=-0x80 && diff<=0x7f && diff!=0)
+        if (diff>=-0x80 && diff<=0x7f && diff!=0 && (diff!=-1 || !lbra))
           *(d-1) = diff & 0xff;
         else
           cpu_error(28);  /* branch destination out of range */
         break;
       case 'l':
-        if (cpu_type & (m68020up|cpu32|mcfb|mcfc|m68881|m68882|m68851)) {
+        if (lbra) {
           if (bcc)
             *(d-1) = 0xff;
           d = setval(1,d,4,diff);
@@ -4893,7 +4956,8 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
             break;
 
           case M_branch:
-            newd = write_branch(db,d,op,ext,sec,pc,(oii->flags&IIF_BCC)?1:0);
+            newd = write_branch(db,d,op,ext,sec,pc,mnemo,
+                                (oii->flags&IIF_BCC)?1:0);
             break;
 
           case M_val0:
@@ -5707,9 +5771,11 @@ char *parse_cpu_special(char *start)
     s++;
     while (ISIDCHAR(*s))
       s++;
+    if (dotdirs && *name=='.')
+      name++;
 
     if ((s-name==4 && !strnicmp(name,"near",4)) ||
-        (s-name==6 && !strnicmp(name,".sdreg",6))) {
+        (s-name==5 && !strnicmp(name,"sdreg",5))) {
       /* NEAR <An> */
       signed char r;
 
@@ -5721,7 +5787,7 @@ char *parse_cpu_special(char *start)
         else
           cpu_error(58);  /* not a valid small data register */
       }
-      else if (*name!='.' && !strnicmp(s,"code",4)) {
+      else if (!dotdirs && !strnicmp(s,"code",4)) {
         add_cpu_opt(0,OCMD_SMALLCODE,1);
         return skip_line(s);
       }
@@ -5959,6 +6025,8 @@ int parse_cpu_label(char *labname,char **start)
     s++;
     while (ISIDCHAR(*s))
       s++;
+    if (dotdirs && *dir=='.')
+      dir++;
 
     if ((s-dir==4 && !strnicmp(dir,"equr",4)) ||
         (s-dir==5 && !strnicmp(dir,"fequr",5))) {

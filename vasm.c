@@ -1,5 +1,5 @@
 /* vasm.c  main module for vasm */
-/* (c) in 2002-2020 by Volker Barthelmann */
+/* (c) in 2002-2021 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,8 +10,8 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 1.8j"
-char *copyright = _VER " (c) in 2002-2020 Volker Barthelmann";
+#define _VER "vasm 1.8k"
+char *copyright = _VER " (c) in 2002-2021 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 #endif
@@ -37,6 +37,7 @@ struct stabdef *first_nlist,*last_nlist;
 char *output_format="test";
 unsigned long long taddrmask;
 taddr taddrmin,taddrmax;
+unsigned space_init;
 char emptystr[]="";
 char vasmsym_name[]="__VASM";
 int num_secs;
@@ -590,6 +591,26 @@ static void fix_labels(void)
   }
 }
 
+static void trim_uninitialized(section *sec)
+{
+  for (; sec!=NULL; sec=sec->next) {
+    atom *a;
+    utaddr pc;
+
+    sec->last = NULL;
+    for (a=sec->first,pc=sec->org; a; a=a->next) {
+      pc = pcalign(a,pc);
+      pc += atom_size(a,sec,pc);
+      if (a->type==DATA ||
+          (a->type==SPACE && !(a->content.sb->flags & SPC_UNINITIALIZED))) {
+        /* remember last initialized atom and pc of this section */
+        sec->pc = pc;
+        sec->last = a;
+      }
+    }
+  }
+}
+
 static void statistics(void)
 {
   section *sec;
@@ -635,6 +656,12 @@ static int init_output(char *fmt)
     return init_output_cdef(&output_copyright,&write_object,&output_args);
   if(!strcmp(fmt,"ihex"))
     return init_output_ihex(&output_copyright,&write_object,&output_args);
+  if(!strcmp(fmt,"o65"))
+    return init_output_o65(&output_copyright,&write_object,&output_args);
+  if(!strcmp(fmt,"o65exe")) {
+    exec_out=1;  /* executable format */
+    return init_output_o65(&output_copyright,&write_object,&output_args);
+  }
   return 0;
 }
 
@@ -734,25 +761,17 @@ int main(int argc,char **argv)
       outname=argv[++i];
       continue;
     }
-    if(!strcmp("-L",argv[i])&&i<argc-1){
-      if(listname)
-        general_error(28,argv[i]);
-      listname=argv[++i];
-      produce_listing=1;
-      set_listing(1);
-      continue;
-    }
-    if(!strcmp("-Lnf",argv[i])){
-      listformfeed=0;
-      continue;
-    }
-    if(!strcmp("-Lns",argv[i])){
-      listnosyms=1;
-      continue;
-    }
-    if(!strncmp("-Ll",argv[i],3)){
-      sscanf(argv[i]+3,"%i",&listlinesperpage);
-      continue;
+    if(!strncmp("-L",argv[i],2)){
+      if(!argv[i][2]&&i<argc-1){
+        if(listname)
+          general_error(28,argv[i]);
+        listname=argv[++i];
+        produce_listing=1;
+        set_listing(1);
+        continue;
+      }
+      else if (listing_option(&argv[i][2]))
+        continue;
     }
     if(!strncmp("-D",argv[i],2)){
       char *def=NULL;
@@ -776,7 +795,7 @@ int main(int argc,char **argv)
             val=number_expr(1);
           if(*s)
             general_error(23,'D');  /* trailing garbage after option */
-          new_abs(def,val);
+          new_equate(def,val);
           myfree(def);
           continue;
         }
@@ -883,6 +902,10 @@ int main(int argc,char **argv)
       sec_padding=(taddr)ullpadding;
       continue;
     }
+    else if(!strncmp("-uspc=",argv[i],6)){
+      sscanf(argv[i]+6,"%u",&space_init);
+      continue;
+    }
     if(cpu_args(argv[i]))
       continue;
     if(syntax_args(argv[i]))
@@ -932,6 +955,7 @@ int main(int argc,char **argv)
       /* dependencies to stdout, no object output */
       write_depends(stdout);
     } else {
+      trim_uninitialized(first_section);
       if(verbose)
         statistics();
       if(depend&&dep_filename!=NULL){

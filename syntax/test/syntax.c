@@ -15,8 +15,8 @@
 char *syntax_copyright="vasm test syntax module (c) 2002 Volker Barthelmann";
 
 hashtable *dirhash;
-
 char commentchar=';';
+int dotdirs;
 char *defsectname = NULL;
 char *defsecttype = NULL;
 

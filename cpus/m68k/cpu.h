@@ -20,6 +20,9 @@
 typedef int32_t taddr;
 typedef uint32_t utaddr;
 
+/* we support floating point constants */
+#define FLOAT_PARSER 1
+
 /* instruction extension */
 #define HAVE_INSTRUCTION_EXTENSION 1
 typedef struct {

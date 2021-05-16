@@ -42,7 +42,6 @@ Predefined register symbols in this backend:
 
 @item This module need to be fully checked, but has been tested building a full
       program that could be found here : @uref{https://github.com/Zardoz89/trillek-firmware}
-
 @item Instruction relocations are missing.
 
 @end itemize

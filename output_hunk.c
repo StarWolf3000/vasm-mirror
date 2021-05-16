@@ -281,7 +281,7 @@ static utaddr sect_size(section *sec)
     if (a->type == SPACE) {
       sblock *sb = a->content.sb;
     
-      if (sb->flags & SPC_DATABSS) {
+      if (sb->flags & SPC_UNINITIALIZED) {
         if (dxpc == 0)
           dxpc = pc;
       }

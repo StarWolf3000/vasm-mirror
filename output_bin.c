@@ -1,10 +1,10 @@
 /* output_bin.c binary output driver for vasm */
-/* (c) in 2002-2009,2013-2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2009,2013-2021 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
 #ifdef OUTBIN
-static char *copyright="vasm binary output module 2.0 (c) 2002-2020 Volker Barthelmann and Frank Wille";
+static char *copyright="vasm binary output module 2.1 (c) 2002-2021 Volker Barthelmann and Frank Wille";
 
 #define BINFMT_RAW          0   /* no header */
 #define BINFMT_CBMPRG       1   /* Commodore VIC-20/C-64 PRG format */
@@ -12,6 +12,8 @@ static char *copyright="vasm binary output module 2.0 (c) 2002-2020 Volker Barth
 #define BINFMT_APPLEBIN     3   /* Apple DOS 3.3 binary file */
 #define BINFMT_DRAGONBIN    4   /* Dragon DOS binary format */
 #define BINFMT_COCOML       5   /* Tandy Color Computer machine lang. file */
+#define BINFMT_ORICMC       6   /* Oric machine code file */
+#define BINFMT_ORICMCX      7   /* Oric machine code file auto-exec */
 
 static int binfmt = BINFMT_RAW;
 static char *exec_symname;
@@ -34,7 +36,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
   atom *p;
   size_t nsecs;
   long hdroffs;
-  unsigned long long pc=0,npc,i;
+  unsigned long long pc=0,npc;
 
   if (!sec)
     return;
@@ -69,6 +71,8 @@ static void write_output(FILE *f,section *sec,symbol *sym)
     *slp++ = s;
   if (nsecs > 1)
     qsort(seclist,nsecs,sizeof(section *),orgcmp);
+
+  sec = *seclist;  /* sec is now the first section in memory */
 
   /* write an optional header first */
   switch (binfmt) {
@@ -111,10 +115,42 @@ static void write_output(FILE *f,section *sec,symbol *sym)
       fw16(f,exec_addr?exec_addr:sec->org,1);
       fw8(f,0xaa);
       break;
+
+    case BINFMT_ORICMC:
+    case BINFMT_ORICMCX:
+      /* Oric machine code file header:
+       * 00-03: sync: $16,$16,$16,$16
+       * 04:    end of sync: $24
+       * 05-06: two reserved bytes
+       * 07:    file data type ($00 BASIC, $80 machine code)
+       * 08:    how to execute ($80 RUN as BASIC, $c7 execute as machine code)
+       * 09-10: last address of data stored (big-endian)
+       * 11-12: first address of data stored (big-endian)
+       * 13:    reserved
+       * 14-  : null-terminated file name, maximum of 16 characters
+       */
+      fw32(f,0x16161616,1);
+      fw8(f,0x24);
+      fw16(f,0,1);
+      fw8(f,0x80);
+      fw8(f,binfmt==BINFMT_ORICMCX?0xc7:0);  /* auto-exec or not */
+      hdroffs = ftell(f);  /* remember location of last address */
+      fw16(f,0,1);         /* skip last address, will be patched later */
+      fw16(f,sec->org,1);
+      fw8(f,0);
+      fprintf(f,"%s",outname);
+      fw8(f,0);
+      break;
   }
 
   for (slp=seclist; nsecs>0; nsecs--) {
     s = *slp++;
+
+    /* strip uninitialized space atoms from section */
+    if (s->last)
+      s->last->next = NULL;
+    else
+      s->first = NULL;
 
     /* write optional section header or pad to next section start */
     switch (binfmt) {
@@ -149,13 +185,10 @@ static void write_output(FILE *f,section *sec,symbol *sym)
     for (p=s->first,pc=ULLTADDR(s->org); p; p=p->next) {
       npc = ULLTADDR(fwpcalign(f,p,s,pc));
 
-      if (p->type == DATA) {
-        for (i=0; i<p->content.db->size; i++)
-          fw8(f,(unsigned char)p->content.db->data[i]);
-      }
-      else if (p->type == SPACE) {
+      if (p->type == DATA)
+        fwdata(f,p->content.db->data,p->content.db->size);
+      else if (p->type == SPACE)
         fwsblock(f,p->content.sb);
-      }
 
       pc = npc + atom_size(p,s,npc);
     }
@@ -181,6 +214,12 @@ static void write_output(FILE *f,section *sec,symbol *sym)
       fw8(f,0xff);
       fw16(f,0,1);
       fw16(f,exec_addr?exec_addr:sec->org,1);
+      break;
+
+    case BINFMT_ORICMC:
+    case BINFMT_ORICMCX:
+      fseek(f,hdroffs,SEEK_SET);
+      fw16(f,pc-1,1);  /* last address of file */
       break;
   }
 
@@ -212,6 +251,14 @@ static int output_args(char *p)
   }
   else if (!strcmp(p,"-coco-ml")) {
     binfmt = BINFMT_COCOML;
+    return 1;
+  }
+  else if (!strcmp(p,"-oric-mc")) {
+    binfmt = BINFMT_ORICMC;
+    return 1;
+  }
+  else if (!strcmp(p,"-oric-mcx")) {
+    binfmt = BINFMT_ORICMCX;
     return 1;
   }
   return 0;

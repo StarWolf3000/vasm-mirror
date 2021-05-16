@@ -7,3 +7,8 @@
   "branch destination out of range",ERROR,
   "illegal bit number",ERROR,
   "identifier expected",ERROR,
+  "multiple hi/lo modifiers",WARNING,
+  "zero/direct-page addressing not available",ERROR,                  /* 10 */
+  "operand not in zero/direct-page range",ERROR,
+  "signed addend doesn't fit into %d bits",WARNING,
+  "missing closing square-bracket in addressing mode",ERROR,

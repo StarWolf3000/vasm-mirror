@@ -4,7 +4,7 @@ Hudson Soft HuC6280 instruction sets.
 
 @section Legal
 
-    This module is written in 2002,2006,2008-2012,2014-2020 by Frank Wille
+    This module is written in 2002,2006,2008-2012,2014-2021 by Frank Wille
     and is covered by the vasm copyright without modifications.
 
 
@@ -21,10 +21,15 @@ This module provides the following additional options:
     @item -c02
         Recognize all 65C02 instructions. This excludes DTV (@option{-dtv})
         and illegal (@option{-illegal}) instructions.
+    @item -ce02
+        Enables the Commodore CSG65CE02 instruction set, which extends on
+        the WDC02 instruction set.
     @item -dtv
         Recognize the three additional C64-DTV instructions.
     @item -illegal
         Allow 'illegal' 6502 instructions to be recognized.
+    @item -mega65
+        Enables the 45GS02 instruction set for the MEGA65 computer.
     @item -opt-branch
         Enables translation of B<cc> branches into sequences of
         "B<!cc> *+5 ; JMP label" when necessary. BRA (DTV, 65C02) is
@@ -51,6 +56,8 @@ instruction set reference manuals from Commodore Semiconductor Group.
 Optionally accepts HuC6280 instructions as described in the instruction
 set reference manuals from Hudson Soft.
 
+Optionally accepts 45GS02 instructions as defined by the Mega65 project.
+
 The target address type is 16 bit.
 
 Instructions consist of one up to three bytes for the standard 6502 family
@@ -71,11 +78,17 @@ This backend provides the following specific extensions:
 @item The parser understands a lo/hi-modifier to select low- or high-byte
  of a 16-bit word. The character @code{<} is used to select the low-byte
  and @code{>} for the high-byte. It has to be the first character before
- an expression.
+ an expression. See also option @option{-bbcade}.
 
 @item When applying the operation @code{/256}, @code{%256} or @code{&256}
  on a label, an appropriate lo/hi-byte relocation will automatically be
  generated.
+
+@item The hi/lo-modifier can also be used in front of absolute addressing
+ modes, to enforce absolute 16-bit addressing (hi/@code{>}) or
+ zero/direct-page 8-bit addressing (lo/@code{<}). For compatibility with
+ other assemblers also @code{!} and @code{|} may be used instead of
+ @code{>}.
 
 @end itemize
 
@@ -93,10 +106,20 @@ directives:
       optimizations from absolute to zero-page addressing modes.
       Example: set it to @code{$2000} for the HuC6280/PC-Engine.
 
+@item zero
+      Switch to a zero page section called @code{zero} or @code{.zero},
+      which has the type @code{bss} with attributes @code{"aurw"}.
+      Accesses to symbols from this section will default to zero page
+      addressing mode.
+
 @item zpage <symbol1> [,<symbol2>...]
       Mark symbols as zero page and use zero page addressing for
-      expressions based on this symbol.
+      expressions based on this symbol, unless overridden by a
+      hi-modifier (@code{>}).
 @end table
+
+All these directives are also available in the form starting with a
+dot (@code{.}).
 
 @section Optimizations
 
@@ -120,7 +143,8 @@ This backend performs the following operand optimizations:
 
 @itemize @minus
 
-@item None.
+@item CSG65CE02 support is incomplete.
+@item 45GS02 (MEGA65) support is incomplete.
 
 @end itemize
 
@@ -139,5 +163,10 @@ This module has the following error messages:
 @item 2007: branch destination out of range
 @item 2008: illegal bit number
 @item 2009: identifier expected
+@item 2010: multiple hi/lo modifiers
+@item 2011: zero/direct-page addressing not available
+@item 2012: operand not in zero/direct-page range
+@item 2013: signed addend doesn't fit into %d bits
+@item 2014: missing closing square-bracket in addressing mode
 
 @end itemize

@@ -168,7 +168,7 @@ char *parse_cpu_special(char *start)
 
   if (s = skip_identifier(name)) {
     /* Atari MadMac compatibility directives */
-    if (*name == '.')  /* ignore leading dot */
+    if (dotdirs && *name=='.')  /* ignore leading dot */
       name++;
 
     if (s-name==3 && !strnicmp(name,"dsp",3)) {
@@ -218,7 +218,7 @@ int parse_cpu_label(char *labname,char **start)
   char *dir=*start;
   char *s;
 
-  if (*dir == '.')  /* ignore leading dot */
+  if (dotdirs && *dir=='.')  /* ignore leading dot */
     dir++;
 
   if (s = skip_identifier(dir)) {

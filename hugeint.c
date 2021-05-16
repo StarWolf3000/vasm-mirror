@@ -39,6 +39,7 @@ int64_t huge_to_int(thuge h)
 }
 
 
+#if FLOAT_PARSER
 thuge huge_from_float(tfloat f)
 {
   thuge r;
@@ -61,6 +62,7 @@ tfloat huge_to_float(thuge h)
            (tfloat)(h.lo!=0 ? h.hi-1 : h.hi);
   return (tfloat)h.hi * MAX_UINT64_FLOAT + (tfloat)h.lo;
 }
+#endif /* FLOAT_PARSER */
 
 
 thuge huge_from_mem(int be,void *src,size_t size)

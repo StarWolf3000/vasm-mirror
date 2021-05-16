@@ -166,10 +166,10 @@ This module provides the following additional options:
         @code{NEG.L Dn} and with 1 by @code{EXT.L Dn} or @code{TST.L Dn}
         (long-form). Not all optimizations are available for all cpu types
         (e.g. @code{MULU.W} can only be optimized on ColdFire by using
-        the @code{MVZ.W} instruction.
+        the @code{MVZ.W} instruction).
         This optimization will leave the flags in a different state as
         can normally be expected after a multiplication instruction, and
-        the size of the optimized code may be bigger than before in a few
+        the size of the optimized code may be bigger than before in some
         situations (e.g. @code{MULS.W #4,Dn}). The latter will additionally
         require the @option{-opt-speed} flag.
 
@@ -192,7 +192,7 @@ This module provides the following additional options:
 
     @item -opt-size
         Optimize for size, even if this would make the code slower.
-        This would enable for example optimization of @code{MOVE.L #x,Dn}
+        This enables for example optimization of @code{MOVE.L #x,Dn}
         into @code{MOVEQ #x>>n,Dn + LSL.W #n,Dn}. It is mostly used
         together with other optimization flags.
 
@@ -202,6 +202,7 @@ This module provides the following additional options:
         not be intended.
 
     @item -sc
+        Small code.
         All @code{JMP} and @code{JSR} instructions to external labels
         will be converted into 16-bit PC-relative jumps.
 
@@ -262,7 +263,7 @@ vasm performs the following optimizations:
         with symbol names.
 
     @item -extsd
-        Recognize small data references in 020+ extended addressing modes
+        Recognize small data references in all 020+ extended addressing modes
         using 16-bit displacements on the base register. By default only the
         16-bit address register displacement addressing mode can be used
         with small data (for compatibility reasons).
@@ -333,7 +334,8 @@ The mask flag in @code{MAC} instructions is written as @code{&} and is
 appended directly to the effective address operand. Example:
 @code{mac d0,d1,(a0)&,d2}.
 
-The target address type is 32bit.
+The target address type is 32bit. Floating point constants in
+instructions and data are supported and encoded in IEEE format.
 
 Default alignment for instructions is 2 bytes. The default alignment for
 data is 2 bytes, when the data size is larger than 8 bits.

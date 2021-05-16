@@ -1,5 +1,5 @@
 /* parse.c - global parser support functions */
-/* (c) in 2009-2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2021 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -263,8 +263,10 @@ char *read_string(char *p,char *s,char delim,int width)
           break;
       }
     }
-    setval(BIGENDIAN,p,width,(unsigned char)c);
-    p += width;
+    if (p) {
+      setval(BIGENDIAN,p,width,(unsigned char)c);
+      p += width;
+    }
   }
   return s;
 }
@@ -401,6 +403,21 @@ static size_t dirlist_minlen(struct namelen *list)
       minlen = list->len;
   }
   return minlen;
+}
+
+
+/* add a skipped macro/repeat line to the listing */
+static void list_skipped_line(char *p)
+{
+  listing *new = new_listing(cur_src,cur_src->line);
+  size_t len = p - cur_src->srcptr;
+
+  if (len>0 && (*(p-1)=='\n' || *(p-1)=='\r'))
+    len--;
+  if (len >= MAXLISTSRC)
+    len = MAXLISTSRC - 1;
+  memcpy(new->txt,cur_src->srcptr,len);
+  new->txt[len] = '\0';
 }
 
 
@@ -982,6 +999,7 @@ char *read_next_line(void)
 {
   char *s,*srcend,*d;
   int nparam,len;
+  int skip_listing = 0;
   char *rept_end = NULL;
 
   /* check if end of source is reached */
@@ -1085,11 +1103,11 @@ char *read_next_line(void)
       if (ISEOL(s))
         s = skip_eol(s,srcend);
 
-      if (*s == '\n') {
-        cur_src->srcptr = s + 1;
-        cur_src->line++;
-      }
-      else if (*s=='\r' && *(s-1)!='\n' && (s>=(srcend-1) || *(s+1)!='\n')) {
+      if ((*s=='\n') ||
+          (*s=='\r' && *(s-1)!='\n' && (s>=(srcend-1) || *(s+1)!='\n'))) {
+        /* new line */
+        if (listena)
+          list_skipped_line(s);
         cur_src->srcptr = s + 1;
         cur_src->line++;
       }
@@ -1105,6 +1123,10 @@ char *read_next_line(void)
 
     /* ignore rest of line, treat as comment */
     s = skip_eol(s,srcend);
+    if (listena) {
+      list_skipped_line(s);
+      skip_listing = 1;
+    }
   }
 
   if (nparam<0 && cur_src->irpname!=NULL)
@@ -1166,29 +1188,14 @@ char *read_next_line(void)
 
   *d = '\0';
   cur_src->srcptr = s;
-
-  if (listena) {
-    listing *new = mymalloc(sizeof(*new));
-
-    new->next = 0;
-    new->line = cur_src->line;
-    new->error = 0;
-    new->atom = 0;
-    new->sec = 0;
-    new->pc = 0;
-    new->src = cur_src;
-    strncpy(new->txt,cur_src->linebuf+1,MAXLISTSRC);
-    if (first_listing) {
-      last_listing->next = new;
-      last_listing = new;
-    }
-    else {
-      first_listing = last_listing = new;
-    }
-    cur_listing = new;
-  }
-
   s = cur_src->linebuf+1;
+
+  if (listena && !skip_listing) {
+    listing *new = new_listing(cur_src,cur_src->line);
+
+    strncpy(new->txt,s,MAXLISTSRC);
+    new->txt[MAXLISTSRC-1] = '\0';
+  }
   if (rept_end)
     start_repeat(rept_end);
   return s;

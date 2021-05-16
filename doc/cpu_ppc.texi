@@ -94,7 +94,8 @@ POWER, POWER2, 40x, 44x, 46x, 60x, 620, 750, 74xx, 860, Book-E,
 e300 and e500.
 
 The target address type is 32 or 64 bits, depending on the selected
-CPU model.
+CPU model. Floating point constants in instructions and data are
+supported and encoded in IEEE format.
 
 Default alignment for sections and instructions is 4 bytes. Data is
 aligned to its natural alignment by default.

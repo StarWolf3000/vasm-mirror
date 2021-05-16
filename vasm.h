@@ -1,5 +1,5 @@
 /* vasm.h  main header file for vasm */
-/* (c) in 2002-2020 by Volker Barthelmann */
+/* (c) in 2002-2021 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -136,6 +136,7 @@ extern char *output_format;
 extern char emptystr[];
 extern char vasmsym_name[];
 extern int num_secs;
+extern unsigned space_init;
 
 extern unsigned long long taddrmask;
 #define ULLTADDR(x) (((unsigned long long)x)&taddrmask)
@@ -220,6 +221,7 @@ void print_cpu_opts(FILE *,void *);
 /* provided by syntax.c */
 extern char *syntax_copyright;
 extern char commentchar;
+extern int dotdirs;
 extern hashtable *dirhash;
 extern char *defsectname;
 extern char *defsecttype;
@@ -254,3 +256,4 @@ int init_output_tos(char **,void (**)(FILE *,section *,symbol *),int (**)(char *
 int init_output_xfile(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_cdef(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_ihex(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
+int init_output_o65(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
