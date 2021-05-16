@@ -62,7 +62,8 @@ This backend accepts 80x86 instructions as described in the
 Intel Architecture Software Developer's Manual.
 
 The target address type is 32 bits. It is 64 bits when the x86_64
-architecture was selected (@option{-m64}).
+architecture was selected (@option{-m64}). Floating point constants in
+instructions and data are supported and encoded in IEEE format.
 
 Instructions do not need any alignment. Data is aligned to its natural
 alignment by default.

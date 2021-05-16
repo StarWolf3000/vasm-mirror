@@ -1,6 +1,51 @@
 vasm history
 =============
 
+- 1.8k (13.05.21)
+o New output modules "o65" and "o65exe" to write object files and
+  executables for the 6502-family of processors.
+o Symbols defined on the command line by -D must be Equates, so they
+  cannot be modified anymore in the source.
+o New default listing file format (wide). The old one can still be
+  selected by -Lfmt=old.
+o Improved listing file output for macros and repetitions. Also their
+  definitions are now printed.
+o New listing file options: -Lbpl=<val>, -Lall, -Llo and -Lni. All valid
+  for the new wide-format.
+o New option -uspc=<val> sets the fill value for uninitalized space
+  (defaults to zero).
+o m68k: Support 64/96 bit immediate FMOVEM.L with two or three control
+  registers as destination.
+o m68k: Fixed misdetection of labels with dots (-ldots) as registers with
+  size extension (e.g. "(pc.msg,pc)").
+o m68k: Fixed Apollo instruction encoding: pcmpgeb, pcmpgew, pcmpgtb,
+  pcmpgtw. Changed Apollo instruction name: miniterm to minterm.
+  Patch by John H.
+o m68k: New Apollo core instructions (John): lslq, lsrq, pabsb, pabsw,
+  storem2, storem3, transilo.
+o m68k: Encoding a branch distance of -1 is not allowed for 68020+ CPUs.
+o 6502: > and < modifiers may be used to enforce absolute or direct/zero-page
+  addressing modes.
+o 6502: New directive zero or .zero starts a zero-page bss-section, which
+  makes symbol accesses to this section default to zero-page addressing.
+o 6502: Implemented a few 45GS02 instructions (Mega65).
+o 6809: Absolute constant offsets > 32767 are now negatively sign-extended
+  and will allow addressing mode optimizations.
+o oldstyle-syntax: Besides .text, .data and .bss, also text, data and
+  bss section names are automatically recognized and provided with
+  correct attributes.
+o oldstyle-syntax: -sect option can be used to enable the section
+  directives: text, data and bss. By default text and data directives
+  create string/data constants.
+o oldstyle-syntax: Sections named .zero or zero get the zero-page
+  flag for 6502.
+o oldstyle-syntax: Fixed crash with text/fcs directives without a string.
+o bin-output: Added support for ORIC machine code file headers.
+o bin-output: Uninitialized space is not written. At the moment it can only
+  be created with *=*+n directives in some syntax modules.
+o tos-output: Report undefined symbols with source line number.
+o xfile-output: Report undefined symbols with source line number.
+
 - 1.8j (31.12.20)
 o New CPU backend for the PDP-11 architecture.
 o Fixed alignments in relocated-org blocks within a section.

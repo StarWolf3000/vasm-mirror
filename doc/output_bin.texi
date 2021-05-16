@@ -3,7 +3,7 @@ selected with the @option{-Fbin} option.
 
 @section Legal
 
-    This module is written in 2002-2020 by Volker Barthelmann and
+    This module is written in 2002-2021 by Volker Barthelmann and
     Frank Wille and is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -38,6 +38,13 @@ selected with the @option{-Fbin} option.
         taken from the first section's start address. This will also be
         the execute-address, when not specified otherwise. Refer to
         option @option{-exec}.
+    @item -oric-mc
+        Writes a machine code file header for Oric-1, Oric-Atmos and
+        compatible systems. It includes the file type and name, as well as
+        the first and last address of the program to load.
+    @item -oric-mcx
+        Same as @option{-oric-mc}, but sets the auto-execute flag in
+        the header.
 @end table
  
 @section General

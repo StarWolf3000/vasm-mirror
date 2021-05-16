@@ -1,10 +1,10 @@
 /* output_xfile.c Sharp X68000 Xfile output driver for vasm */
-/* (c) in 2018,2020 by Frank Wille */
+/* (c) in 2018,2020,2021 by Frank Wille */
 
 #include "vasm.h"
 #include "output_xfile.h"
 #if defined(OUTXFIL) && defined(VASM_CPU_M68K)
-static char *copyright="vasm xfile output module 0.2 (c) 2018,2020 Frank Wille";
+static char *copyright="vasm xfile output module 0.3 (c) 2018,2020,2021 Frank Wille";
 
 static int max_relocs_per_atom;
 static section *sections[3];
@@ -67,10 +67,17 @@ static void xfile_header(FILE *f,unsigned long tsize,unsigned long dsize,
 }
 
 
-static void checkdefined(symbol *sym)
+static void checkdefined(rlist *rl,section *sec,taddr pc,atom *a)
 {
-  if (sym->type == IMPORT)
-    output_error(6,sym->name);
+  if (rl->type <= LAST_STANDARD_RELOC) {
+    nreloc *r = (nreloc *)rl->reloc;
+
+    if (EXTREF(r->sym))
+      output_atom_error(8,a,r->sym->name,sec->name,
+                        (unsigned long)pc+r->byteoffset,rl->type);
+  }
+  else
+    ierror(0);
 }
 
 
@@ -86,36 +93,7 @@ static taddr xfile_sym_value(symbol *sym)
 }
 
 
-static int write_reloc68k(atom *a,rlist *rl,int signedval,taddr val)
-{
-  nreloc *nrel;
-  char *p;
-
-  if (rl->type > LAST_STANDARD_RELOC) {
-    unsupp_reloc_error(rl);
-    return 0;
-  }
-  nrel = (nreloc *)rl->reloc;
-
-  if (field_overflow(signedval,nrel->size,val)) {
-    output_atom_error(12,a,rl->type,(unsigned long)nrel->mask,nrel->sym->name,
-                      (unsigned long)nrel->addend,nrel->size);
-    return 0;
-  }
-
-  if (a->type == DATA)
-    p = (char *)a->content.db->data + nrel->byteoffset;
-  else if (a->type == SPACE)
-    p = (char *)a->content.sb->fill;  /* @@@ ignore offset completely? */
-  else
-    return 1;
-
-  setbits(1,p,(nrel->bitoffset+nrel->size+7)&~7,nrel->bitoffset,nrel->size,val);
-  return 1;
-}
-
-
-static void do_relocs(taddr pc,atom *a)
+static void do_relocs(section *asec,taddr pc,atom *a)
 /* Try to resolve all relocations in a DATA or SPACE atom.
    Very simple implementation which can only handle basic 68k relocs. */
 {
@@ -133,25 +111,25 @@ static void do_relocs(taddr pc,atom *a)
   while (rl) {
     switch (rl->type) {
       case REL_SD:
-        checkdefined(((nreloc *)rl->reloc)->sym);
-        write_reloc68k(a,rl,1,
-                       (xfile_sym_value(((nreloc *)rl->reloc)->sym)
-                        + nreloc_real_addend(rl->reloc)) - sdabase);
+        checkdefined(rl,asec,pc,a);
+        patch_nreloc(a,rl,1,
+                     (xfile_sym_value(((nreloc *)rl->reloc)->sym)
+                      + nreloc_real_addend(rl->reloc)) - sdabase,1);
         break;
       case REL_PC:
-        checkdefined(((nreloc *)rl->reloc)->sym);
-        write_reloc68k(a,rl,1,
-                       (xfile_sym_value(((nreloc *)rl->reloc)->sym)
-                        + nreloc_real_addend(rl->reloc)) -
-                       (pc + ((nreloc *)rl->reloc)->byteoffset));
+        checkdefined(rl,asec,pc,a);
+        patch_nreloc(a,rl,1,
+                     (xfile_sym_value(((nreloc *)rl->reloc)->sym)
+                      + nreloc_real_addend(rl->reloc)) -
+                     (pc + ((nreloc *)rl->reloc)->byteoffset),1);
         break;
       case REL_ABS:
         rcnt++;
-        checkdefined(((nreloc *)rl->reloc)->sym);
+        checkdefined(rl,asec,pc,a);
         sec = ((nreloc *)rl->reloc)->sym->sec;
-        if (!write_reloc68k(a,rl,0,
-                            secoffs[sec?sec->idx:0] +
-                            ((nreloc *)rl->reloc)->addend))
+        if (!patch_nreloc(a,rl,0,
+                          secoffs[sec?sec->idx:0] +
+                          ((nreloc *)rl->reloc)->addend,1))
           break;  /* field overflow */
         if (((nreloc *)rl->reloc)->size == 32)
           break;  /* only support 32-bit absolute */
@@ -178,7 +156,7 @@ static void xfile_writesection(FILE *f,section *sec,taddr sec_align)
 
     for (a=sec->first; a; a=a->next) {
       npc = fwpcalign(f,a,sec,pc);
-      do_relocs(npc,a);
+      do_relocs(sec,npc,a);
       if (a->type == DATA)
         fwdata(f,a->content.db->data,a->content.db->size);
       else if (a->type == SPACE)

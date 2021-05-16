@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2020 by Frank Wille */
+/* (c) in 2002-2021 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,13 +12,15 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm oldstyle syntax module 0.15a (c) 2002-2020 Frank Wille";
+char *syntax_copyright="vasm oldstyle syntax module 0.16 (c) 2002-2021 Frank Wille";
 hashtable *dirhash;
+int dotdirs;
 
 static char textname[]=".text",textattr[]="acrx";
 static char dataname[]=".data",dataattr[]="adrw";
 static char rodataname[]=".rodata",rodataattr[]="adr";
 static char bssname[]=".bss",bssattr[]="aurw";
+static char zeroname[]=".zero",zeroattr[]="aurw";
 
 char commentchar=';';
 char *defsectname = textname;
@@ -61,8 +63,8 @@ static struct namelen dendr_dirlist[] = {
 
 static char local_modif_name[] = "_";  /* ._ for abyte directive */
 
-static int dotdirs,autoexport,parse_end,nocprefix,nointelsuffix;
-static int astcomment,dot_idchar;
+static int autoexport,parse_end,nocprefix,nointelsuffix;
+static int astcomment,dot_idchar,sect_directives;
 static taddr orgmode = ~0;
 static section *last_alloc_sect;
 static taddr dsect_offs;
@@ -288,6 +290,18 @@ static void handle_data_mod(char *s,int size,expr *tree)
   eol(s);
 }
 
+
+static void handle_secdata(char *s)
+{
+  if (sect_directives) {
+    set_section(new_section(dotdirs?dataname:dataname+1,dataattr,1));
+    eol(s);
+  }
+  else
+    handle_data(s,8);
+}
+
+
 static void handle_d8(char *s)
 {
   handle_data(s,8);
@@ -335,12 +349,25 @@ static void do_text(char *s,unsigned char add)
   dblock *db = NULL;
 
   if (db = parse_string(&opstart,*s,8)) {
-    add_atom(0,new_data_atom(db,1));
-    db->data[db->size-1] += add;
-    eol(opstart);
+    if (db->data) {
+      add_atom(0,new_data_atom(db,1));
+      db->data[db->size-1] += add;
+      eol(opstart);
+      return;
+    }
+  }
+  syntax_error(8);  /* invalid data operand */
+}
+
+
+static void handle_sectext(char *s)
+{
+  if (sect_directives) {
+    set_section(new_section(dotdirs?textname:textname+1,textattr,1));
+    eol(s);
   }
   else
-    syntax_error(8);  /* invalid data operand */
+    do_text(s,0);
 }
 
 
@@ -353,6 +380,17 @@ static void handle_text(char *s)
 static void handle_fcs(char *s)
 {
   do_text(s,0x80);
+}
+
+
+static void handle_secbss(char *s)
+{
+  if (sect_directives) {
+    set_section(new_section(dotdirs?bssname:bssname+1,bssattr,1));
+    eol(s);
+  }
+  else
+    syntax_error(0);
 }
 
 
@@ -383,9 +421,12 @@ static void handle_even(char *s)
 }
 
 
-static void do_space(int size,expr *cnt,expr *fill)
+static atom *do_space(int size,expr *cnt,expr *fill)
 {
-  add_atom(0,new_space_atom(cnt,size>>3,fill));
+  atom *a = new_space_atom(cnt,size>>3,fill);
+
+  add_atom(0,a);
+  return a;
 }
 
 
@@ -400,6 +441,18 @@ static void handle_space(char *s,int size)
     fill = parse_expr_tmplab(&s);
   }
   do_space(size,cnt,fill);
+  eol(s);
+}
+
+
+static void handle_uspace(char *s,int size)
+{
+  expr *cnt;
+  atom *a;
+
+  cnt = parse_expr_tmplab(&s);
+  a = do_space(size,cnt,0);
+  a->content.sb->flags |= SPC_UNINITIALIZED;
   eol(s);
 }
 
@@ -478,7 +531,7 @@ static void handle_org(char *s)
     char *s2 = skip(s+1);
 
     if (*s2++ == '+') {
-      handle_space(skip(s2),8);  /*  "* = * + <expr>" to reserves bytes */
+      handle_uspace(skip(s2),8);  /*  "* = * + <expr>" to reserves bytes */
       return;
     }
   }
@@ -519,6 +572,7 @@ static void handle_roffs(char *s)
 static void handle_section(char *s)
 {
   char *name,*attr;
+  section *sec;
 
   if (!(name=parse_name(&s)))
     return;
@@ -536,15 +590,25 @@ static void handle_section(char *s)
     s = skip(s+1);
   }
   else {
-    if (!strcmp(name,textname)) attr = textattr;
-    if (!strcmp(name,dataname)) attr = dataattr;
-    if (!strcmp(name,rodataname)) attr = rodataattr;
-    if (!strcmp(name,bssname)) attr = bssattr;
+    if (!strcmp(name,textname) || !strcmp(name,textname+1))
+      attr = textattr;
+    else if (!strcmp(name,dataname) || !strcmp(name,dataname+1))
+      attr = dataattr;
+    else if (!strcmp(name,rodataname) || !strcmp(name,rodataname+1))
+      attr = rodataattr;
+    else if (!strcmp(name,bssname) || !strcmp(name,bssname+1))
+      attr = bssattr;
+    else if (!strcmp(name,zeroname) || !strcmp(name,zeroname+1))
+      attr = zeroattr;
     else attr = defsecttype;
   }
 
-  new_section(name,attr,1);
-  switch_section(name,attr);
+  sec = new_section(name,attr,1);
+#if defined(VASM_CPU_650X)
+  if (attr == zeroattr)
+    sec->flags |= NEAR_ADDRESSING;  /* meaning of zero-page addressing */
+#endif
+  set_section(sec);
   eol(s);
 }
 
@@ -1016,9 +1080,10 @@ struct {
   "dfb",handle_d8,
   "defb",handle_d8,
   "asc",handle_d8,
-  "data",handle_d8,
+  "data",handle_secdata,
   "defm",handle_text,
-  "text",handle_text,
+  "text",handle_sectext,
+  "bss",handle_secbss,
   "wor",handle_d16,
   "word",handle_d16,
   "addr",handle_d16,
@@ -1822,37 +1887,26 @@ int init_syntax()
 
 int syntax_args(char *p)
 {
-  if (!strcmp(p,"-dotdir")) {
+  if (!strcmp(p,"-dotdir"))
     dotdirs = 1;
-    return 1;
-  }
-  else if (!strcmp(p,"-autoexp")) {
+  else if (!strcmp(p,"-autoexp"))
     autoexport = 1;
-    return 1;
-  }
-  else if (!strncmp(p,"-org=",5)) {
+  else if (!strncmp(p,"-org=",5))
     orgmode = atoi(p+5);
-    return 1;
-  }
-  else if (OPERSEP_COMMA && !strcmp(p,"-i")) {
+  else if (OPERSEP_COMMA && !strcmp(p,"-i"))
     igntrail = 1;
-    return 1;
-  }
-  else if (!strcmp(p,"-noc")) {
+  else if (!strcmp(p,"-noc"))
     nocprefix = 1;
-    return 1;
-  }
-  else if (!strcmp(p,"-noi")) {
+  else if (!strcmp(p,"-noi"))
     nointelsuffix = 1;
-    return 1;
-  }
-  else if (!strcmp(p,"-ast")) {
+  else if (!strcmp(p,"-ast"))
     astcomment = 1;
-    return 1;
-  }
-  else if (!strcmp(p,"-ldots")) {
+  else if (!strcmp(p,"-ldots"))
     dot_idchar = 1;
-    return 1;
-  }
-  return 0;
+  else if (!strcmp(p,"-sect"))
+    sect_directives = 1;
+  else
+    return 0;
+
+  return 1;
 }

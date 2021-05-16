@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2021 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 #include "stabs.h"
@@ -13,8 +13,9 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm std syntax module 5.3 (c) 2002-2020 Volker Barthelmann";
+char *syntax_copyright="vasm std syntax module 5.3a (c) 2002-2021 Volker Barthelmann";
 hashtable *dirhash;
+int dotdirs = 1;
 
 static char textname[]=".text",textattr[]="acrx";
 static char dataname[]=".data",dataattr[]="adrw";
@@ -66,7 +67,6 @@ static struct namelen endr_dirlist[] = {
 };
 
 static int parse_end;
-static int nodotneeded;
 static int alloccommon;
 static int align_data;
 static int noesc;
@@ -722,8 +722,8 @@ static void handle_rept(char *s)
 
   eol(s);
   new_repeat(cnt,NULL,NULL,
-             nodotneeded?rept_dirlist:drept_dirlist,
-             nodotneeded?endr_dirlist:dendr_dirlist);
+             dotdirs?drept_dirlist:rept_dirlist,
+             dotdirs?dendr_dirlist:endr_dirlist);
 }
 
 static void do_irp(int type,char *s)
@@ -738,8 +738,8 @@ static void do_irp(int type,char *s)
   if (*s==',')
     s=skip(s+1);
   new_repeat(type,name,mystrdup(s),
-             nodotneeded?rept_dirlist:drept_dirlist,
-             nodotneeded?endr_dirlist:dendr_dirlist);
+             dotdirs?drept_dirlist:rept_dirlist,
+             dotdirs?dendr_dirlist:endr_dirlist);
 }
 
 static void handle_irp(char *s)
@@ -765,8 +765,8 @@ static void handle_macro(char *s)
     s=skip(s);
     if(ISEOL(s))
       s=NULL;
-    new_macro(name,nodotneeded?macro_dirlist:dmacro_dirlist,
-              nodotneeded?endm_dirlist:dendm_dirlist,s);
+    new_macro(name,dotdirs?dmacro_dirlist:macro_dirlist,
+              dotdirs?dendm_dirlist:endm_dirlist,s);
     myfree(name);
   }else
     syntax_error(10);  /* identifier expected */
@@ -904,8 +904,10 @@ static void handle_64bit(char *s){ handle_data(s,64,0); }
 static void handle_16bit_noalign(char *s){ handle_data(s,16,1); }
 static void handle_32bit_noalign(char *s){ handle_data(s,32,1); }
 static void handle_64bit_noalign(char *s){ handle_data(s,64,1); }
+#if FLOAT_PARSER
 static void handle_single(char *s){ handle_data(s,OPSZ_FLOAT|32,0); }
 static void handle_double(char *s){ handle_data(s,OPSZ_FLOAT|64,0); }
+#endif
 #if VASM_CPU_OIL
 static void handle_string(char *s){ handle_data(s,8,0); }
 #else
@@ -1024,9 +1026,11 @@ struct {
   "ualong",handle_32bit_noalign,
   "8byte",handle_64bit_noalign,
   "uaquad",handle_64bit_noalign,
+#if FLOAT_PARSER
   "float",handle_single,
   "single",handle_single,
   "double",handle_double,
+#endif
   "text",handle_texts,
   "data",handle_datas,
   "bss",handle_bsss,
@@ -1112,7 +1116,7 @@ static int check_directive(char **line)
     s++;
   if (*name == '.')
     name++;
-  else if (!nodotneeded)
+  else if (dotdirs)
     return -1;
   if (!find_namelen_nc(dirhash,name,s-name,&data))
     return -1;
@@ -1401,8 +1405,10 @@ char *const_prefix(char *s,int *base)
       *base=8;
       return s;
     }
+#if FLOAT_PARSER
     if(s[1]=='d'||s[1]=='D'||s[1]=='f'||s[1]=='F'||s[1]=='r'||s[1]=='R')
       s+=2;  /* floating point is handled automatically, so skip prefix */
+#endif
   }
   *base=10;
   return s;
@@ -1469,7 +1475,7 @@ int syntax_args(char *p)
     return 1;
   }
   else if (!strcmp(p,"-nodotneeded")) {
-    nodotneeded = 1;
+    dotdirs = 0;
     return 1;
   }
   else if (!strcmp(p,"-noesc")) {

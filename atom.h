@@ -56,7 +56,8 @@ struct sblock {
   taddr maxalignbytes;
   uint32_t flags;
 };
-#define SPC_DATABSS 1  /* make sure no to allocate space in a data section */
+/* Space is completely uninitialized - may be used as hint by output modules */
+#define SPC_UNINITIALIZED 1
 
 typedef struct reloffs {
   expr *offset;

@@ -1416,15 +1416,17 @@ char *parse_cpu_special(char *start)
     s++;
     while (ISIDCHAR(*s))
       s++;
-    if (s-name==7 && !strncmp(name,".code16",7)) {
+    if (dotdirs && *name=='.')
+      name++;
+    if (s-name==6 && !strncmp(name,"code16",6)) {
       mode_flag = CODE_16BIT;
       return s;
     }
-    else if (s-name==7 && !strncmp(name,".code32",7)) {
+    else if (s-name==6 && !strncmp(name,"code32",6)) {
       mode_flag = CODE_32BIT;
       return s;
     }
-    else if (s-name==7 && !strncmp(name,".code64",7)) {
+    else if (s-name==6 && !strncmp(name,"code64",6)) {
       mode_flag = CODE_64BIT;
       return s;
     }

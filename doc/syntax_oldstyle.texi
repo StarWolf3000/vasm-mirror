@@ -4,7 +4,7 @@ which is available with the extension @code{oldstyle}.
 
 @section Legal
 
-    This module is written in 2002-2020 by Frank Wille and
+    This module is written in 2002-2021 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -38,6 +38,13 @@ This syntax module provides the following additional options:
 
 @item -noi
  Disable intel-style constant suffixes.
+
+@item -sect
+ Enables the additional section directives @code{text}, @code{data} and
+ @code{bss}, which switch to their respective section type. The original
+ @code{text} directive for creating string-constants and the @code{data}
+ directive for creating byte-constants are no longer available. But there
+ are still other directives for the same purpose.
 
 @end table
 
@@ -146,6 +153,10 @@ CPU- and output-module allow it):
       Insert <exp> zero or <fill> 16-bit words into the current section,
       using the endianess of the target CPU.
 
+@item bss
+      With option @option{-sect}:
+      switches to a bss section with attributes @code{"aurw"}.
+
 @item bsz <exp>[,<fill>]
       Equivalent to @code{blk <exp>[,<fill>]}.
 
@@ -160,6 +171,11 @@ CPU- and output-module allow it):
 
 @item data <exp1>[,<exp2>,"<string1>"...]
       Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
+      (Not available with option @option{-sect}.)
+
+@item data
+      With option @option{-sect}:
+      switches to a data section with attributes @code{"adrw"}.
 
 @item db <exp1>[,<exp2>,"<string1>"...]
       Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
@@ -500,6 +516,11 @@ CPU- and output-module allow it):
          section is sharable
 @end table
 
+      When attributes are missing they are automatically set for the section
+      names @code{text}, @code{data}, @code{rodata}, @code{bss},
+      @code{.text}, @code{.data}, @code{.rodata} and @code{.bss}.
+      Otherwise they default to @code{"acrwx"}.
+
 @item <symbol> set <expression>
       Create a new symbol with the name <symbol> and assign
       the value of <expression>. If <symbol> is already assigned, it will
@@ -532,6 +553,11 @@ CPU- and output-module allow it):
       Places a single string constant operands into successive bytes of
       memory in the current section. The string delimiters may be any
       printable ASCII character.
+      (Not available with option @option{-sect}.)
+
+@item text
+      With option @option{-sect}:
+      switches to a code section with attributes @code{"acrx"}.
 
 @item weak <symbol>[,<symbol>...]
       Flag <symbol> as a weak symbol, which means that <symbol> is

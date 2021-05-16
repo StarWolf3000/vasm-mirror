@@ -716,7 +716,9 @@ char *parse_cpu_special(char *s)
     s++;
     while(ISIDCHAR(*s))
       s++;
-    if(s-name==4&&!strncmp(name,".sfr",4)){
+    if(dotdirs&&*name=='.')
+      name++;
+    if(s-name==3&&!strncmp(name,"sfr",3)){
       sfr *new;
       hashdata data;
       expr *tree;

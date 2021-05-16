@@ -1,16 +1,89 @@
 /* listing.h - listing file */
-/* (c) in 2020 by Volker Barthelmann */
+/* (c) in 2020-2021 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
-int produce_listing;
-int listena,listformfeed=1,listlinesperpage=40,listnosyms;
+#define MADDR(x) ((unsigned long long)((x)&taddrmask))
+#define USEDMASK (USED|EXPORT|COMMON|WEAK|LOCAL|ABSLABEL)
+
+typedef struct {
+  const char *fmtname;
+  void (*fmtfunction)(char *,section *);
+} list_formats;
+
+int produce_listing,listena,listnosyms;
+int listformfeed=1,listlinesperpage=40;
 listing *first_listing,*last_listing,*cur_listing;
 
+static int listbpl=8;
+static int listnoinc,listformat,listtitlecnt,listall,listlabelsonly;
 static char **listtitles;
 static int *listtitlelines;
-static int listtitlecnt;
 
+
+int listing_option(char *arg)
+{
+  if (!strcmp("all",arg)) {
+    listall = 1;
+    return 1;
+  }
+  if (!strncmp("bpl=",arg,4)) {
+    sscanf(&arg[4],"%i",&listbpl);
+    if (listbpl<1 || listbpl>64) {
+      listbpl = 8;
+      general_error(78,"-Lbpl");
+    }
+    return 1;
+  }
+  if (!strncmp("fmt=",arg,4)) {
+    set_listformat(&arg[4]);
+    return 1;
+  }
+  if (!strcmp("lo",arg)) {
+    listlabelsonly=1;
+    return 1;
+  }
+  if (!strcmp("nf",arg)) {
+    listformfeed=0;
+    return 1;
+  }
+  if (!strcmp("ni",arg)) {
+    listnoinc=1;
+    return 1;
+  }
+  if (!strcmp("ns",arg)) {
+    listnosyms=1;
+    return 1;
+  }
+  if (arg[0] == 'l') {
+    int i=arg[1]=='='?2:1;
+    sscanf(&arg[i],"%i",&listlinesperpage);
+    return 1;
+  }
+  return 0;
+}
+
+listing *new_listing(source *src,int line)
+{
+  listing *new = mymalloc(sizeof(*new));
+
+  new->next = NULL;
+  new->line = line;
+  new->error = 0;
+  new->atom = 0;
+  new->sec = 0;
+  new->pc = 0;
+  new->src = src;
+
+  if (first_listing) {
+    last_listing->next = new;
+    last_listing = new;
+  }
+  else
+    first_listing = last_listing = new;
+  cur_listing = new;
+  return new;
+}
 
 void set_listing(int on)
 {
@@ -26,6 +99,34 @@ void set_list_title(char *p,int len)
   listtitles[listtitlecnt-1][len]=0;
   listtitlelines=myrealloc(listtitlelines,listtitlecnt*sizeof(*listtitlelines));
   listtitlelines[listtitlecnt-1]=cur_src->line;
+}
+
+static size_t get_symbols(symbol **symlist,uint32_t flags)
+{
+  size_t cnt;
+  symbol *sym;
+
+  for (cnt=0,sym=first_symbol; sym; sym=sym->next) {
+    if ((sym->flags & VASMINTERN) || *sym->name==' ')
+      continue;
+    if (listall || sym->type!=EXPRESSION || (sym->flags & flags)) {
+      cnt++;
+      if (symlist != NULL)
+        *symlist++ = sym;
+    }
+  }
+  return cnt;
+}
+
+static int namecmp(const void *s1,const void *s2)
+{
+  return nocase ? stricmp((*(symbol **)s1)->name,(*(symbol **)s2)->name) :
+                  strcmp((*(symbol **)s1)->name,(*(symbol **)s2)->name);
+}
+
+static int valcmp(const void *s1,const void *s2)
+{
+  return (int)(get_sym_value(*(symbol **)s1) - get_sym_value(*(symbol **)s2));
 }
 
 #if VASM_CPU_OIL
@@ -52,7 +153,7 @@ static void print_list_header(FILE *f,int cnt)
   }
 }
 
-void write_listing(char *listname,section *first_section)
+static void write_listing_old(char *listname,section *first_section)
 {
   FILE *f;
   int nsecs,i,cnt=0,nl;
@@ -206,7 +307,7 @@ void write_listing(char *listname,section *first_section)
   }
 }
 #else
-void write_listing(char *listname,section *first_section)
+static void write_listing_old(char *listname,section *first_section)
 {
   unsigned long i,maxsrc=0;
   FILE *f;
@@ -283,3 +384,214 @@ void write_listing(char *listname,section *first_section)
   }
 }
 #endif
+
+static void write_listing_wide(char *listname,section *first_section)
+{
+  int addrw = bytespertaddr*2;  /* width of address field */
+  source *lastsrc = NULL;
+  FILE *f;
+  section *secp;
+  listing *l;
+  int i;
+
+  if (!(f = fopen(listname,"w"))) {
+    general_error(13,listname);
+    return;
+  }
+
+  fprintf(f,"Sections:\n");
+  for (secp=first_section,i=0; secp; secp=secp->next,i++) {
+    secp->idx = i;
+    fprintf(f,"%02X: \"%s\" (%llX-%llX)\n",(unsigned)i,secp->name,
+            MADDR(secp->org),MADDR(secp->pc));
+  }
+  fputc('\n',f);
+
+  for (l=first_listing; l; l=l->next) {
+    atom *a = l->atom;
+    taddr pc = l->pc;
+    int flag = 0;
+    char stype = ':';
+    size_t spc;
+
+    if (l->src) {
+      if (l->src->num_params >= 0)
+        stype = 'M';
+      else if (!strncmp(l->src->name,"REPEAT:",7))
+        stype = 'R';
+      else {
+        if (listnoinc && l->src->parent!=NULL)
+          continue;
+        if (l->src != lastsrc) {
+          fprintf(f,"\nSource: \"%s\"\n",l->src->name);
+          lastsrc = l->src;
+        }
+      }
+    }
+    i = 0;
+
+    while (a) {
+      size_t dlen;
+
+      spc = 0;
+      if (a->type == DATA) {
+        dlen = a->content.db->size;
+        for (; i<dlen; i++,pc++) {
+          if (!(i % listbpl)) {
+            if (i) {
+              if (!flag) {
+                fprintf(f,"\t%6d%c %s\n",l->line,stype,l->txt);
+                flag = 1;
+              }
+              else
+                fputc('\n',f);
+            }
+            fprintf(f,"%02X:%0*llX ",
+                    (unsigned)(l->sec?l->sec->idx:0),
+                    addrw,MADDR(pc));
+          }
+          fprintf(f,"%02X",(unsigned)a->content.db->data[i]);
+        }
+      }
+      else if (a->type == SPACE) {
+        dlen = a->content.sb->size;
+        if (spc = a->content.sb->space * dlen) {
+          for (; i<dlen; i++,pc++) {
+            if (!(i % listbpl)) {
+              if (i) {
+                if (!flag) {
+                  fprintf(f,"\t%6d%c %s\n",l->line,stype,l->txt);
+                  flag = 1;
+                }
+                else
+                  fputc('\n',f);
+              }
+              fprintf(f,"%02X:%0*llX ",
+                      (unsigned)(l->sec?l->sec->idx:0),
+                      addrw,MADDR(pc));
+            }
+            fprintf(f,"%02X",(unsigned)a->content.sb->fill[i]);
+          }
+          spc -= dlen;
+        }
+      }
+      if (i) {
+        if (!flag) {
+          fprintf(f,"%*c%6d%c %s",2*(listbpl-i)+1,'\t',l->line,stype,l->txt);
+          if (spc) {
+            fprintf(f,"\n%02X:%0*llX *",
+                    (unsigned)(l->sec?l->sec->idx:0),
+                    addrw,MADDR(pc));
+            pc += spc;
+          }
+          flag = 1;
+        }
+        fputc('\n',f);
+        i = 0;
+      }
+
+      if (a->next!=NULL && a->next->list==a->list) {
+        a = a->next;
+        pc = pcalign(a,pc);
+      }
+      else
+        a = NULL;
+    }
+    if (!flag)  /* no data generated for this source line */
+      fprintf(f,"%*c%6d%c %s\n",4+addrw+2*listbpl+1,'\t',l->line,stype,l->txt);
+    if (l->error)
+      fprintf(f,"%*c     ^-ERROR:%04d\n",4+addrw+2*listbpl+1,'\t',l->error);
+  }
+
+  if (!listnosyms) {
+    size_t nsyms = get_symbols(NULL,USEDMASK);
+    symbol *sym,**symlist;
+
+    fprintf(f,"\n\nSymbols by name:\n");
+    symlist = (symbol **)mymalloc(nsyms*sizeof(symbol *));
+    get_symbols(symlist,USEDMASK);
+    qsort(symlist,nsyms,sizeof(symbol *),namecmp);  /* sort by name */
+    for (i=0; i<nsyms; i++) {
+      sym = symlist[i];
+      fprintf(f,"%-31.31s ",sym->name);
+      if (sym->flags & COMMON) {
+        fprintf(f,"COM %lld bytes, alignment %lld",
+                (long long)get_sym_size(sym),(long long)sym->align);
+      }
+      else {
+        char type;
+
+        switch (sym->type) {
+          case LABSYM:
+            fprintf(f,"%02X:%0*llX",
+                    (unsigned)(sym->sec?sym->sec->idx:0),
+                    addrw,MADDR(sym->pc));
+            break;
+          case IMPORT:
+            fprintf(f,"external");
+            break;
+          default:
+            if (sym->flags & EQUATE)
+              type = 'E';
+            else if (sym->flags & REGLIST)
+              type = 'R';
+            else if (sym->flags & ABSLABEL)
+              type = 'A';
+            else
+              type = 'S';
+            fprintf(f," %c:%0*llX",
+                    type,addrw,MADDR(get_sym_value(sym)));
+        }
+      }
+      if (sym->flags & EXPORT)
+        fprintf(f," EXP");
+      if (sym->flags & LOCAL)
+        fprintf(f," LOC");
+      if (sym->flags & WEAK)
+        fprintf(f," WEAK");
+      fputc('\n',f);
+    }
+
+    if (listlabelsonly)
+      fprintf(f,"\nLabels by address:\n");
+    else
+      fprintf(f,"\nSymbols by value:\n");
+    qsort(symlist,nsyms,sizeof(symbol *),valcmp);  /* sort by value/address */
+    for (i=0; i<nsyms; i++) {
+      sym = symlist[i];
+      if (sym->type==IMPORT || (sym->flags & (COMMON|REGLIST)))
+        continue;
+      if (listlabelsonly) {
+        if (sym->type!=LABSYM &&
+            (sym->type!=EXPRESSION || !(sym->flags & ABSLABEL)))
+          continue;
+      }
+      fprintf(f,"%0*llX %s\n",addrw,MADDR(get_sym_value(sym)),sym->name);
+    }
+
+    myfree(symlist);
+  }
+}
+
+static list_formats list_format_table[] = {
+  { "wide", write_listing_wide },
+  { "old", write_listing_old }
+};
+
+void set_listformat(const char *fmtname)
+{
+  int i;
+
+  for (i=0; i<sizeof(list_format_table)/sizeof(list_format_table[0]); i++) {
+    if (!stricmp(fmtname,list_format_table[i].fmtname)) {
+      listformat = i;
+      return;
+    }
+  }
+  general_error(80,fmtname);  /* format selection ignored */
+}
+
+void write_listing(char *listname,section *first_section)
+{
+  list_format_table[listformat].fmtfunction(listname,first_section);
+}

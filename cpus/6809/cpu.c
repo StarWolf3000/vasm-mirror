@@ -9,7 +9,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.3 (c)2020 by Frank Wille";
+char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.4 (c)2020-2021 by Frank Wille";
 char *cpuname = "6809";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -284,9 +284,13 @@ int parse_operand(char *p,int len,operand *op,int required)
         /* transfer memory pointer-register, with increment or decrement */
         if ((reg = parse_reg(&p,R_IRP)) < 0)
           return PO_NOMATCH;
-        if (((required & TFM_PLUS) && *p!='+') ||
-            ((required & TFM_MINUS) && *p!='-'))
-          return PO_NOMATCH;
+        if (required & (TFM_PLUS|TFM_MINUS)) {
+          if (((required & TFM_PLUS) && *p=='+') ||
+              ((required & TFM_MINUS) && *p=='-'))
+            p++;
+          else
+            return PO_NOMATCH;
+        }
         op->mode = AM_TFR;
         op->opreg = reg;
         break;
@@ -329,7 +333,15 @@ int parse_operand(char *p,int len,operand *op,int required)
         break;
     }
 
-    return p-s==0 ? PO_NOMATCH : ret;
+    if (p-s == 0)
+      return PO_NOMATCH;  /* nothing read */
+
+    p = skip(p);
+    if (p-start < len) {
+      cpu_error(0);  /* trailing garbage */
+      return PO_CORRUPT;
+    }
+    return ret;
   }
 
   else {
@@ -493,8 +505,8 @@ char *parse_cpu_special(char *start)
     while (ISIDCHAR(*s))
       s++;
 
-    if (*name == '.')
-      ++name;	/* may start with a dot in some syntax-modules */
+    if (dotdirs && *name=='.')
+      ++name;
 
     if (s-name==5 && !strnicmp(name,"setdp",5)) {
       utaddr dp;
@@ -830,7 +842,7 @@ static size_t process_instruction(instruction *ip,section *sec,
 
         else {
           /* constant offset */
-          taddr val = op->curval;
+          taddr val = bf_sign_extend(op->curval,16);
 
           if (final && (val>0xffff || val<-0x8000))
             cpu_error(4,(long)val);  /* constant offset out of range */

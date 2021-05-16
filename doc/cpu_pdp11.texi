@@ -40,7 +40,7 @@ Data, when not accessed as single bytes, also requires 16-bit alignment.
     Some known problems of this module at the moment:
 
 @itemize @minus
-@item None?
+@item Doesn't support all PDP-11 extensions.
 @end itemize
 
 @section Error Messages

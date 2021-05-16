@@ -47,16 +47,18 @@ expr *parse_expr_float(char **);
 taddr parse_constexpr(char **);
 expr *number_expr(taddr);
 expr *huge_expr(thuge);
-expr *float_expr(tfloat);
 void free_expr(expr *);
 int type_of_expr(expr *);
 expr **find_sym_expr(expr **,char *);
 void simplify_expr(expr *);
 int eval_expr(expr *,taddr *,section *,taddr);
 int eval_expr_huge(expr *,thuge *);
-int eval_expr_float(expr *,tfloat *);
 void print_expr(FILE *,expr *);
 int find_base(expr *,symbol **,section *,taddr);
+#if FLOAT_PARSER
+expr *float_expr(tfloat);
+int eval_expr_float(expr *,tfloat *);
+#endif
 
 /* find_base return codes */
 #define BASE_ILLEGAL 0

@@ -12,3 +12,4 @@
   "address 0x%llx out of range for selected format",ERROR|NOLINE,
   "reloc type %d, mask 0x%lx to symbol %s + 0x%lx does not fit into %u bits",ERROR,
   "data definition following a databss space directive",WARNING,
+  "file option %d max size exceeded: %lu",WARNING,

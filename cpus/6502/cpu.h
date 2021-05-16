@@ -1,6 +1,6 @@
 /*
-** cpu.h 650x/65C02/6510/6280 cpu-description header-file
-** (c) in 2002,2008,2009,2014,2018,2020 by Frank Wille
+** cpu.h 650x/65C02/6510/6280/45gs02 cpu-description header-file
+** (c) in 2002,2008,2009,2014,2018,2020,2021 by Frank Wille
 */
 
 #define BIGENDIAN 0
@@ -16,6 +16,12 @@
 /* data type to represent a target-address */
 typedef int32_t taddr;
 typedef uint32_t utaddr;
+
+/* instruction extension */
+#define HAVE_INSTRUCTION_EXTENSION 1
+typedef struct {
+  utaddr dp;    /* remember current direct page per instruction */
+} instruction_ext;
 
 /* minimum instruction alignment */
 #define INST_ALIGN 1
@@ -46,9 +52,14 @@ int ext_find_base(symbol **,expr *,section *,taddr);
 /* type to store each operand */
 typedef struct {
   int type;
+  unsigned flags;
   expr *value;
-  utaddr dp;
 } operand;
+
+/* operand flags */
+#define OF_LO (1<<0)
+#define OF_HI (1<<1)
+#define OF_PC (1<<2)
 
 
 /* additional mnemonic data */
@@ -63,37 +74,58 @@ typedef struct {
 #define ILL      2       /* illegal 6502 instructions */
 #define DTV      4       /* C64 DTV instruction set extension */
 #define M65C02   8       /* basic 65C02 extensions on 6502 instruction set */
-#define WDC02    16      /* WDC65C02 extensions on 65C02 instruction set */
-#define CSGCE02  32      /* CSG65CE02 extensions on WDC65C02 instruction set */
-#define HU6280   64      /* HuC6280 extensions on WDC65C02 instruction set */
+#define WDC02    16      /* basic WDC65C02 extensions on 65C02 instr. set */
+#define WDC02ALL 32      /* all WDC65C02 extensions on 65C02 instr. set */
+#define CSGCE02  64      /* CSG65CE02 extensions on WDC65C02 instruction set */
+#define HU6280   128     /* HuC6280 extensions on WDC65C02 instruction set */
+#define M45GS02  256     /* MEGA65 45GS02 extensions on basic WDC02 instr.set */
 
 
 /* adressing modes */
-#define IMPLIED  0
-#define ABS      1       /* $1234 */
-#define ABSX     2       /* $1234,X */
-#define ABSY     3       /* $1234,Y */
-#define INDIR    4       /* ($1234) - JMP only */
-#define INDX     5       /* ($12,X) */
-#define INDY     6       /* ($12),Y */
-#define DPINDIR  7       /* ($12) */
-#define INDIRX   8       /* ($1234,X) - JMP only */
-#define ZPAGE    9       /* add ZPAGE-ABS to optimize ABS/ABSX/ABSY */
-#define ZPAGEX   10
-#define ZPAGEY   11
-#define RELJMP   12      /* B!cc/JMP construction */
-#define REL      13      /* $1234 - 8-bit signed relative branch */
-#define IMMED    14      /* #$12 */
-#define WBIT     15      /* bit-number (WDC65C02) */
-#define DATAOP   16      /* data operand */
-#define ACCU     17      /* A */
-#define DUMX     18      /* dummy X as 'second' operand */
-#define DUMY     19      /* dummy Y as 'second' operand */
+enum {
+  IMPLIED=0,
+  DATAOP,       /* data operand */
+  ABS,          /* $1234 */
+  ABSX,         /* $1234,X */
+  ABSY,         /* $1234,Y */
+  ABSZ,         /* $1234,Z */
+  ZPAGE,        /* $12 - add ZPAGE-ABS to optimize ABS/ABSX/ABSY/ABSZ */
+  ZPAGEX,       /* $12,X */
+  ZPAGEY,       /* $12,Y */
+  ZPAGEZ,       /* $12,Z */
+  INDIR,        /* ($1234) - JMP only */
+  INDX,         /* ($12,X) */
+  INDY,         /* ($12),Y */
+  INDZ,         /* ($12),Z */
+  INDZ32,       /* [$12],Z */
+  IND32,        /* [$12] */
+  DPINDIR,      /* ($12) */
+  INDIRX,       /* ($1234,X) - JMP only */
+  RELJMP,       /* B!cc/JMP construction */
+  REL8,         /* $1234 - 8-bit signed relative branch */
+  REL16,        /* $1234 - 16-bit signed relative branch */
+  IMMED,        /* #$12 */
+  WBIT,         /* bit-number (WDC65C02) */
+  ACCU,         /* A - all following addressing modes don't need a value! */
+  DUMX,         /* dummy X as 'second' operand */
+  DUMY,         /* dummy Y as 'second' operand */
+  DUMZ,         /* dummy Z as 'second' operand */
+};
+#define IS_ABS(x) ((x)>=ABS && (x)<=ABSZ)
+#define IS_REL
+#define FIRST_INDIR INDIR
+#define LAST_INDIR INDIRX
+/* CAUTION:
+   - Do not change the order of ABS,ABSX/Y/Z, and ZPAGE,ZPAGEX/Y/Z
+   - All addressing modes >=ACCU (and IMPLIED) do not require a value!
+   - All indirect addressing modes are between FIRST_INDIR and LAST_INDIR!
+*/
 
 /* cpu-specific symbol-flags */
 #define ZPAGESYM (RSRVD_C<<0)   /* symbol will reside in the zero/direct-page */
 
 
 /* exported by cpu.c */
+extern uint16_t cpu_type;
 int cpu_available(int);
 int parse_cpu_label(char *,char **);

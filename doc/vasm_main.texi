@@ -84,15 +84,27 @@ or additional options.
         Enables generation of a listing file and directs the output into
         the file <listfile>.
 
-@item -Ll<lines>
-        Set the number of lines per listing file page to <lines>.
+@item -Lall
+        List all symbols, including unused equates. Default is to list
+        all labels and all used expressions only.
 
-@item -Lnf
-        Do not emit any form feed code into the listing file, for starting
-        a new page.
+@item -Lbpl=<n>
+        Set the maximum number of bytes per line in a listing file to <n>.
+        Defaults to 8 (fmt=wide).
+
+@item -Lfmt=<fmt>
+        Set the listing file format to <fmt>. Defaults to wide.
+        Available are: wide, old.
+
+@item -Llo
+        Show only program labels in the sorted symbol listing. Default
+        is to list all symbols, including absolute expressions.
+
+@item -Lni
+        Do not show included source files in the listing file (fmt=wide).
 
 @item -Lns
-        Do not include symbols in the listing file.
+        Do not include symbols in the listing file (fmt=wide).
 
 @item -maxerrors=<n>
         Defines the maximum number of errors to display before assembly
@@ -135,7 +147,7 @@ or additional options.
         @file{a.out}.
 
 @item -pad=<value>
-        The given padding value can be one of multiple bytes (up to the
+        The given padding value can be one or multiple bytes (up to the
         cpu-backend's address size). It is used for alignment purposes
         and to fill gaps between absolute @code{ORG} sections in the
         binary output module. Defaults to a zero-byte.
@@ -161,6 +173,11 @@ or additional options.
         left side. The number of bits in a value depend on the target
         address type (refer to the appropriate cpu module documentation).
 
+@item -uspc=<value>
+        Uninitialized memory regions, declared by "space" directives
+        (@code{.space} in std-syntax, @code{ds} in mot-syntax, etc.)
+        are filled with the given value. Defaults to zero.
+
 @item -w
         Hide all warning messages.
 
@@ -185,6 +202,16 @@ rather than by one of the modules (unless this is necessary).
 
 All expressions evaluated by the frontend are calculated in terms
 of target address values, i.e. the range depends on the backend.
+Constants which exceed the target address range may be supported by
+some backends up to 128 bits.
+
+Backends also have the option to support floating point constants directly
+and convert them to a backend-specific format which is described in the
+backend's documentation.
+@b{Warning:} Be aware that the quality and precision of the backend's
+floating point output depends on the combination of host- and
+backend-format! If you need absolute precision, encode the floating
+point constants yourself in binary.
 
 The available operators include all those which are common in assembler as
 well as in C expressions.
@@ -333,21 +360,23 @@ Vasm supports include files and defining include paths. Whether this
 functionality is available depends on the syntax module, which has to
 provide the appropriate directives.
 
-On startup vasm will define at least one default include path: the
-current working directory, where the assembler program was launched from.
-When the input file is loaded from a different directory, i.e. the input
-file is a relative or absolute path and not a single file name, then the
-path to the input file name will be added as another include path.
+On startup vasm defines two default include paths: the compile
+directory, which is the directory where the input file is
+located, and the current work directory (which might be the same).
 
 Include paths are searched in the following order:
 @enumerate 1
+@item Compile directory (path to main source).
 @item Current work directory.
 @item Paths specified by @option{-I} in the order of occurence on the
       command line.
-@item Path to the input source file.
 @item Paths specified by directives inside the source text (in the order
       of occurence).
 @end enumerate
+
+All relative paths, defined by option or directive, are first searched
+relative to the current work directory, then relative to the compile
+directory.
 
 @section Macros
 
@@ -392,7 +421,8 @@ Has to be provided completely by the syntax module.
     @item Joseph Zatarski
     @item Frank Wille
     @item Jim Westfall
-    @item Jens Sch"onfeld
+    @item Jens Sch@"onfeld
+    @item Ross
     @item Henryk Richter
     @item Sebastian Pachuta
     @item Thorsten Otto
@@ -408,21 +438,26 @@ Has to be provided completely by the syntax module.
     @item J@"org van de Loo
     @item Robert Leffmann
     @item Andreas Larsson
-    @item Miro Kropacek
-    @item Olav Kr"omeke
+    @item Miro Krop@'a@v{c}ek
+    @item Olav Kr@"omeke
     @item Christoph Krc
+    @item Richard K@"orber
     @item Mikael Kalms
     @item Mark Jones
     @item Bert Jahn
     @item Daniel Illgen
+    @item Jerome Hubert
     @item Matthew Hey
     @item Stefan Haubenthal
     @item S@o{}ren Hannibal
+    @item John Hankinson
     @item Philippe Guichardon
+    @item Luis Panadero Guarde@~no
     @item Romain Giot
     @item Daniel Gerdgren
-    @item Francois Galea
+    @item Fran@,cois Galea
     @item Tom Duin
+    @item Adrian Destugues
     @item Kieran Connell
     @item Fernando Cabrera
     @item Patrick Bricout
@@ -511,5 +546,10 @@ The frontend has the following error messages:
 @item 74: required macro argument %d was left out
 @item 75: label <%s> redefined
 @item 76: base %d numerical term expected
+@item 77: section stack overflow
+@item 78: section stack is empty
+@item 79: illegal value for option: %s
+@item 80: %s backend does not support floating point
+@item 81: unknown listing file format "%s" ignored
 
 @end itemize

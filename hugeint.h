@@ -18,8 +18,10 @@ typedef struct thuge {
 thuge huge_zero(void);
 thuge huge_from_int(int64_t);
 int64_t huge_to_int(thuge);
+#if FLOAT_PARSER
 thuge huge_from_float(tfloat);
 tfloat huge_to_float(thuge);
+#endif
 thuge huge_from_mem(int,void *,size_t);
 void *huge_to_mem(int,void *,size_t,thuge);
 int huge_chkrange(thuge,int);

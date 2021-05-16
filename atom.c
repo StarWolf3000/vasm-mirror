@@ -190,7 +190,7 @@ sblock *new_sblock(expr *space,size_t size,expr *fill)
   sb->space_exp = space;
   sb->size = size;
   if (!(sb->fill_exp = fill))
-    memset(sb->fill,0,MAXPADBYTES);
+    memset(sb->fill,space_init,MAXPADBYTES);
   sb->relocs = 0;
   sb->maxalignbytes = 0;
   sb->flags = 0;

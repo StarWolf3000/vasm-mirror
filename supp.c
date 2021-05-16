@@ -1,5 +1,5 @@
 /* supp.c miscellaneous support routines */
-/* (c) in 2008-2020 by Frank Wille */
+/* (c) in 2008-2021 by Frank Wille */
 
 #include <math.h>
 #include "vasm.h"
@@ -133,6 +133,17 @@ int field_overflow(int signedbits,size_t numbits,taddr bitval)
   }
   else
     return (((uint64_t)(utaddr)bitval) & ~MAKEMASK(numbits)) != 0;
+}
+
+
+taddr bf_sign_extend(taddr val,int numbits)
+/* sign-extend a bitfield value which fits into numbits bits */
+{
+  taddr himask = ~MAKEMASK(numbits);
+
+  if (!(val & himask) && (val & (1LL<<(numbits-1))))
+    val |= himask;  /* extend bitfield-sign over the taddr type */
+  return val;
 }
 
 
@@ -284,6 +295,38 @@ void copy_cpu_taddr(void *dest,taddr val,size_t bytes)
 }
 
 
+int patch_nreloc(atom *a,rlist *rl,int signedflag,taddr val,int be)
+/* patch relocated value into the atom, when rlist contains an nreloc */
+{
+  nreloc *nrel;
+  char *p;
+
+  if (rl->type > LAST_STANDARD_RELOC) {
+    unsupp_reloc_error(rl);
+    return 0;
+  }
+  nrel = (nreloc *)rl->reloc;
+
+  if (field_overflow(signedflag,nrel->size,val)) {
+    output_atom_error(12,a,rl->type,(unsigned long)nrel->mask,nrel->sym->name,
+                      (unsigned long)nrel->addend,nrel->size);
+    return 0;
+  }
+
+  if (a->type == DATA)
+    p = (char *)a->content.db->data + nrel->byteoffset;
+  else if (a->type == SPACE)
+    p = (char *)a->content.sb->fill;  /* @@@ ignore offset completely? */
+  else
+    return 1;
+
+  setbits(be,p,(nrel->bitoffset+nrel->size+7)&~7,
+          nrel->bitoffset,nrel->size,val);
+  return 1;
+}
+
+
+#if FLOAT_PARSER
 void conv2ieee32(int be,uint8_t *buf,tfloat f)
 /* single precision */
 {
@@ -310,67 +353,18 @@ void conv2ieee64(int be,uint8_t *buf,tfloat f)
 }
 
 
-void conv2ieee80(int be,uint8_t *buf,tfloat f)
-/* extended precision */
-/* @@@ Warning: precision is lost! Converting to double precision. */
-{
-  uint64_t man;
-  uint32_t exp;
-  union {
-    double dp;
-    uint64_t x;
-  } conv;
-
-  conv.dp = (double)f;
-  if (conv.x == 0) {
-    memset(buf,0,12);  /* 0.0 */
-  }
-  else if (conv.x == 0x8000000000000000LL) {
-    if (be) {
-      buf[0] = 0x80;
-      memset(buf+1,0,11);  /* -0.0 */
-    }
-    else {
-      buf[11] = 0x80;
-      memset(buf,0,11);  /* -0.0 */
-    }
-  }
-  else {
-    man = ((conv.x & 0xfffffffffffffLL) << 11) | 0x8000000000000000LL;
-    exp = ((conv.x >> 52) & 0x7ff) - 0x3ff + 0x3fff;
-    if (be) {
-      buf[0] = ((conv.x >> 56) & 0x80) | (exp >> 8);
-      buf[1] = exp & 0xff;
-      buf[2] = 0;
-      buf[3] = 0;
-      setval(1,buf+4,8,man);
-    }
-    else {
-      buf[11] = ((conv.x >> 56) & 0x80) | (exp >> 8);
-      buf[10] = exp & 0xff;
-      buf[9] = 0;
-      buf[8] = 0;
-      setval(0,buf,8,man);
-    }
-  }
-}
-
-
-void conv2ieee128(int be,uint8_t *buf,tfloat f)
-/* quadrupel precision */
-{
-  /* @@@@ FIXME - Doesn't exist in hardware? */
-}
-
-
 /* check if float can be represented by bits, signed or unsigned,
    ignoring the fractional part */
 int flt_chkrange(tfloat f,int bits)
 {
-  tfloat max = pow(2.0,(double)(bits-1));
-
-  return (f<2.0*max && f>=-max);
+  if (bits <= sizeof(taddr)*8) {
+    tfloat max = (utaddr)1LL<<(bits-1);
+    return (f<2.0*max && f>=-max);
+  }
+  ierror(0);  /* FIXME - shouldn't happen? */
+  return 0;
 }
+#endif /* FLOAT_PARSER */
 
 
 void fw8(FILE *f,uint8_t x)
@@ -410,7 +404,7 @@ void fw32(FILE *f,uint32_t x,int be)
 }
 
 
-void fwdata(FILE *f,void *d,size_t n)
+void fwdata(FILE *f,const void *d,size_t n)
 {
   if (n) {
     if (!fwrite(d,1,n,f))
@@ -555,7 +549,7 @@ char *mystrdup(char *name)
 }
 
 
-char *cnvstr(char *name,int l)
+char *cnvstr(const char *name,int l)
 /* converts a pair of pointer/length to a null-terminated string */
 {
   char *p=mymalloc(l+1);
@@ -594,6 +588,20 @@ const char *trim(const char *s)
   while (isspace((unsigned char )*(s-1)))
     s--;
   return s;
+}
+
+
+char *get_str_arg(const char *s)
+/* get string argument from the command line, optionally in quotes */
+{
+  int term = 0;
+  char *e;
+
+  if (*s == '\"')
+    term = *s++;
+  if (!(e = strchr(s,term)))
+    e = strchr(s,0);
+  return cnvstr(s,e-s);
 }
 
 

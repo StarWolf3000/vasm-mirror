@@ -5,8 +5,6 @@
  
 TARGET = _win32
 TARGETEXTENSION = .exe
-OUTFMTS = -DOUTAOUT -DOUTBIN -DOUTELF -DOUTHUNK -DOUTSREC -DOUTTOS -DOUTVOBJ \
-          -DOUTXFIL -DOUTIHEX
 
 # If Visual Studio is unable to find <windows.h> when compiling vlink, try enabling the two
 # lines below, and point them to where you have installed the Win32 Platform SDK.

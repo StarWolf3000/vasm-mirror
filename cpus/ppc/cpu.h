@@ -19,6 +19,9 @@ extern int ppc_endianess;
 typedef int64_t taddr;
 typedef uint64_t utaddr;
 
+/* we support floating point constants */
+#define FLOAT_PARSER 1
+
 /* minimum instruction alignment */
 #define INST_ALIGN 4
 

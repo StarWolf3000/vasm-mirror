@@ -76,3 +76,6 @@
   "base %d numerical term expected",ERROR,                      /* 75 */
   "section stack overflow",ERROR,
   "section stack is empty",ERROR,
+  "illegal value for option: %s",NOLINE|ERROR,
+  "%s backend does not support floating point",ERROR|FATAL,
+  "unknown listing file format \"%s\" ignored",NOLINE|WARNING,  /* 80 */

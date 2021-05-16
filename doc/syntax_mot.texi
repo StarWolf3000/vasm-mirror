@@ -597,7 +597,7 @@ CPU- and output-module support them):
 @item \<symbolname>
       Inserts the current decimal value of the absolute
       symbol @code{symbolname}.
-@item \$<symbolname>
+@item \<$symbolname>
       Inserts the current hexadecimal value of the absolute
       symbol @code{symbolname}, without leading @code{$}.
 @end table
