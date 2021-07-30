@@ -5,7 +5,7 @@ It is mainly intended for Atari's 6502, 68000 and Jaguar systems.
 
 @section Legal
 
-    This module is written in 2015 by Frank Wille and
+    This module is written in 2015-2021 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section General Syntax
@@ -72,7 +72,8 @@ equals-character, may be optionally preceded by a dot (@code{.}).
 
 @item abs [<expression>]
       Equivaluent to @code{offset} for compatibility with older Madmac
-      versions.
+      versions. Note that @code{abs} is not available for the jagrisc
+      cpu backend as it conflicts with an instruction name.
 
 @item assert <expresion>[,<expression>...]
       Assert that all conditions are true (non-zero), otherwise issue a
@@ -184,7 +185,7 @@ equals-character, may be optionally preceded by a dot (@code{.}).
       Start of block of conditional assembly. If <expression> is true, the
       block between '@code{if}' and the matching '@code{endif}' or
       '@code{else}' will be assembled. When false, ignore all lines until
-      and '@code{else}' or '@code{endif}' directive is encountered.
+      an '@code{else}' or '@code{endif}' directive is encountered.
       It is possible to leave such a block early from within an include
       file (with @code{end}) or a macro (with @code{endm}).
 
@@ -196,14 +197,10 @@ equals-character, may be optionally preceded by a dot (@code{.}).
 
 @item incbin "<file>"
       Inserts the binary contents of <file> into the object code at
-      this position. The file will be searched first in the current
-      directory, then in all paths defined by @option{-I} in the order
-      of occurence.
+      this position.
 
 @item include "<file>"
-      Include source text of <file> at this position. The include file
-      will be searched first in the current directory, then in all
-      paths defined by @option{-I} in the order of occurence.
+      Include source text of <file> at this position.
 
 @item list
       The following lines will appear in the listing file, if it was

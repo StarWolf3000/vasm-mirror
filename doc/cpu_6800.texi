@@ -3,7 +3,7 @@ microprocessor family.
 
 @section Legal
 
-    This module is written in 2013-2016 by Esben Norby and Frank Wille
+    This module is written in 2013-2016,2021 by Esben Norby and Frank Wille
     and is covered by the vasm copyright without modifications.
 
 

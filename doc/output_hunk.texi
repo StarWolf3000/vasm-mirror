@@ -4,7 +4,7 @@ selected with the @option{-Fhunk} option to generate objects and with the
 
 @section Legal
 
-    This module is written in 2002-2019 by Frank Wille and
+    This module is written in 2002-2021 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -112,4 +112,5 @@ This module has the following error messages:
 @item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
 @item 3011: weak symbol <%s> not supported by output format, treating as global
 @item 3014: data definition following a databss space directive
+@item 3016: absolute file path exceeds maximum size of %d characters
 @end itemize

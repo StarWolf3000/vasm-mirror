@@ -251,8 +251,7 @@ static void handle_data_mod(char *s,int size,expr *tree)
 
         for (i=0; i<db->size; i++) {
           op = new_operand();
-          if (parse_operand(buf,snprintf(buf,sizeof(buf),"%u",
-                                         (unsigned char)db->data[i]),
+          if (parse_operand(buf,sprintf(buf,"%u",(unsigned char)db->data[i]),
                             op,DATA_OPERAND(size))) {
             atom *a;
 
@@ -323,6 +322,12 @@ static void handle_d24(char *s)
 static void handle_d32(char *s)
 {
   handle_data(s,32);
+}
+
+
+static void handle_taddr(char *s)
+{
+  handle_data(s,bytespertaddr*bitsperbyte);
 }
 
 
@@ -1086,7 +1091,7 @@ struct {
   "bss",handle_secbss,
   "wor",handle_d16,
   "word",handle_d16,
-  "addr",handle_d16,
+  "addr",handle_taddr,
   "dw",handle_d16,
   "dfw",handle_d16,
   "defw",handle_d16,
@@ -1662,9 +1667,11 @@ int expand_macro(source *src,char **line,char *d,int dlen)
 
     else if (*s == '@') {
       /* \@: insert a unique id */
-      nc = snprintf(d,dlen,"_%06lu",src->id);
-      s++;
-      if (nc >= dlen)
+      if (dlen > 7) {
+        nc = sprintf(d,"_%06lu",src->id);
+        s++;
+      }
+      else
         nc = -1;
     }
     else if (*s=='(' && *(s+1)==')') {
@@ -1681,11 +1688,15 @@ int expand_macro(source *src,char **line,char *d,int dlen)
       s++;
       if (name = parse_symbol(&s)) {
         if ((sym = find_symbol(name)) && sym->type==EXPRESSION) {
-          if (eval_expr(sym->expr,&val,NULL,0))
-            nc = sprintf(d,"%lu",(unsigned long)(uint32_t)val);
+          if (eval_expr(sym->expr,&val,NULL,0)) {
+            if (dlen > 9)
+              nc = sprintf(d,"%lu",(unsigned long)(uint32_t)val);
+            else
+              nc = -1;
+          }
         }
         myfree(name);
-        if (*s++!='>' || nc<0) {
+        if (*s++ != '>') {
           syntax_error(11);  /* invalid numeric expansion */
           return 0;
         }

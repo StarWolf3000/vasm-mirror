@@ -51,9 +51,9 @@ This syntax module provides the following additional options:
 @section General Syntax
 
 Labels always start at the first column and may be terminated by a
-colon (@code{:}), but don't need to. In the last case the mnemonic
-needs to be separated from the label by whitespace (not required in
-any case, e.g. @code{=}).
+colon (@code{:}), but don't need to. In the latter case the mnemonic
+has to be separated from the label by whitespace (not required in
+any case, e.g. with @code{=}).
 
 Local labels are preceded by '@code{.}' or terminated by '@code{$}'.
 For the rest, any alphanumeric character including '@code{_}' is allowed.
@@ -61,10 +61,10 @@ Local labels are valid between two global label definitions.
 
 It is allowed, but not recommended, to refer to any local symbol starting with
 '@code{.}' in the source, by preceding its name with the name of the last
-global symbol, which was defined before it: @code{global_name.local_name}.
+previously defined global symbol: @code{global_name.local_name}.
 
 The option @option{-ldots} allows dots (@code{.}) within labels and other
-identifiers, but will disable the above mentioned feature.
+identifiers, but disables the above mentioned feature.
 
 The operands are separated from the mnemonic by whitespace. Multiple
 operands are separated by comma (@code{,}).
@@ -72,16 +72,17 @@ operands are separated by comma (@code{,}).
 Make sure that you don't define a label on the same line as a
 directive for conditional assembly (if, else, endif)! This is not supported.
 
-Some CPU backends may supported multiple statements (directives or
+Some CPU backends may support multiple statements (directives or
 mnemonics) per line, separated by a special character (e.g. @code{:} for Z80).
 
-Comments are introduced by the comment character @code{;}, or the first
+Comments are introduced by the comment character (@code{;}), or the first
 blank following the operand field when option @option{-i} was given.
 The rest of the line will be ignored.
 
 Example:
-
-@code{mylabel instr op1,op2  ;comment}
+@example
+mylabel instr op1,op2  ;comment
+@end example
 
 In expressions, numbers starting with @code{$} are hexadecimal (e.g.
 @code{$fb2c}). For Z80 also @code{&} may be used as a hexadecimal prefix,
@@ -120,7 +121,9 @@ CPU- and output-module allow it):
       Any combination of integer and character string constants is permitted.
 
 @item addr <exp1>[,<exp2>...]
-      Equivalent to @code{word <exp1>[,<exp2>...]}.
+      Assign the values of the operands into successive words
+      of memory in the current section, using the target's endianess
+      and address size.
 
 @item align <bitcount>
       Insert as much zero bytes as required to reach an address where
@@ -142,9 +145,7 @@ CPU- and output-module allow it):
 
 @item binary <file>
       Inserts the binary contents of <file> into the object code at
-      this position. The file will be searched first in the current
-      directory, then in all paths defined by @option{-I} or @code{incdir}
-      in the order of occurence.
+      this position.
 
 @item blk <exp>[,<fill>]
       Insert <exp> zero or <fill> bytes into the current section.
@@ -381,8 +382,6 @@ CPU- and output-module allow it):
       of bytes will be skipped at the beginning of the file. The optional
       <nbytes> argument specifies the maximum number of bytes to be read
       from that file.
-      The file will be searched first in the current directory, then in all
-      paths defined by @option{-I} or @code{incdir} in the order of occurence.
 
 @item incdir <path>
       Add another path to search for include files to the list of
@@ -390,10 +389,7 @@ CPU- and output-module allow it):
       searched first.
 
 @item include <file>
-      Include source text of <file> at this position. The include file
-      will be searched first in the current directory, then in all
-      paths defined by @option{-I} or @code{incdir} in the order of
-      occurence.
+      Include source text of <file> at this position.
 
 @item inline
       Local labels in the following block are isolated from previous
@@ -413,8 +409,8 @@ CPU- and output-module allow it):
 
 @item macro <name>[,<argname>...]
       Defines a macro which can be referenced by <name>. The <name>
-      may also appear on the left side of the @code{macro} directive,
-      starting at the first column. The macro definition is closed
+      may also appear at the left side of the @code{macro} directive,
+      starting on the first column. The macro definition is closed
       by an @code{endm} directive. When calling a macro you may pass
       up to 9 arguments, separated by comma. Those arguments are
       referenced within the macro context as @code{\1} to @code{\9},
@@ -627,7 +623,7 @@ point.z  ; 2
 point    ; 3   size of the structure
 @end example
 
-The structure can be used by optionaly redefining the fields value:
+The structure can be used by optionally redefining the field values:
 @example
 point1 point
 point2 point 1, 2, 3

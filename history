@@ -1,6 +1,33 @@
 vasm history
 =============
 
+- 1.8l (19.07.21)
+o ASCII output modules cdef, ihex, srec and test now use the host system's
+  line endings.
+o m68k: Scale factor may be a (constant) symbol.
+o m68k: Recognize local register symbols.
+o m68k: Fixed -opt-jbra (opt ob+), which caused an illegal instruction error
+  since the last release.
+o m68k: Enabled Apollo Core FPU instructions.
+o m68k: Apollo FPU instruction banking prefix support. Patch by John Hankinson.
+o jagrisc: Fixed (Rn+0) optimization to (Rn).
+o z80: Support for the 12 additional 8085 instructions by Grzegorz Mazur.
+o 6809: Added missing LSRW and support for the 6309 F-register (patch by
+  Jim Westfall).
+o 6809: Fixed LDW indexed addressing mode.
+o mot-syntax: showoffset for PhxAss compatibility.
+o mot-syntax: Fixed DX directive, which was broken in the last release.
+o madmac-syntax: ABS directive is no longer available for the jagrisc
+  cpu backend as it conflicts with the instruction name.
+o std-syntax: .int uses the target's address size.
+o oldstyle-syntax: addr uses the target's address size.
+o hunk-output: Default section name comes from the syntax module now, in
+  case the output only contains symbols, but no data.
+o srec-output: Added -crlf option to enforce CR/LF line endings (submitted
+  by Grzegorz Mazur).
+o ihex-output: Added -crlf option to enforce CR/LF line endings (submitted
+  by Grzegorz Mazur).
+
 - 1.8k (13.05.21)
 o New output modules "o65" and "o65exe" to write object files and
   executables for the 6502-family of processors.
@@ -20,7 +47,7 @@ o m68k: Fixed misdetection of labels with dots (-ldots) as registers with
   size extension (e.g. "(pc.msg,pc)").
 o m68k: Fixed Apollo instruction encoding: pcmpgeb, pcmpgew, pcmpgtb,
   pcmpgtw. Changed Apollo instruction name: miniterm to minterm.
-  Patch by John H.
+  Patch by John Hankinson.
 o m68k: New Apollo core instructions (John): lslq, lsrq, pabsb, pabsw,
   storem2, storem3, transilo.
 o m68k: Encoding a branch distance of -1 is not allowed for 68020+ CPUs.

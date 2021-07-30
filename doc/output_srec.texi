@@ -9,6 +9,15 @@ selected with the @option{-Fsrec} option.
 @section Additional options for this module
  
 @table @option
+    @item -crlf
+        Enforce Carriage-Return and Line-Feed (@code{"\r\n"}) line
+        endings. Default is to use the host's line endings.
+    @item -exec[=<symbol>]
+        Use the given symbol <symbol> as entry point of the program.
+        This start address will be written into the trailer record,
+        which is otherwise zero.
+        When the symbol assignment is omitted, then the default symbol
+        @code{start} will be used.
     @item -s19
         Writes S1 data records and S9 trailers with 16-bit addresses.
     @item -s28
@@ -16,12 +25,6 @@ selected with the @option{-Fsrec} option.
     @item -s37
         Writes S3 data records and S7 trailers with 32-bit addresses.
         This is the default setting.
-    @item -exec[=<symbol>]
-        Use the given symbol <symbol> as entry point of the program.
-        This start address will be written into the trailer record,
-        which is otherwise zero.
-        When the symbol assignment is omitted, then the default symbol
-        @code{start} will be used.
 @end table
  
 @section General

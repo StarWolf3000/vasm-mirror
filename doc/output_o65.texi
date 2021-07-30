@@ -72,7 +72,7 @@ or name:
       written (@code{adrw}).
 @item bss, sections which have unitialized data and may be read and
       written (@code{aurw}).
-@item zero, sections which have uninitialized data which may be read
+@item zero, sections which have uninitialized data, may be read
       and written, and do not have the string @code{"bss"} anywhere in
       their name (@code{aurw}).
 @end itemize

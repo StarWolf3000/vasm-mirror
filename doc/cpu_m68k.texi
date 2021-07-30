@@ -3,7 +3,7 @@ microprocessor family.
 
 @section Legal
 
-    This module is written in 2002-2020 by Frank Wille and
+    This module is written in 2002-2021 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 
@@ -202,7 +202,7 @@ This module provides the following additional options:
         not be intended.
 
     @item -sc
-        Small code.
+        Small code model.
         All @code{JMP} and @code{JSR} instructions to external labels
         will be converted into 16-bit PC-relative jumps.
 
@@ -405,7 +405,7 @@ directives:
 
 @table @code
 @item .sdreg <An>
-      Equivalents to @code{near <An>}.
+      Equivalent to @code{near <An>}.
 
 @item basereg <expression>,<An>
       Starts a block of base-relative addressing through register @code{An}
@@ -609,7 +609,7 @@ directives:
 
    The following options are vasm specific and should not be used when
    writing portable source. Using @code{opt o+} or @code{opt o-} in
-   Devpac mode only toggles @code{og}, @code{of} and @code{oj}.
+   Devpac mode only toggles @code{og} and @code{of}.
    @table @code
       @item ob
         Convert absolute jumps to external labels into long-branches
@@ -668,7 +668,7 @@ module:
       used!
 
 @item <symbol> equrl <reglist>
-      Equivalents to @code{<symbol> reg <reglist>}.
+      Equivalent to @code{<symbol> reg <reglist>}.
 
 @item <symbol> fequr <FPn>
       Define a new symbol named <symbol> and assign the FPU register
@@ -677,7 +677,7 @@ module:
       used!
 
 @item <symbol> fequrl <reglist>
-      Equivalents to @code{<symbol> freg <reglist>}.
+      Equivalent to @code{<symbol> freg <reglist>}.
 
 @item <symbol> freg <reglist>
       Defines a new symbol named <symbol> and assign the FPU register
@@ -1095,5 +1095,7 @@ This module has the following error messages:
 @item 2067: not a valid register list symbol
 @item 2068: trailing garbage in operand
 @item 2069: encoding absolute displacement directly
+@item 2070: internal symbol %s has been modified
+@item 2071: instruction too large for bank prefix
 
 @end itemize

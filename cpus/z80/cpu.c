@@ -25,6 +25,7 @@
 
 /* z80 backend for vasm */
 
+/* 8085 instructions support by gbm 06'21 */
 
 #include "vasm.h"
 
@@ -76,6 +77,7 @@ mnemonic mnemonics[] = {
     
     "ani",  { OP_ABS },                                         { TYPE_NONE, 0xe6, CPU_80OS, 0 },
 
+    "arhl", { OP_NONE },                                        { TYPE_NONE, 0x10, CPU_80OS, 0 },	/* gbm 8085 */
 
 
     "bit",  { OP_NUMBER, OP_REG8|OP_INDEX|OP_RALT|OP_RALTHL},   { TYPE_BIT, 0xCB40, CPU_NOT8080, F_ALL },
@@ -146,6 +148,7 @@ mnemonic mnemonics[] = {
     "di",   { OP_NONE, },                                       { TYPE_NONE, 0xf3,   CPU_ZILOG|CPU_8080|CPU_80OS|CPU_GB80, F_ALTD },
 
     "djnz", { OP_ABS },                                         { TYPE_RELJUMP, 0x10, CPU_NOTGB80, F_ALTD },
+    "dsub", { OP_NONE },                                        { TYPE_NONE, 0x08, CPU_80OS, 0 },   /* gbm 8085 */
     "dwjnz",{ OP_ABS },                                         { TYPE_RELJUMP, 0xed10, CPU_RCM4000, F_ALTD },
 
 
@@ -217,6 +220,7 @@ mnemonic mnemonics[] = {
     "jmp",   { OP_ABS16 },                                       { TYPE_NONE, 0xc3, CPU_80OS, 0 },
     
     "jnc",   { OP_ABS16 },                                       { TYPE_NONE, 0xd2, CPU_80OS, 0 },
+    "jnui",  { OP_ABS16 },                                       { TYPE_NONE, 0xdd, CPU_80OS, 0 },	/* gbm 8085 */
     "jnz",   { OP_ABS16 },                                       { TYPE_NONE, 0xc2, CPU_80OS, 0 },
     "jp",    { OP_ABS16 },                                       { TYPE_NONE, 0xf2, CPU_80OS, 0 },
     "jpe",   { OP_ABS16 },                                       { TYPE_NONE, 0xea, CPU_80OS, 0 },
@@ -236,7 +240,8 @@ mnemonic mnemonics[] = {
     "jp",   { OP_HL|OP_INDEX },                                 { TYPE_NONE, 0xE9, CPU_ALL, 0 },
     "jp",   { OP_ABS16 },                                       { TYPE_NONE, 0xc3, CPU_ALL|CPU_80OS, F_80OS_CHECK },
     
-    "jz",    { OP_ABS16 },                                      { TYPE_NONE, 0xca, CPU_80OS, 0 },
+    "jui",  { OP_ABS16 },                                       { TYPE_NONE, 0xfd, CPU_80OS, 0 },	/* gbm 8085 */
+    "jz",   { OP_ABS16 },                                       { TYPE_NONE, 0xca, CPU_80OS, 0 },
 
     "lcall",{ OP_ABS24 },                                       { TYPE_NONE, 0xcf, CPU_RABBIT, 0 },
     "ljp",  { OP_ABS24 },                                       { TYPE_NONE, 0xc7, CPU_RABBIT, 0 },
@@ -426,6 +431,7 @@ mnemonic mnemonics[] = {
 
     "ldh",  { OP_ADDR8, OP_A },                                 { TYPE_NONE, 0xe0, CPU_GB80, 0 }, /* ld (xx),a (GB - for ff00 page) */
     "ldh",  { OP_A, OP_ADDR8 },                                 { TYPE_NONE, 0xf0, CPU_GB80, 0 }, /* ld a,(xx) */
+    "ldhi", { OP_ABS },                                         { TYPE_NONE, 0x28, CPU_80OS, 0 }, /* gbm 8085 */
     "ldhl", { OP_SP, OP_ABS },                                  { TYPE_NONE, 0xf8, CPU_GB80, 0 },
 
     "ldi",  { OP_NONE, },                                       { TYPE_NONE, 0xeda0, CPU_ZILOG|CPU_RABBIT, F_IO },
@@ -447,7 +453,9 @@ mnemonic mnemonics[] = {
     "ldp",  { OP_HL, OP_HL|OP_INDEX|OP_INDIR },                 { TYPE_EDPREF, 0xed6c, CPU_RABBIT, 0 }, /* ldp hl,(hl) */
     "ldp",  { OP_HL|OP_INDEX, OP_ADDR },                        { TYPE_EDPREF, 0xed6d, CPU_RABBIT, 0 }, /* ldp hl,(xx) */
 
-    "lhld",   { OP_ABS16 },                                     { TYPE_NONE, 0x2a, CPU_80OS, 0 },
+    "ldsi", { OP_ABS },                                         { TYPE_NONE, 0x38, CPU_80OS, 0 },	/* gbm 8085 */
+    "lhld", { OP_ABS16 },                                       { TYPE_NONE, 0x2a, CPU_80OS, 0 },
+    "lhlx", { OP_NONE },                                        { TYPE_NONE, 0xed, CPU_80OS, 0 },	/* gbm 8085 */
     
     "llret",{ OP_NONE },                                        { TYPE_NONE, 0xed8b, CPU_RCM4000, 0 },
     "lret", { OP_NONE },                                        { TYPE_NONE, 0xed45, CPU_RABBIT, 0 },
@@ -532,9 +540,11 @@ mnemonic mnemonics[] = {
     "ral",  { OP_NONE },                                        { TYPE_NONE, 0x17, CPU_80OS, 0 },
     "rar",  { OP_NONE, },                                       { TYPE_NONE, 0x1f, CPU_80OS, 0 },
     
-    "rc",  { OP_NONE },                                        { TYPE_NONE, 0xd8,  CPU_80OS, 0 },
+    "rc",   { OP_NONE },                                        { TYPE_NONE, 0xd8,  CPU_80OS, 0 },
+
+    "rdel",  { OP_NONE },                                       { TYPE_NONE, 0x18, CPU_80OS, 0 },   /* gbm 8085 */
    
-   "rdmode", { OP_NONE },                                      { TYPE_NONE, 0xed7f, CPU_RCM3000|CPU_RCM4000, 0 },
+    "rdmode",{ OP_NONE },                                       { TYPE_NONE, 0xed7f, CPU_RCM3000|CPU_RCM4000, 0 },
 
     "res",  { OP_NUMBER, OP_REG8|OP_INDEX|OP_RALT},             { TYPE_BIT, 0xCB80, CPU_NOT8080, F_ALL|F_ALTDWHL },
 
@@ -543,6 +553,8 @@ mnemonic mnemonics[] = {
     "retn", { OP_NONE, },                                       { TYPE_NONE, 0xed45, CPU_ZILOG, 0 },
     "reti", { OP_NONE, },                                       { TYPE_NONE, 0xed4d, CPU_ZILOG|CPU_RABBIT|CPU_GB80, 0, 0, 0, 0, RCM_EMU_INCREMENT },
     "reti", { OP_NONE, },                                       { TYPE_NONE, 0xd9,   CPU_GB80, 0 },
+
+    "rim",  { OP_NONE },                                        { TYPE_NONE, 0x20, CPU_80OS, 0 },   /* gbm 8085 */
 
     "rl",   { OP_REG8|OP_RALT },                                { TYPE_ARITH8, 0xcb10, CPU_NOT8080, F_ALL },
     "rl",   { OP_BC|OP_RALT },                                  { TYPE_NONE, 0x62, CPU_RCM4000, F_ALTD },
@@ -589,6 +601,8 @@ mnemonic mnemonics[] = {
     "rrd",  { OP_NONE, },                                       { TYPE_NONE, 0xed67, CPU_ZILOG|CPU_RABBIT, 0, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, 0 },
     "rst",  { OP_NUMBER },                                      { TYPE_RST,  0xc7, CPU_ALL|CPU_80OS, 0 },  /* RCM doesn't support 0, 8, 30 */
 
+    "rstv", { OP_NONE },                                        { TYPE_NONE, 0xcb, CPU_80OS, 0 },	/* gbm 8085 */
+
     "rz",  { OP_NONE, },                                        { TYPE_NONE, 0xc8,   CPU_80OS, 0 },
     
     "sbb",  { OP_REG8 },                                        { TYPE_ARITH8, 0x98, CPU_80OS },
@@ -616,6 +630,9 @@ mnemonic mnemonics[] = {
     "setusrp", { OP_ABS16 },                                    { TYPE_NONE, 0xedbf, CPU_RCM4000, 0 },
     
     "shld",  { OP_ABS16 },                                      { TYPE_NONE, 0x22, CPU_80OS, 0 }, 
+    "shlx",  { OP_NONE },                                       { TYPE_NONE, 0xd9, CPU_80OS, 0 },   /* gbm 8085 */
+
+    "sim",  { OP_NONE },                                        { TYPE_NONE, 0x30, CPU_80OS, 0 },   /* gbm 8085 */
 
     "sla",  { OP_REG8 },                                        { TYPE_ARITH8, 0xcb20, CPU_NOT8080, F_ALTD },
     "sll",  { OP_REG8, },                                       { TYPE_ARITH8, 0xcb30, CPU_Z80, 0 }, /* Undoc */
@@ -694,7 +711,7 @@ mnemonic mnemonics[] = {
 
 int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright="vasm 8080/gbz80/z80/z180/rcmX000 cpu backend 0.3a (c) 2007,2009 Dominic Morris";
+char *cpu_copyright="vasm 8080/gbz80/z80/z180/rcmX000 cpu backend 0.4 (c) 2007,2009 Dominic Morris";
 char *cpuname = "z80";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -1851,7 +1868,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
 
                 /* Emulate by calling a library routine */
                 if ( rcmemu ) {
-                    snprintf(buf,sizeof(buf),"rcmx_%s",opcode->name);
+                    sprintf(buf,"rcmx_%s",opcode->name);
 
                     if ( (sym = find_symbol(buf)) == NULL ) {
                         sym = new_import(buf);

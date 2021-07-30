@@ -34,7 +34,7 @@ This module provides the following additional options:
 
 @table @option
     @item -8080
-        Turns on 8080 compatibility mode. Any use of z80 (or higher)
+        Turns on 8080/8085 compatibility mode. Any use of z80 (or higher)
         opcodes will result in an error being generated.
     @item -gbz80
         Turns on gbz80 compatibility mode. Any use of non-supported

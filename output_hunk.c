@@ -1,11 +1,11 @@
 /* output_hunk.c AmigaOS hunk format output driver for vasm */
-/* (c) in 2002-2020 by Frank Wille */
+/* (c) in 2002-2021 by Frank Wille */
 
 #include "vasm.h"
 #include "osdep.h"
 #include "output_hunk.h"
 #if defined(OUTHUNK) && (defined(VASM_CPU_M68K) || defined(VASM_CPU_PPC))
-static char *copyright="vasm hunk format output module 2.13 (c) 2002-2020 Frank Wille";
+static char *copyright="vasm hunk format output module 2.13a (c) 2002-2021 Frank Wille";
 int hunk_onlyglobal;
 
 /* (currenty two-byte only) padding value for not 32-bit aligned code hunks */
@@ -78,7 +78,7 @@ static void fwnopalign(FILE *f,taddr n)
 
 static section *dummy_section(void)
 {
-  return new_section(".text","acrx3",8);
+  return new_section(defsectname,defsecttype,8);
 }
 
 
@@ -281,7 +281,7 @@ static utaddr sect_size(section *sec)
     if (a->type == SPACE) {
       sblock *sb = a->content.sb;
     
-      if (sb->flags & SPC_UNINITIALIZED) {
+      if (sb->flags & SPC_DATABSS) {
         if (dxpc == 0)
           dxpc = pc;
       }
@@ -664,7 +664,11 @@ static void linedebug_hunk(FILE *f,struct list *ldblist)
     /* get source file name as full absolute path */
     if (!abs_path(ldbblk->filename)) {
       char *cwd = append_path_delimiter(get_workdir());
-      snprintf(abspathbuf,MAXPATHLEN,"%s%s",cwd,ldbblk->filename);
+
+      if (strlen(cwd) + strlen(ldbblk->filename) < MAXPATHLEN)
+        sprintf(abspathbuf,"%s%s",cwd,ldbblk->filename);
+      else
+        output_error(15,MAXPATHLEN);  /* max path len exceeded */
       myfree(cwd);
     }
     else

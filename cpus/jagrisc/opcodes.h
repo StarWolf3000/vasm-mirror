@@ -18,6 +18,7 @@
   "jr",       { CC,    REL   }, { 53, ANY|OPSWAP },
   "jump",     { IREG         }, { 52, ANY|OPSWAP },
   "jump",     { CC,    IREG  }, { 52, ANY|OPSWAP },
+  /* Order of "load" matters! Refer to @OPT1@ in cpu.c */
   "load",     { IREG,  REG   }, { 41, ANY },
   "load",     { IR14R, REG   }, { 58, ANY },
   "load",     { IR15R, REG   }, { 59, ANY },
@@ -55,6 +56,7 @@
   "sharq",    { IMM1,  REG   }, { 27, ANY },
   "shlq",     { IMM1S, REG   }, { 24, ANY },
   "shrq",     { IMM1,  REG   }, { 25, ANY },
+  /* Order of "store" matters! Refer to @OPT1@ in cpu.c */
   "store",    { REG,   IREG  }, { 47, ANY|OPSWAP },
   "store",    { REG,   IR14R }, { 60, ANY|OPSWAP },
   "store",    { REG,   IR15R }, { 61, ANY|OPSWAP },

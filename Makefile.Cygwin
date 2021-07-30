@@ -4,7 +4,7 @@ TARGET = _win32
 TARGETEXTENSION = .exe
 
 CC = gcc
-CCOUT = -o 
+CCOUT = -o $(DUMMY)
 COPTS = -c -O2 -DUNIX $(OUTFMTS)
 
 LD = $(CC)

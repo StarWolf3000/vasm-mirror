@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm std syntax module 5.3a (c) 2002-2021 Volker Barthelmann";
+char *syntax_copyright="vasm std syntax module 5.3b (c) 2002-2021 Volker Barthelmann";
 hashtable *dirhash;
 int dotdirs = 1;
 
@@ -901,6 +901,7 @@ static void handle_8bit(char *s){ handle_data(s,8,0); }
 static void handle_16bit(char *s){ handle_data(s,16,0); }
 static void handle_32bit(char *s){ handle_data(s,32,0); }
 static void handle_64bit(char *s){ handle_data(s,64,0); }
+static void handle_taddr(char *s){ handle_data(s,bytespertaddr*bitsperbyte,0); }
 static void handle_16bit_noalign(char *s){ handle_data(s,16,1); }
 static void handle_32bit_noalign(char *s){ handle_data(s,32,1); }
 static void handle_64bit_noalign(char *s){ handle_data(s,64,1); }
@@ -1016,7 +1017,7 @@ struct {
   "short",handle_16bit,
   "half",handle_16bit,
   "word",handle_16bit,
-  "int",handle_32bit,
+  "int",handle_taddr,
   "long",handle_32bit,
   "quad",handle_64bit,
   "2byte",handle_16bit_noalign,
@@ -1321,7 +1322,7 @@ char *parse_macro_arg(struct macro *m,char *s,
     char buf[64],*ccstr;
     int len;
 
-    if ((len = snprintf(buf,64,"%lu",cc)) < 0)
+    if ((len = sprintf(buf,"%lu",cc)) < 0)
       ierror(0);
     ccstr = mystrdup(buf);
     param->name = ccstr;

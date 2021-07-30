@@ -3,7 +3,7 @@ Hitachi 6309.
 
 @section Legal
 
-    This module is written in 2020 by Frank Wille
+    This module is written in 2020-2021 by Frank Wille
     and is covered by the vasm copyright without modifications.
 
 

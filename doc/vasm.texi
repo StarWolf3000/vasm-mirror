@@ -8,6 +8,7 @@
 @setfilename index.texi
 @settitle vasm manual
 @setchapternewpage odd
+@set UPDATED June 2021
 
 @ifinfo
 
@@ -19,7 +20,8 @@ Copyright 2002-2021 Volker Barthelmann
 
 @titlepage
 @title vasm assembler system
-@author Volker Barthelmann
+@author Volker Barthelmann, Frank Wille
+@subtitle @value{UPDATED}
 
 @page
 
@@ -143,6 +145,10 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @node Motorola srecord output module
 @chapter Motorola srecord output module
 @include output_srec.texi
+
+@node Intel hex output module
+@chapter Intel hex output module
+@include output_ihex.texi
 
 @node C #define output module
 @chapter C #define output module
