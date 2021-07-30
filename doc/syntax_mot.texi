@@ -4,7 +4,7 @@ M68k and ColdFire families of CPUs, which is available with the extension
 
 @section Legal
 
-    This module is written in 2002-2020 by Frank Wille and
+    This module is written in 2002-2021 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -87,7 +87,7 @@ the option @option{-ldots} or @option{-devpac} was specified. Even then,
 labels ending on @code{.b}, @code{.w} or @code{.l} can't be defined.
 
 It is possible to refer to any local symbol in the source by preceding its
-name with the name of the last global symbol, which was defined before:
+name with the name of the last previously defined global symbol:
 @code{global_name\local_name}. This is for PhxAss compatibility only,
 and is no recommended style. Does not work in a macro, as it conflicts
 with macro arguments.
@@ -106,12 +106,13 @@ characters, as long as the option @option{-spaces} was not specified.
 Comments can be introduced everywhere by the characters @code{;} or @code{*}.
 The rest of the line will be ignored. Also everything following the operand
 field, separated by a whitespace, will be regarded as comment (unless
-@option{-spaces}). Be careful with @code{*}, which is recognized as the
-"current pc symbol" in any operand expression
+@option{-spaces} was given). Be careful with @code{*}, which is recognized
+as the "current pc symbol" in any operand expression
 
 Example:
-
-@code{mylabel inst.q op1,op2,op3  ;comment}
+@example
+mylabel inst.q op1,op2,op3  ;comment
+@end example
 
 In expressions, numbers starting with @code{$} are hexadecimal (e.g.
 @code{$fb2c}). @code{%} introduces binary numbers (e.g. @code{%1100101}).
@@ -142,7 +143,7 @@ CPU- and output-module support them):
       Equivalent to @code{<symbol> fequ.p <expression>}. PhxAss compatibility.
 
 @item align <bitcount>
-      Insert as much zero bytes as required to reach an address where
+      Insert as many zero bytes as required to reach an address where
       <bitcount> low order bits are zero. For example @code{align 2} would
       make an alignment to the next 32-bit boundary.
 
@@ -182,7 +183,8 @@ CPU- and output-module support them):
       the size of the previous symbol. The size defaults to 2. Valid
       optional size extensions are: @code{.b}, @code{.w}, @code{.l},
       where @code{.l} results in a size of 4, the others 2.
-      The <offset> argument defaults to 4, when not given.
+      The <offset> argument defaults to the target's address size
+      (4 for M68k) when omitted.
 
 @item clrfo
       Reset stack-frame offset counter to zero. See @code{fo} directive.
@@ -191,8 +193,8 @@ CPU- and output-module support them):
       Reset structure offset counter to zero. See @code{so} directive.
 
 @item cnop <offset>,<alignment>
-      Insert as much zero bytes as required to reach an address which
-      can be divided by <alignment>. Then add <offset> zero bytes.
+      Insert as many padding bytes as required to reach an address which
+      can be divided by <alignment>. Then add <offset> padding bytes.
       May fill the padding-bytes with no-operation instructions for certain
       cpus.
 
@@ -472,7 +474,7 @@ CPU- and output-module support them):
 
 @item ifb <operand>
       Conditionally assemble the following lines when <operand> is
-      completely blank, except an optional comment.
+      completely blank, except for an optional comment.
 
 @item ifnb <operand>
       Conditionally assemble the following lines when <operand> is
@@ -505,10 +507,12 @@ CPU- and output-module support them):
       Conditionally assemble the <statement> following <expression>.
       IIF stands for Immediate IF.
       If the value of <expression> is non-zero then <statement> is assembled.
-      No @code{ENDC} should be used in conjunction with this directive.
+      No @code{ENDC} must be used in conjunction with this directive.
       The <statement> can not include a label, but a label may precede the
       @code{IIF} directive. For example:
-      @code{foo IIF bar equ 42}
+@example
+foo IIF bar equ 42
+@end example
       The @code{foo} label will be assigned with @code{42} if @code{bar}
       evaluates to true, otherwise @code{foo} will be assigned with the
       current program counter.
@@ -526,9 +530,6 @@ CPU- and output-module support them):
       of bytes will be skipped at the beginning of the file. The optional
       <length> argument specifies the maximum number of bytes to be read
       from that file.
-      The file will be searched first in the current
-      directory, then in all paths defined by @option{-I} or @code{incdir}
-      in the order of occurrence.
 
 @item incdir <path>
       Add another path to search for include files to the list of
@@ -536,10 +537,7 @@ CPU- and output-module support them):
       searched first.
 
 @item include <file>
-      Include source text of <file> at this position. The include file
-      will be searched first in the current directory, then in all
-      paths defined by @option{-I} or @code{incdir} in the order of
-      occurrence.
+      Include source text of <file> at this position.
 
 @item inline
       Local labels in the following block are isolated from previous
@@ -555,8 +553,8 @@ CPU- and output-module support them):
 
 @item macro <name>
       Defines a macro which can be referenced by <name>. The <name>
-      may also appear at the left side of the @code{macro} directive,
-      starting at the first column. Then the operand field is ignored.
+      may optionally appear at the left side of the @code{macro} directive,
+      starting on the first column. Then the operand field is ignored.
       The macro definition is closed
       by an @code{endm} directive. When calling a macro you may pass
       up to 9 arguments, separated by comma. Those arguments are
@@ -627,7 +625,7 @@ CPU- and output-module support them):
 
 @item nref <symbol>[,<symbol>...]
       Flag <symbol> as externally defined, similar to @code{xref},
-      but also indicate that references should be optimized to base-relative
+      but also indicate that references can be optimized to base-relative
       addressing modes, when possible. This directive is only present
       in PhxAss-compatibility mode.
 
@@ -637,9 +635,10 @@ CPU- and output-module support them):
       wastes two bytes when the address is already odd.
 
 @item offset [<expression>]
-      Switches to a special offset-section. The contents of such a section
-      is not included in the output. Their labels may be referenced as
-      absolute offset symbols. Can be used to define structure offsets.
+      Switches to a special offset-section, similar to a @code{section}
+      directive. Although the contents of such a section is not included
+      in the output. Their labels may be referenced as absolute
+      offset symbols. Can be used to define structure offsets.
       The optional <expression> gives the start offset for this section.
       When missing the last offset of the previous offset-section is used,
       or 0.
@@ -647,7 +646,7 @@ CPU- and output-module support them):
 
 @item org <expression>
       Sets the base address for the subsequent code. Note that it is allowed
-      to embed such an absolute ORG block into a section. Return into
+      to embed such an absolute ORG block into a section. Return to
       relocatable mode with any new section directive. Although in Devpac
       compatibility mode the previous section will stay absolute.
 
@@ -668,7 +667,7 @@ CPU- and output-module support them):
       Currently ignored.
 
 @item printt <string>[,<string>...]
-      Prints <string> to stdout. Each additional string into a new line.
+      Prints <string> to stdout. Every additional string into a new line.
       Quotes are optional.
 
 @item printv <expression>[,<expression>...]
@@ -721,13 +720,13 @@ CPU- and output-module support them):
       Starts a new section named @code{<name>} or reactivates an old one.
       @code{<sec_type>} defines the section type and may be @code{code},
       @code{text} (same as @code{code}), @code{data} or @code{bss}.
-      If the selected output format (like "aout", "tos" or "xfile")
-      does not support section names then a missing @code{<sec_type>}
-      argument interprets the first argument, @code{<name>}, as section
-      type instead. Otherwise a missing @code{<sec_type>} defaults to
-      a @code{code} section with the given name.
-      The optional, and Amiga-specific, @code{<mem_type>} defines a 32-bit
-      memory attribute, which specifies where to load the section.
+      If the selected output format does not support section names (like
+      "aout", "tos" or "xfile"), then a missing @code{<sec_type>}
+      argument makes vasm interpret the first argument, @code{<name>},
+      as section type instead. Otherwise a missing @code{<sec_type>}
+      defaults to a @code{code} section with the given name.
+      The optional @code{<mem_type>} defines a 32-bit
+      memory attribute which specifies where to load the section.
       @code{<mem_type>} is either a numerical constant or one of the
       keywords @code{chip} (for Chip-RAM) or @code{fast} (for Fast-RAM).
       Optionally it is also possible to attach the suffix @code{_C}, @code{_F}
@@ -750,6 +749,11 @@ CPU- and output-module support them):
       Sets the structure offset counter (@code{__SO}) to <expression>.
       See @code{so} directive.
       @code{<expression>} must evaluate as a constant!
+
+@item showoffset [<text>]
+      Print current section offset (or absolute address) to the console,
+      preceded by the optional @code{<text>} (may use quotes).
+      PhxAss compatibility. Do not use in new code.
 
 @item <label> so.<size> <expression>
       Assigns the current value of the structure offset counter to <label>.

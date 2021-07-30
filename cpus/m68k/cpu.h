@@ -1,6 +1,6 @@
 /*
 ** cpu.h Motorola M68k, CPU32 and ColdFire cpu-description header-file
-** (c) in 2002,2006-2020 by Frank Wille
+** (c) in 2002,2006-2021 by Frank Wille
 */
 
 #define BIGENDIAN 1
@@ -99,6 +99,9 @@ enum {
 
 /* returns true when instruction is valid for selected cpu */
 #define MNEMONIC_VALID(n) m68k_available(n)
+
+/* returns true when operand type is optional; may init default operand */
+#define OPERAND_OPTIONAL(p,t) m68k_operand_optional(p,t)
 
 /* parse cpu-specific directives with label */
 #define PARSE_CPU_LABEL(l,s) parse_cpu_label(l,s)
@@ -284,6 +287,7 @@ struct optype {
 #define OTF_CHKREG  0x200 /* compare op. register against first/last */
 #define OTF_VXRNG2  0x400 /* Apollo AMMX Rn:Rn+1 vector register range */
 #define OTF_VXRNG4  0x800 /* Apollo AMMX Rn-Rn+3 vector register range */
+#define OTF_OPT    0x1000 /* optional operand */
 
 
 /* additional mnemonic data */
@@ -406,6 +410,7 @@ struct cpu_models {
 #define mcffpu   0x00020000
 #define mcfmmu   0x00040000
 #define ac68080  0x00100000
+#define mbanked  0x10000000 /* Apollo 68080 Bank Prefix */
 #define mgas     0x20000000 /* a GNU-as specific mnemonic */
 #define malias   0x40000000 /* a bad alias which we should warn about */
 #define mfpu     0x80000000 /* just to check if CP-ID needs to be inserted */
@@ -415,7 +420,7 @@ struct cpu_models {
 #define apollo    (ac68080)
 #define mcf       (mcfa|mcfaplus|mcfb|mcfc)
 #define mcf_all   (mcfa|mcfaplus|mcfb|mcfc|mcfhwdiv|mcfmac|mcfemac|mcfusp|mcffpu|mcfmmu)
-#define	mfloat    (mfpu|m68881|m68882|m68040|m68060)
+#define	mfloat    (mfpu|m68881|m68882|m68040|m68060|ac68080)
 #define	mmmu      (m68851|m68030|m68040|m68060)
 #define	m68040up  (m68040|m68060|apollo)
 #define	m68030up  (m68030|m68040up)
@@ -441,4 +446,5 @@ extern int m68k_mid;
 /* exported functions */
 int m68k_available(int);
 int m68k_data_operand(int);
+int m68k_operand_optional(operand *,int);
 int parse_cpu_label(char *,char **);

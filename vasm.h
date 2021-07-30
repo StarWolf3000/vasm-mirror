@@ -120,7 +120,7 @@ typedef struct mnemonic {
 #define OPSZ_SWAP	0x200  /* operand stored with swapped bytes */
 
 
-extern int done,final_pass,nostdout;
+extern int done,final_pass,nostdout,asciiout;
 extern int warn_unalloc_ini_dat;
 extern int mnemonic_cnt;
 extern int nocase,no_symbols,pic_check,exec_out,chklabels;

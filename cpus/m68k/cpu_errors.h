@@ -70,3 +70,4 @@
   "trailing garbage in operand",WARNING,
   "encoding absolute displacement directly",WARNING,
   "internal symbol %s has been modified",WARNING,
+  "instruction too large for bank prefix",ERROR,                     /* 70 */

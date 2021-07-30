@@ -9,7 +9,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.4 (c)2020-2021 by Frank Wille";
+char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.4a (c)2020-2021 by Frank Wille";
 char *cpuname = "6809";
 int bitsperbyte = 8;
 int bytespertaddr = 2;

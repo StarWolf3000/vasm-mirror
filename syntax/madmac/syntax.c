@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2015-2020 by Frank Wille */
+/* (c) in 2015-2021 by Frank Wille */
 
 #include "vasm.h"
 #include "error.h"
@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm madmac syntax module 0.4g (c) 2015-2020 Frank Wille";
+char *syntax_copyright="vasm madmac syntax module 0.4h (c) 2015-2021 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -697,7 +697,9 @@ struct {
   "nlist",handle_nlist,
   "nolist",handle_nlist,
   "print",handle_print,
+#ifndef VASM_CPU_JAGRISC
   "abs",handle_offset,
+#endif
   "offset",handle_offset
 };
 
@@ -972,25 +974,28 @@ int expand_macro(source *src,char **line,char *d,int dlen)
             *d++ = '\\';  /* make it a double \ again */
             nc = 2;
           }
-          else
-            nc = -1;
+          else nc = -1;
         }
-        else
-          nc = 1;
+        else nc = 1;
       }
-      else
-        nc = -1;
+      else nc = -1;
     }
 
     else if (*s == '~') {
       /* \~: insert a unique id */
-      nc = snprintf(d,dlen,"M%lu",src->id);
-      s++;
+      if (dlen > 10) {
+        nc = sprintf(d,"M%lu",src->id);
+        s++;
+      }
+      else nc = -1;
     }
     else if (*s == '#') {
       /* \# : insert number of parameters */
-      nc = snprintf(d,dlen,"%d",src->num_params);
-      s++;
+      if (dlen > 3) {
+        nc = sprintf(d,"%d",src->num_params);
+        s++;
+      }
+      else nc = -1;
     }
     else if (*s == '!') {
       /* \!: copy qualifier (dot-size) */

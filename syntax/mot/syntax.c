@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm motorola syntax module 3.15a (c) 2002-2021 Frank Wille";
+char *syntax_copyright="vasm motorola syntax module 3.15b (c) 2002-2021 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -321,6 +321,13 @@ static void handle_uspace(char *s,int size)
 {
   atom *a = do_space(size,parse_expr_tmplab(&s),0);
   a->content.sb->flags |= SPC_UNINITIALIZED;
+}
+
+
+static void handle_dbss(char *s,int size)
+{
+  atom *a = do_space(size,parse_expr_tmplab(&s),0);
+  a->content.sb->flags |= SPC_DATABSS;
 }
 
 
@@ -793,31 +800,31 @@ static void handle_block(char *s,int size)
 
 static void handle_xspc8(char *s)
 {
-  handle_uspace(s,8);
+  handle_dbss(s,8);
 }
 
 
 static void handle_xspc16(char *s)
 {
-  handle_uspace(s,16);
+  handle_dbss(s,16);
 }
 
 
 static void handle_xspc32(char *s)
 {
-  handle_uspace(s,32);
+  handle_dbss(s,32);
 }
 
 
 static void handle_xspc64(char *s)
 {
-  handle_uspace(s,64);
+  handle_dbss(s,64);
 }
 
 
 static void handle_xspc96(char *s)
 {
-  handle_uspace(s,96);
+  handle_dbss(s,96);
 }
 
 
@@ -1491,7 +1498,7 @@ static void handle_cargs(char *s)
       s = skip(s+1);
   }
   else
-    offs = number_expr(4);  /* default offset */
+    offs = number_expr(bytespertaddr);  /* default offset */
 
   for (;;) {
 
@@ -1577,6 +1584,17 @@ static void handle_printv(char *s)
       break;
     s = skip(s+1);
   }    
+}
+
+static void handle_showoffset(char *s)
+{
+  char *txt;
+
+  if (txt = parse_name(&s))
+    add_atom(0,new_text_atom(txt));
+  add_atom(0,new_text_atom(" "));
+  add_atom(0,new_expr_atom(curpc_expr(),PEXP_HEX,32));
+  add_atom(0,new_text_atom(NULL));  /* new line */
 }
 
 static void handle_dummy_expr(char *s)
@@ -1835,6 +1853,7 @@ struct {
   "echo",P,handle_printt,
   "printt",0,handle_printt,
   "printv",0,handle_printv,
+  "showoffset",P,handle_showoffset,
   "auto",0,handle_noop,
   "inline",P,handle_inline,
   "einline",P,handle_einline,
@@ -2360,8 +2379,8 @@ int expand_macro(source *src,char **line,char *d,int dlen)
       else
         unique_id = src->id;
 
-      nc = snprintf(d,dlen,"_%06lu",unique_id);
-      if (nc < dlen) {
+      if (dlen > 7) {
+        nc = sprintf(d,"_%06lu",unique_id);
         switch (*s) {
           case '!':
             /* push id onto stack */
@@ -2415,11 +2434,15 @@ int expand_macro(source *src,char **line,char *d,int dlen)
         fmt = "%lu";
       if (name = parse_symbol(&s)) {
         if ((sym = find_symbol(name)) && sym->type==EXPRESSION) {
-          if (eval_expr(sym->expr,&val,NULL,0))
-            nc = sprintf(d,fmt,(unsigned long)(uint32_t)val);
+          if (eval_expr(sym->expr,&val,NULL,0)) {
+            if (dlen > 9)
+              nc = sprintf(d,fmt,(unsigned long)(uint32_t)val);
+            else
+              nc = -1;
+          }
         }
         myfree(name);
-        if (*s++!='>' || nc<0) {
+        if (*s++ != '>') {
           syntax_error(19);  /* invalid numeric expansion */
           return 0;
         }
@@ -2432,20 +2455,28 @@ int expand_macro(source *src,char **line,char *d,int dlen)
 
     else if (*s == '#') {
       /* \# : insert number of parameters */
-      nc = sprintf(d,"%d",src->num_params);
-      s++;
+      if (dlen > 3) {
+        nc = sprintf(d,"%d",src->num_params);
+        s++;
+      }
+      else
+        nc = -1;
     }
 
     else if (*s=='?' && isdigit((unsigned char)*(s+1))) {
       /* \?n : insert parameter n length */
-      nc = sprintf(d,"%d",*(s+1)=='0'?
+      if (dlen > 3) {
+        nc = sprintf(d,"%d",*(s+1)=='0'?
 #if MAX_QUALIFIERS > 0
-                          src->qual_len[0]:
+                            src->qual_len[0]:
 #else
-                          0:
+                            0:
 #endif
-                          src->param_len[*(s+1)-'1']);
-      s += 2;
+                            src->param_len[*(s+1)-'1']);
+        s += 2;
+      }
+      else
+        nc = -1;
     }
 
     else if (*s == '.') {

@@ -1,6 +1,6 @@
 /*
  * cpu.c Jaguar RISC cpu description file
- * (c) in 2014-2017,2020 by Frank Wille
+ * (c) in 2014-2017,2020,2021 by Frank Wille
  */
 
 #include "vasm.h"
@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.4d (c) 2014-2017,2020 Frank Wille";
+char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.4e (c) 2014-2017,2020,2021 Frank Wille";
 char *cpuname = "jagrisc";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -431,9 +431,9 @@ static int32_t eval_oper(instruction *ip,operand *op,section *sec,
       }
       else if (optype==IR14D || optype==IR15D) {
         if (base==NULL && val==0) {
-          /* Optimize (Rn+0) to (Rn). Assume that the "load/store (Rn+d)"
-             instructions follow directly after "load/store (Rn)". */
-          ip->code -= optype==IR14D ? 1 : 2;
+          /* Optimize (Rn+0) to (Rn). Assume that load/store (Rn) is
+             three entries before (R14+d) and four entries before (R15+d). */
+          ip->code -= optype==IR14D ? 3 : 4;  /* @OPT1@ */
           op->type = IREG;
           op->reg = optype==IR14D ? 14 : 15;
           return op->reg;

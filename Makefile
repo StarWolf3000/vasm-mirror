@@ -4,7 +4,7 @@ CC = gcc
 TARGET =
 TARGETEXTENSION =
 
-CCOUT = -o
+CCOUT = -o $(DUMMY)
 COPTS = -c -std=c99 -O2 -Wpedantic -DUNIX $(OUTFMTS)
 
 LD = $(CC)

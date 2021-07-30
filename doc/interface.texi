@@ -1239,7 +1239,7 @@ Enables the floating point parser and floating point evalulation in the
 expression module. With this option the backend has to be prepared that
 expressions may contain floating point constants, which can be checked
 by testing the result of @code{type_of_expr(expression)} for @code{FLT}.
-The use @code{eval_expr_float(expression,&float_val)} to retrieve the
+Then use @code{eval_expr_float(expression,&float_val)} to retrieve the
 floating point value with type @code{tfloat}.
 It is up to the backend to convert the host's floating point format,
 which should be IEEE, into the backend's native format. The vasm frontend
@@ -1371,7 +1371,7 @@ The source was definitely identified as garbage, making it useless to
 try matching it against any other operand types.
 @item PO_MATCH
 The parsed source matches the operand type in @code{requires}. As soon
-as all the instruction's operands haven matched, the instruction
+as all the instruction's operands have been matched, the instruction
 is successfully recognized.
 @item PO_SKIP
 Works like @code{PO_MATCH}, but skips the next operand from the mnemonic
@@ -1487,7 +1487,7 @@ Some remarks:
 @itemize @minus
 
 @item
-Some output modules can not handle all supported CPUs. Nevertheless,
+Some output modules cannot handle all supported CPUs. Nevertheless,
 they have to be written in a way that they can be compiled. If code
 references CPU-specifics, they have to be enclosed in
 @code{#ifdef VASM_CPU_MYCPU} ... @code{#endif} or similar.

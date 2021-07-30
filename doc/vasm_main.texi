@@ -32,14 +32,14 @@ or additional options.
         options. No output is generated. <type> may be @option{list} for
         printing one file name in each new line, or @option{make} for printing
         a sequence of file names on a single line, suitable for Makefiles.
-        When the output file name is given by @option{-o} then
+        When the output file name is given by @option{-o outname} then
         @command{vasm} will also print @code{outname:} in front of it.
-        Note that unlike with @option{-dependall} only relative include
-        file dependencies will be listed (which is the common case).
+        Note that unlike with option @option{-dependall} only relative
+        include file dependencies will be listed (which is the common case).
 
 @item -dependall=<type>
         Prints dependencies in the same way as @option{-depend}, but
-        will also print all include files with absolute paths.
+        also prints all include files with absolute paths.
 
 @item -depfile <filename>
         Used together with @option{-depend} or @option{-dependall} and
@@ -52,7 +52,7 @@ or additional options.
         source level debugging. When the version specification is missing
         DWARF V3 will be generated. The only difference to V2 is that it
         creates a @code{.debug_ranges} section, with address ranges for all
-        sections, instead of a bad workaround by specifying
+        sections, instead of a bad workaround specifying
         @code{DW_AT_low_pc=0} and @code{DW_AT_high_pc=~0}.
         Note that when you build vasm from source, you may have to specify
         your host operating system with @code{-Dname} in the Makefile to
@@ -72,10 +72,11 @@ or additional options.
 
 @item -I<path>
         Define another include path. They are searched in the order of
-        occurence on the command line.
+        occurence on the command line, and always before any include paths
+        defined in the source.
 
 @item -ignore-mult-inc
-        When the same file is included multiple times with the same path
+        When the same file is included multiple times using the same path
         this is silently ignored, causing the file to be processed only
         once. Note that you can still include the same file twice when
         using different paths to access it.
@@ -169,7 +170,7 @@ or additional options.
 
 @item -unsshift
         The shift-right operator (@code{>>}) treats the value to shift as
-        unsigned, which has the effect that 0-bits are inserted on the
+        unsigned, which has the effect that only 0-bits are inserted on the
         left side. The number of bits in a value depend on the target
         address type (refer to the appropriate cpu module documentation).
 
@@ -247,7 +248,7 @@ priorities, from highest to lowest, are:
 @item @code{* / % //} (multiply, divide, modulo)
 @item @code{+ -} (plus, minus)
 @item @code{< > <= >=} (less, greater, less or equal, greater or equal)
-@item @code{== != = <>} (equality, inequality)
+@item @code{== = != <>} (equality, inequality)
 @item @code{&&} (logical and)
 @item @code{||} (logical or)
 @end enumerate
@@ -308,8 +309,8 @@ C language:
 @end table
 
 Note, that the default behaviour of vasm has changed since V1.7! Escape
-sequence handling has been the default in older versions. This has been
-changed to increase compatibility with other assemblers. Use @option{-esc}
+sequence handling has been the default in older versions. This was
+changed to improve compatibility with other assemblers. Use @option{-esc}
 to assemble sources with escape character sequences. It is still the
 default in the @code{std} syntax module, though.
 
@@ -323,7 +324,7 @@ are three types of symbols:
       These symbols are usually not visible outside the
       source, unless they are explicitely exported.
 @item Label
-      Labels are always addresses inside a program section. By
+      Labels are always addresses within a program section. By
       default they have local scope for the linker.
 @item Imported
       These symbols are externally defined and must be
@@ -370,13 +371,13 @@ Include paths are searched in the following order:
 @item Current work directory.
 @item Paths specified by @option{-I} in the order of occurence on the
       command line.
-@item Paths specified by directives inside the source text (in the order
+@item Paths specified by directives in the source text (in the order
       of occurence).
 @end enumerate
 
-All relative paths, defined by option or directive, are first searched
-relative to the current work directory, then relative to the compile
-directory.
+Additionally, all the relative paths, defined by @option{-I} or directives,
+are first appended to the current work directory name, then to the
+compile directory name, while searching for an include file.
 
 @section Macros
 
@@ -421,6 +422,7 @@ Has to be provided completely by the syntax module.
     @item Joseph Zatarski
     @item Frank Wille
     @item Jim Westfall
+    @item Bernard Thibault
     @item Jens Sch@"onfeld
     @item Ross
     @item Henryk Richter
@@ -435,6 +437,7 @@ Has to be provided completely by the syntax module.
     @item Garry Marshall
     @item Jean-Paul Mari
     @item Mauricio Mu@~noz Lucero
+    @item Grzegorz Mazur
     @item J@"org van de Loo
     @item Robert Leffmann
     @item Andreas Larsson
@@ -462,6 +465,7 @@ Has to be provided completely by the syntax module.
     @item Fernando Cabrera
     @item Patrick Bricout
     @item Matthias Bock
+    @item Simone Bevilacqua
     @item Karoly Balogh
 @end itemize
 

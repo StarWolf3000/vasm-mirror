@@ -3,7 +3,7 @@ with the extension @code{std}.
 
 @section Legal
 
-    This module is written in 2002-2020 by Volker Barthelmann and
+    This module is written in 2002-2021 by Volker Barthelmann and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -13,15 +13,13 @@ This syntax module provides the following additional options:
 @table @option
  
 @item -ac
- Immediately allocate common symbols in .bss/.sbss section and
+ Immediately allocate common symbols in the .bss/.sbss section and
  define them as externally visible.
 @item -align
  Enforces the backend's natural alignment for all data directives
  (@code{.word}, @code{.long}, @code{.float}, etc.).
 @item -nodotneeded
  Recognize assembly directives without a leading dot (@code{.}).
-@item -noesc
- Ignore escape character sequences in string constants.
 @item -sdlimit=<n>
  Put data up to a maximum size of n bytes into the small-data
  sections. Default is n=0, which means the function is disabled.
@@ -42,14 +40,15 @@ The operands are separated from the mnemonic by whitespace.
 Multiple operands are separated by comma (@code{,}).
 
 Comments are introduced by the comment character @code{#}. The rest
-of the line will be ignored. For the c16x, m68k, 650x, ARM, Z80, 6800
-and Jaguar-RISC backends, the comment character is @code{;}
+of the line will be ignored. For the c16x, m68k, 650x, ARM, Z80, 6800,
+6809, QNICE and Jaguar-RISC backends, the comment character is @code{;}
 instead of @code{#}, although @code{#} is still allowed when being the
 first non-blank character on a line.
 
 Example:
-
-@code{mylabel:  inst.q1.q2 op1,op2,op3  # comment}
+@example
+mylabel:  inst.q1.q2 op1,op2,op3  # comment
+@end example
 
 In expressions, numbers starting with @code{0x} or @code{0X} are
 hexadecimal (e.g. @code{0xfb2c}). @code{0b} or @code{0B} introduces
@@ -124,9 +123,16 @@ See @code{.string}.
       wise to doubleword boundaries.
 
 @item .double <exp1>[,<exp2>...]
-      Parse one of more double precision floating point expressions and
+      Parse one of more IEEE double precision floating point expressions and
       write them into successive blocks of 8 bytes into memory using the
       backend's endianess.
+
+@item .else
+      Assemble the following block only if the previous @code{.if}
+      condition was false.
+
+@item .endif
+      Ends a block of conditional assembly.
 
 @item .endm
       Ends a macro definition.
@@ -158,7 +164,7 @@ See @code{.string}.
       command line is used.
 
 @item .float <exp1>[,<exp2>...]
-      Parse one of more single precision floating point expressions and
+      Parse one of more IEEE single precision floating point expressions and
       write them into successive blocks of 4 bytes into memory using the
       backend's endianess.
 
@@ -215,9 +221,7 @@ See @code{.string}.
 
 @item .incbin <file>
       Inserts the binary contents of <file> into the object code at
-      this position. The file will be searched first in the current
-      directory, then in all paths defined by @option{-I} or
-      @code{.incdir} in the order of occurence.
+      this position.
 
 @item .incdir <path>
       Add another path to search for include files to the list of
@@ -225,13 +229,12 @@ See @code{.string}.
       searched first.
 
 @item .include <file>
-      Include source text of <file> at this position. The include file
-      will be searched first in the current directory, then in all
-      paths defined by @option{-I} or @code{.incdir} in the order of
-      occurence.
+      Include source text of <file> at this position.
 
 @item .int <exp1>[,<exp2>...]
-      See @code{.long}.
+      Assign the values of the operands into successive words of
+      memory in the current section using the target's endianess and
+      address size.
 
 @item .irp <symbol>[,<val>...]
       Iterates the block between @code{.irp} and @code{.endr} for each
@@ -253,8 +256,7 @@ See @code{.string}.
       <symbol> may be made globally visible by the .globl directive.
 
 @item .list
-      The following lines will appear in the listing file, if it was
-      requested.
+      The following lines will appear in the listing file, when enabled.
 
 @item .local <symbol>[,<symbol>...]
       Flag <symbol> as a local symbol, which means that <symbol> is
@@ -317,8 +319,8 @@ See @code{.string}.
 
 @item .pushsection <name>[,"<attributes>"][[,@@<type>]|[,%<type>]|[,<mem_flags>]]
       Works exactly like @code{.section}, but additionally pushes
-      the current section onto an internal stack, where it may be restored
-      from by the @code{.popsection} directive.
+      the previously active section onto an internal stack, where it may be
+      restored from by the @code{.popsection} directive.
 
 @item .quad <exp1>[,<exp2>...]
       Assign the values of the operands into successive quadwords
@@ -417,10 +419,13 @@ See @code{.string}.
       Set the size in bytes of an object defined at <symbol>. 
 
 @item .short <exp1>[,<exp2>...]
-      See @code{.half}.
+      Assign the values of the operands into successive 16-bit words of
+      memory in the current section using the backend's endianess.
 
 @item .single <exp1>[,<exp2>...]
-      Same as @code{.float}.
+      Parse one of more IEEE single precision floating point expressions and
+      write them into successive blocks of 4 bytes into memory using the
+      backend's endianess.
 
 @item .skip <exp>[,<fill>]
       Insert <exp> zero or <fill> bytes into the current section.

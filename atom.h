@@ -1,5 +1,5 @@
 /* atom.h - atomic objects from source */
-/* (c) in 2010-2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2021 by Volker Barthelmann and Frank Wille */
 
 #ifndef ATOM_H
 #define ATOM_H
@@ -58,6 +58,8 @@ struct sblock {
 };
 /* Space is completely uninitialized - may be used as hint by output modules */
 #define SPC_UNINITIALIZED 1
+/* Space should be stored as a zeroed extension to a text/data section */
+#define SPC_DATABSS 2
 
 typedef struct reloffs {
   expr *offset;

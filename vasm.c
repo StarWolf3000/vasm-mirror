@@ -10,7 +10,7 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 1.8k"
+#define _VER "vasm 1.8l"
 char *copyright = _VER " (c) in 2002-2021 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
@@ -30,7 +30,7 @@ char *filename,*debug_filename;
 section *current_section;
 char *inname,*outname;
 taddr inst_alignment;
-int done,secname_attr,unnamed_sections,nocase,no_symbols;
+int done,secname_attr,unnamed_sections,nocase,no_symbols,asciiout;
 int pic_check,final_pass,debug,exec_out,chklabels,warn_unalloc_ini_dat;
 int nostdout;
 struct stabdef *first_nlist,*last_nlist;
@@ -971,7 +971,7 @@ int main(int argc,char **argv)
       /* write the object file */
       if(!outname)
         outname="a.out";
-      outfile=fopen(outname,"wb");
+      outfile=fopen(outname,asciiout?"w":"wb");
       if(!outfile)
         general_error(13,outname);
       else

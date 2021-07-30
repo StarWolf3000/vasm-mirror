@@ -24,6 +24,7 @@ int init_output_cdef(char **cp,void (**wo)(FILE *,section *,symbol *),int (**oa)
   *cp=copyright;
   *wo=write_output;
   *oa=output_args;
+  asciiout=1;
   return 1;
 }
 

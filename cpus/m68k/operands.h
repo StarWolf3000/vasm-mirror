@@ -65,10 +65,10 @@ enum {
   D_,A_,B_,AI,IB,R_,RM,DD,CS,VDR2,VDR4,PA,AP,DP,
   F_,FF,FR,FPIAR,IM,QI,IR,BR,AB,VA,M6,RL,FL,FS,
   AY,AM,MA,MI,FA,CF,MAQ,CFAM,CM,AL,DA,DN,CFDA,CT,AC,AD,CFAD,
-  BD,BS,AK,MS,MR,CFMM,CFMN,ND,NI,NJ,NK,BY,BI,BJ,
+  BD,BS,AK,MS,MR,CFMM,CFMN,ND,NI,NJ,NK,BY,BI,BJ,OF_,
   _CCR,_SR,_USP,_CACHES,_ACC,_MACSR,_MASK,_CTRL,_ACCX,_AEXT,
   _VAL,_FC,_RP_030,_RP_851,_TC,_AC,_M1_B,_BAC,_BAD,_PSR,_PCSR,
-  _TT,SH,VX,VXR2,VXR4
+  _TT,SH,VX,VXR2,VXR4,OVX
 };
 
 struct optype optypes[] = {
@@ -273,6 +273,9 @@ struct optype optypes[] = {
 /* BJ        (Apollo) all except Dn/An & immediate, 0-6,7.0-3, An -> Bn */
   _(0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0),FL_BnReg,0,0,
 
+/* OF_       (Apollo) optional FPU register FPn */
+  _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0),OTF_OPT,0,0,
+
 /* special registers */
 /* _CCR */
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_CHKREG,REG_CCR,REG_CCR,
@@ -329,6 +332,8 @@ struct optype optypes[] = {
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_VXRNG2|OTF_SRRANGE|OTF_CHKREG,REG_VX00,REG_VX23,
 /* VXR4 (Apollo) En-En+3 */
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_VXRNG4|OTF_SRRANGE|OTF_CHKREG,REG_VX00,REG_VX23,
+/* OVX (Apollo) optional En register */
+  _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_OPT|OTF_SPECREG|OTF_SRRANGE|OTF_CHKREG,REG_VX00,REG_VX23,
 };
 
 #undef _

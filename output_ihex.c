@@ -8,7 +8,7 @@
 #define I32HEX 2 /* supports 32-bit address space */
 
 /* maximum address for I16HEX */
-#define MEGABYTE (1 << 20) - 1
+#define MEBIBYTE (1 << 20) - 1
 
 /* ihex record types */
 #define REC_DAT 0 /* data */
@@ -18,20 +18,28 @@
 #define REC_ELA 4 /* extended linear address */
 #define REC_SLA 5 /* start linear address */
 
-static char *copyright = "vasm Intel HEX output module 0.1 (c) 2020 Rida Dzhaafar";
+static char *copyright = "vasm Intel HEX output module 0.2 (c) 2020 Rida Dzhaafar";
 
 static int ihex_fmt = I8HEX; /* default ihex format */
 
 static uint8_t *buffer;       /* output buffer for data records */
-static uint8_t buffer_s = 10; /* maximum buffer size */
+static uint8_t buffer_s = 32; /* maximum buffer size */
 static uint8_t buffer_i = 0;  /* current index in buffer */
 
 static uint32_t addr = 0;     /* current output address */
 static uint16_t ext_addr = 0; /* last written extended segment/linear address */
 
+static void write_newline(FILE *f) /* gbm 06'21 */
+{
+  if (!asciiout)
+    fw8(f, '\r');
+  fw8(f, '\n');
+}
+
 static void write_eof_record(FILE *f)
 {
   fprintf(f, ":00000001FF");
+  write_newline(f);
 }
 
 static void write_extended_record(FILE *f)
@@ -44,18 +52,16 @@ static void write_extended_record(FILE *f)
     ext = ext_addr << 4;
     type = REC_ESA;
   }
-  if (ihex_fmt == I32HEX) {
+  else if (ihex_fmt == I32HEX) {
     ext = ext_addr;
     type = REC_ELA;
   }
 
-  csum = type;
-  csum += 2;
-  csum += ext >> 8;
-  csum += ext;
+  csum = type + 2 + (ext >> 8) + ext;
   csum = (~csum) + 1;
 
-  fprintf(f, ":020000%02X%04X%02X\n", type, ext, csum);
+  fprintf(f, ":020000%02X%04X%02X", type, ext, csum);
+  write_newline(f);
 }
 
 static void write_data_record(FILE *f)
@@ -70,7 +76,7 @@ static void write_data_record(FILE *f)
     return;
   if (ihex_fmt == I8HEX && addr > UINT16_MAX)
     output_error(11, addr);
-  if (ihex_fmt == I16HEX && addr > MEGABYTE)
+  if (ihex_fmt == I16HEX && addr > MEBIBYTE)
     output_error(11, addr);
   
   start = addr - buffer_i;
@@ -92,7 +98,8 @@ static void write_data_record(FILE *f)
     fprintf(f, "%02X", buffer[i]);
   }
   csum = (~csum) + 1;
-  fprintf(f, "%02X\n", csum);
+  fprintf(f, "%02X", csum);
+  write_newline(f);
 
   /* reset the buffer index */
   buffer_i = 0;
@@ -223,6 +230,10 @@ static int parse_args(char *arg)
     buffer_s = size;
     return 1;
   }
+  else if (!strcmp(arg, "-crlf")) {  /* gbm */
+    asciiout = 0;
+    return 1;
+  }
   return 0;
 }
 
@@ -236,6 +247,7 @@ int init_output_ihex(char **cp, void (**wo)(FILE *, section *, symbol *), int (*
   *cp = copyright;
   *wo = write_output;
   *oa = parse_args;
+  asciiout=1;
   return 1;
 }
 
