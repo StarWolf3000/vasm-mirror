@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2021 by Frank Wille */
+/* (c) in 2002-2022 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm motorola syntax module 3.15b (c) 2002-2021 Frank Wille";
+char *syntax_copyright="vasm motorola syntax module 3.15d (c) 2002-2022 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -730,6 +730,12 @@ static void handle_f96(char *s)
 {
   handle_data(s,OPSZ_FLOAT|96);
 }
+
+
+static void handle_fpd(char *s)
+{
+  handle_data(s,OPSZ_FLOAT|97);  /* packed decimal */
+}
 #endif
 
 
@@ -1120,7 +1126,9 @@ static void handle_incbin(char *s)
 
 static void handle_rept(char *s)
 {
-  new_repeat((utaddr)parse_constexpr(&s),NULL,NULL,rept_dirlist,endr_dirlist);
+  int cnt = (int)parse_constexpr(&s);
+
+  new_repeat(cnt<0?0:cnt,NULL,NULL,rept_dirlist,endr_dirlist);
 }
 
 
@@ -1586,6 +1594,32 @@ static void handle_printv(char *s)
   }    
 }
 
+static void handle_echo(char *s)
+{
+  if (phxass_compat) {
+    char *txt = parse_name(&s);
+    if (txt)
+      add_atom(0,new_text_atom(txt));
+  }
+  else {
+    for (;;) {
+      if (*s=='\"' || *s=='\'') {
+        char *txt = parse_name(&s);
+        if (txt)
+          add_atom(0,new_text_atom(txt));
+      }
+      else {
+        add_atom(0,new_expr_atom(parse_expr(&s),PEXP_SDEC,32));
+      }
+      s = skip(s);
+      if (*s != ',')
+        break;
+      s = skip(s+1);
+    }
+  }
+  add_atom(0,new_text_atom(NULL));  /* new line */
+}
+
 static void handle_showoffset(char *s)
 {
   char *txt;
@@ -1726,6 +1760,7 @@ struct {
   "dc.s",P|D,handle_f32,
   "dc.d",P|D,handle_f64,
   "dc.x",P|D,handle_f96,
+  "dc.p",P|D,handle_fpd,
 #endif
   "ds",P|D,handle_spc16,
   "ds.b",P|D,handle_spc8,
@@ -1830,9 +1865,9 @@ struct {
   "rs.w",P|D,handle_rs16,
   "rs.l",P|D,handle_rs32,
   "rs.q",P,handle_rs64,
-  "rs.s",P|D,handle_rs32,
-  "rs.d",P|D,handle_rs64,
-  "rs.x",P|D,handle_rs96,
+  "rs.s",P,handle_rs32,
+  "rs.d",P,handle_rs64,
+  "rs.x",P,handle_rs96,
   "so",P,handle_rs16,
   "so.b",P,handle_rs8,
   "so.w",P,handle_rs16,
@@ -1850,7 +1885,7 @@ struct {
   "fo.d",P,handle_fo64,
   "fo.x",P,handle_fo96,
   "cargs",P|D,handle_cargs,
-  "echo",P,handle_printt,
+  "echo",P,handle_echo,
   "printt",0,handle_printt,
   "printv",0,handle_printv,
   "showoffset",P,handle_showoffset,

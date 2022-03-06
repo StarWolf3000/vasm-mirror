@@ -208,7 +208,7 @@ static void write_output(FILE *f, section *sec, symbol *sym)
 
 static int parse_args(char *arg)
 {
-  uint8_t size;
+  int size;
 
   if (!strcmp(arg, "-i8hex")) {
     ihex_fmt = I8HEX;

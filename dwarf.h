@@ -24,7 +24,7 @@ struct dwarf_info {
   int file,line,column,is_stmt,basic_block,end_sequence;
 };
 
-/* debug informations tags and attributes */
+/* debug information tags and attributes */
 #define DW_TAG_compile_unit     0x11
 
 #define DW_AT_name              0x03

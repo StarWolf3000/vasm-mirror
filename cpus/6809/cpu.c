@@ -9,7 +9,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.4a (c)2020-2021 by Frank Wille";
+char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5 (c)2020-2022 by Frank Wille";
 char *cpuname = "6809";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -25,44 +25,44 @@ static int opt_pc;        /* optimize all EXT addressing to PC-relative */
 static int OC_BRA,OC_BSR,OC_LBRA,OC_LBSR;
 static int RIDX_PC;
 
-static struct CPUReg registers[] = {
+static const struct CPUReg registers[] = {
 #include "registers.h"
 };
-static int reg_cnt = sizeof(registers) / sizeof(registers[0]);
+static const int reg_cnt = sizeof(registers) / sizeof(registers[0]);
 
-static int psh_postbyte_map[] = {
+static const int psh_postbyte_map[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   3<<1,1<<4,1<<5,1<<6,1<<6,1<<7,-1,-1,1<<1,1<<2,1<<0,1<<3,-1,-1,-1,-1
 };
-static int ir_postbyte_map09[] = {
+static const int ir_postbyte_map09[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   0,1,2,3,4,5,6,7,8,9,10,11,-1,13,14,15
 };
-static int ir_postbyte_map12[] = {
+static const int ir_postbyte_map12[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   4,5,6,7,7,-1,-1,-1,0,1,2,-1,-1,-1,-1,-1
 };
-static int idx_postbyte_map09[] = {
+static const int idx_postbyte_map09[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   -1,0x00,0x20,0x40,0x60,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 };
-static int idx_postbyte_map12[] = {
+static const int idx_postbyte_map12[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   -1,0,1,2,2,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 };
-static int offs_postbyte_map09[] = {
+static const int offs_postbyte_map09[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   11,-1,-1,-1,-1,-1,14,-1,6,5,-1,-1,-1,-1,7,10
 };
-static int offs_postbyte_map12[] = {
+static const int offs_postbyte_map12[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   2,-1,-1,-1,-1,-1,-1,-1,0,1,-1,-1,-1,-1,-1,-1
 };
-static int bitm_postbyte_map[] = {
+static const int bitm_postbyte_map[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   -1,-1,-1,-1,-1,-1,-1,-1,1,2,0,-1,-1,-1,-1,-1
 };
-static int dbr_postbyte_map[] = {
+static const int dbr_postbyte_map[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   4,5,6,7,7,-1,-1,-1,0,1,-1,-1,-1,-1,-1,-1
 };
@@ -240,7 +240,7 @@ static int read_index(char **start,operand *op)
 
 int parse_operand(char *p,int len,operand *op,int required)
 {
-  static int rel_mode_map[] = { AM_REL8, AM_REL9, AM_REL16 };
+  static const int rel_mode_map[] = { AM_REL8, AM_REL9, AM_REL16 };
   char *start = p;
   int ret = PO_MATCH;
   int indir = 0;
@@ -555,10 +555,10 @@ static void check_opreg(operand *op,int final)
 static size_t process_instruction(instruction *ip,section *sec,
                                   taddr orig_pc,int final)
 {
-  static int coffs_size[4] = { 0,1,1,2 };  /* OFF5,OFF8,OFF9,OFF16 */
-  static int rel_size[3] = { 1,1,2 };      /* REL8,REL9,REL16 */
-  static int mov_val_offs[4] = { -1,-2,1,2 }; /* IMMIDX,EXTIDX,IDXIDX,IDXEXT */
-  static int mov_pc_offs[4] = { 1,2,1,2 };    /* IMMIDX,EXTIDX,IDXIDX,IDXEXT */
+  static const int coffs_size[4] = { 0,1,1,2 };    /* OFF5,OFF8,OFF9,OFF16 */
+  static const int rel_size[3] = { 1,1,2 };        /* REL8,REL9,REL16 */
+  static const int mov_val_offs[4] = { -1,-2,1,2 };/* IMMIDX,EXTIDX,IDXIDX,IDXEXT */
+  static const int mov_pc_offs[4] = { 1,2,1,2 };   /* IMMIDX,EXTIDX,IDXIDX,IDXEXT */
   taddr pc = orig_pc;
   taddr pcd;
   operand *op;
@@ -701,13 +701,12 @@ static size_t process_instruction(instruction *ip,section *sec,
             /* jmp/jsr optimizations */
             if (!(op->base && is_pc_reloc(op->base,sec))) {
               /* try optimizing jmp/jsr EXT to bra/bsr REL8 */
-              pcd = op->curval - (pc + 2);
-              if (pcd>=-129 && pcd<=127) {
+              pcd = op->curval - (pc + 1);
+              if (pcd>=-128 && pcd<=127) {
                 ip->code = mnemonics[ip->code].name[1]=='s' ? OC_BSR : OC_BRA;
                 ocidx = OCSTD;
                 op->mode = AM_REL8;
                 op->flags |= AF_PC | AF_PCREL;
-                pcd++;    /* adjust for EXT -> REL8 */
                 goto rel_final;
               }
             }
@@ -742,6 +741,7 @@ static size_t process_instruction(instruction *ip,section *sec,
       case AM_TFR:
         if (i != 0)  /* only the first TFR operand generates a byte */
           break;
+
       case AM_NOFFS:
         if ((cpu_type & HC12) && (op->flags & AF_INDIR)) {
           /* [,r] -> [0,r] is always 16 bit on the HC12 */
@@ -767,8 +767,8 @@ static size_t process_instruction(instruction *ip,section *sec,
         break;
 
       case AM_COFFS:
+      do_coffs:
         /* indexed with constant offset - determine optimal offset size */
-        do_coffs:
         op->flags &= ~AF_COSIZ;
         pc++;  /* the postbyte is always there */
 
@@ -807,12 +807,12 @@ static size_t process_instruction(instruction *ip,section *sec,
           }
           else {
             if (cpu_type & HC12) {
-              if (!(op->flags & AF_INDIR) && pcd>=-18 && pcd<=15) {
+              if (!(op->flags & AF_INDIR) && pcd>=-18 && pcd<=13) {
                 if (secrel)
                   pcd = (op->curval + mcvoff) - (pc + mpcoff);
                 op->flags |= AF_OFF5;
               }
-              else if (!(op->flags & AF_INDIR) && pcd>=-257 && pcd<=255) {
+              else if (!(op->flags & AF_INDIR) && pcd>=-257 && pcd<=254) {
                 if (secrel)
                   pcd = op->curval - (pc + 1);
                 op->flags |= AF_OFF9;
@@ -828,7 +828,7 @@ static size_t process_instruction(instruction *ip,section *sec,
                 if (final && (pcd<-128 || pcd>127))
                   cpu_error(3,(long)pcd);  /* pc-rel. offset out of range */
               }
-              else if (!(op->flags&AF_HI) && pcd>=-129 && pcd<=127) {
+              else if (!(op->flags&AF_HI) && pcd>=-129 && pcd<=126) {
                 if (secrel)
                   pcd = op->curval - (pc + 1);
                 op->flags |= AF_OFF8;
@@ -915,7 +915,7 @@ static size_t process_instruction(instruction *ip,section *sec,
 
         /* optimize/translate Bcc and LBcc instructions */
         if (opt_bra && i==0 && (op->flags & AF_PCREL)) {
-          int ocsz_diff = pc - orig_pc;  /* init with current opcode size */
+          int ocsz_diff;
 
           switch (op->mode) {
             case AM_REL8:
@@ -924,18 +924,18 @@ static size_t process_instruction(instruction *ip,section *sec,
                 op->mode = AM_REL16;
                 ip->code += 2;
                 ocsz_diff = (mnemonics[ip->code].ext.opcode[OCSTD]>0xff? 2 : 1)
-                            - ocsz_diff;
-                pc += ocsz_diff;  /* LBcc opcode may be larger */
+                            - (pc - orig_pc);
+                pc += ocsz_diff;       /* LBcc opcode may be larger */
                 pcd -= 1 + ocsz_diff;  /* adjust for LBcc and 16-bit branch */
               }
               break;
             case AM_REL16:
-              if ((pcd>=-129 && pcd<=127) &&
+              ocsz_diff = 1 - (pc - orig_pc);
+              if ((pcd>=-129+ocsz_diff && pcd<=126+ocsz_diff) &&
                   (mnemonics[ip->code-2].operand_type[0] & OTMASK) == RLS) {
                 op->mode = AM_REL8;
                 ip->code -= 2;
-                ocsz_diff = 1 - ocsz_diff;
-                pc += ocsz_diff;  /* Bcc opcode may be smaller */
+                pc += ocsz_diff;       /* Bcc opcode may be smaller */
                 pcd += 1 - ocsz_diff;  /* adjust for Bcc and 8-bit branch */
               }
               break;
@@ -1210,9 +1210,9 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
       case AM_COFFS:
       gen_coffs:
         {
-          static int boff[4] = { 3,0,7,0 };
-          static int bsiz[4] = { 5,8,9,16 };
-          static int offa[4] = { 0,1,0,1 };
+          static const int boff[4] = { 3,0,7,0 };
+          static const int bsiz[4] = { 5,8,9,16 };
+          static const int offa[4] = { 0,1,0,1 };
           int cosz = op->flags & AF_COSIZ;
 
           if (cpu_type & HC12) {
@@ -1379,7 +1379,7 @@ int init_cpu()
         OC_BRA = i;
       else if (!strcmp(mnemonics[i].name,"bsr"))
         OC_BSR = i;
-      if (!strcmp(mnemonics[i].name,"lbra"))
+      else if (!strcmp(mnemonics[i].name,"lbra"))
         OC_LBRA = i;
       else if (!strcmp(mnemonics[i].name,"lbsr"))
         OC_LBSR = i;
@@ -1405,6 +1405,8 @@ int cpu_args(char *p)
     cpu_type = HD6309;
   else if (!stricmp(p,"-68hc12"))
     cpu_type = HC12;
+  else if (!stricmp(p,"-turbo9"))
+    cpu_type = TURBO9;
   else if (!strcmp(p,"-opt-offset"))
     opt_off = 1;
   else if (!strcmp(p,"-opt-branch"))

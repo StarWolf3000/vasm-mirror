@@ -99,7 +99,7 @@ This backend performs the following operand optimizations:
   @code{BSR} when possible (same section, distance representable in 8 bits).
 @item Optionally translate @code{JMP} into @code{LBRA} and @code{JSR} into
   @code{LBSR} (@option{-opt-pc}).
-@item Optionally translate all extended addressing, refering to local
+@item Optionally translate all extended addressing, referring to local
   or external labels, to an indexed, PC-relative addressing mode
   (@option{-opt-pc}).
 @item Optionally optimize indexed addressing modes with a constant zero

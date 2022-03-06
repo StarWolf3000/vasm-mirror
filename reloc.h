@@ -34,7 +34,7 @@ typedef struct nreloc {
   size_t byteoffset;  /* byte-offset in data atom to beginning of relocation */
   size_t bitoffset;   /* bit-offset adds to byte-off. - start of reloc.field */
   size_t size;        /* size of relocation field in bits */
-  taddr mask;
+  utaddr mask;
   taddr addend;
   symbol *sym;
 } nreloc;
@@ -45,13 +45,14 @@ typedef struct rlist {
   int type;
 } rlist;
 
-#define MAKEMASK(x) ((1LL<<(x))-1LL)
+#define DEFMASK (~(utaddr)0)
+#define MAKEMASK(x) (((x)>=sizeof(unsigned long long)*CHAR_BIT)?(~(unsigned long long)0):((((unsigned long long)1)<<(x))-1u))
 
 
 nreloc *new_nreloc(void);
 rlist *add_extnreloc(rlist **,symbol *,taddr,int,size_t,size_t,size_t);
 rlist *add_extnreloc_masked(rlist **,symbol *,taddr,int,size_t,size_t,
-                            size_t,taddr);
+                            size_t,utaddr);
 int is_pc_reloc(symbol *,section *);
 void do_pic_check(rlist *);
 taddr nreloc_real_addend(nreloc *);

@@ -234,7 +234,7 @@ This module has the following error messages:
 @item 2019: illegal addressing mode: %s
 @item 2020: signed/halfword ldr/str doesn't support shifts
 @item 2021: %d-bit immediate offset out of range (%ld)
-@item 2022: post-indexed addressing mode exptected
+@item 2022: post-indexed addressing mode expected
 @item 2023: operation not allowed on external symbols
 @item 2024: ldc/stc offset has to be a multiple of 4
 @item 2025: illegal coprocessor operation mode or type: %ld\n

@@ -139,7 +139,7 @@ typedef struct {
 #define FLAGS_LT  2
 #define FLAGS_V   3
 
-/* Theses values are significant */
+/* These values are significant */
 #define REG_BC  0x00
 #define REG_DE  0x01
 #define REG_HL  0x02
@@ -147,7 +147,7 @@ typedef struct {
 #define REG_AF  0x04
 
 
-/* These values are signifcant - opcodes are derived using them */
+/* These values are significant - opcodes are derived using them */
 #define REG_B      0x00
 #define REG_C      0x01
 #define REG_D      0x02

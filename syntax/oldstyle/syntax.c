@@ -24,7 +24,7 @@ static char zeroname[]=".zero",zeroattr[]="aurw";
 
 char commentchar=';';
 char *defsectname = textname;
-char *defsecttype = "acrwx";
+char *defsecttype = textattr;
 
 static char macname[] = ".mac";
 static char macroname[] = ".macro";

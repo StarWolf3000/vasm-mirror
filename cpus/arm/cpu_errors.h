@@ -19,7 +19,7 @@
   "illegal addressing mode: %s",ERROR,
   "signed/halfword ldr/str doesn't support shifts",ERROR,
   "%d-bit immediate offset out of range (%ld)",ERROR,                   /*20*/
-  "post-indexed addressing mode exptected",ERROR,
+  "post-indexed addressing mode expected",ERROR,
   "operation not allowed on external symbols",ERROR,
   "ldc/stc offset has to be a multiple of 4",ERROR,
   "illegal coprocessor operation mode or type: %ld\n",ERROR,

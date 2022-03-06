@@ -72,7 +72,7 @@ or additional options.
 
 @item -I<path>
         Define another include path. They are searched in the order of
-        occurence on the command line, and always before any include paths
+        occurrence on the command line, and always before any include paths
         defined in the source.
 
 @item -ignore-mult-inc
@@ -154,7 +154,7 @@ or additional options.
         binary output module. Defaults to a zero-byte.
 
 @item -pic
-        Try to generate position independant code. Every relocation is
+        Try to generate position independent code. Every relocation is
         flagged by an error message.
 
 @item -quiet      
@@ -260,7 +260,7 @@ constants. Character constants are introduced by @code{'} or @code{"}
 and have to be terminated by the same character that started them.
 
 Multiple characters are allowed and a constant is built according to the
-endianess of the target.
+endianness of the target.
 
 When the @option{-esc} option was specified, or automatically enabled by
 a syntax module, vasm interprets escape character sequences as in the
@@ -322,7 +322,7 @@ are three types of symbols:
 @table @code
 @item Expression
       These symbols are usually not visible outside the
-      source, unless they are explicitely exported.
+      source, unless they are explicitly exported.
 @item Label
       Labels are always addresses within a program section. By
       default they have local scope for the linker.
@@ -369,10 +369,10 @@ Include paths are searched in the following order:
 @enumerate 1
 @item Compile directory (path to main source).
 @item Current work directory.
-@item Paths specified by @option{-I} in the order of occurence on the
+@item Paths specified by @option{-I} in the order of occurrence on the
       command line.
 @item Paths specified by directives in the source text (in the order
-      of occurence).
+      of occurrence).
 @end enumerate
 
 Additionally, all the relative paths, defined by @option{-I} or directives,

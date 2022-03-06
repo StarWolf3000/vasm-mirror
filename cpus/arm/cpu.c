@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm ARM cpu backend 0.4h (c) 2004,2006,2010,2011,2014-2020 Frank Wille";
+char *cpu_copyright = "vasm ARM cpu backend 0.5 (c) 2004,2006,2010,2011,2014-2020 Frank Wille";
 char *cpuname = "ARM";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -545,7 +545,7 @@ static void create_mapping_symbol(int type,section *sec,taddr pc)
 /* create mapping symbol ($a, $t, $d) as required by ARM ELF ABI */
 {
   static char names[3][4] = { "$a","$t","$d" };
-  static int types[3] = { TYPE_FUNCTION,TYPE_FUNCTION,TYPE_OBJECT };
+  static const int types[3] = { TYPE_FUNCTION,TYPE_FUNCTION,TYPE_OBJECT };
   symbol *sym;
 
   if (type<TYPE_ARM || type>TYPE_DATA)
@@ -886,10 +886,12 @@ static uint32_t double_rot_immediate(uint32_t val,uint32_t *hi)
 /* check if a 32-bit value can be represented by combining two
    8-bit rotated values, return ROTFAIL otherwise */
 {
-  static uint32_t masks[] = { 0x000000ff,0xc000003f,0xf000000f,0xfc000003,
-                              0xff000000,0x3fc00000,0x0ff00000,0x03fc0000,
-                              0x00ff0000,0x003fc000,0x000ff000,0x0003fc00,
-                              0x0000ff00,0x00003fc0,0x00000ff0,0x000003fc };
+  static const uint32_t masks[] = { 
+    0x000000ff,0xc000003f,0xf000000f,0xfc000003,
+    0xff000000,0x3fc00000,0x0ff00000,0x03fc0000,
+    0x00ff0000,0x003fc000,0x000ff000,0x0003fc00,
+    0x0000ff00,0x00003fc0,0x00000ff0,0x000003fc
+  };
   uint32_t a,m;
   int i;
 
@@ -1349,7 +1351,7 @@ size_t eval_arm_operands(instruction *ip,section *sec,taddr pc,
 
       else if (op.type==IMUD1 || op.type==IMUD2) {
         if (aa4ldst) {
-          /* insert splitted 8-bit immediate for signed/halfword ldr/str */
+          /* insert split 8-bit immediate for signed/halfword ldr/str */
           if (val>=0 && val<=0xff) {
             *insn |= ((val&0xf0)<<4) | (val&0x0f);
           }
@@ -1366,7 +1368,7 @@ size_t eval_arm_operands(instruction *ip,section *sec,taddr pc,
         }
 
         if (op.type==IMUD1 && !(*insn&0x01000000))
-          cpu_error(21);  /* post-indexed addressing mode exptected */
+          cpu_error(21);  /* post-indexed addressing mode expected */
         if (op.flags & OFL_WBACK)
           *insn |= 0x00200000;  /* set write-back flag */
         if (op.flags & OFL_UP)
@@ -1451,7 +1453,7 @@ size_t eval_arm_operands(instruction *ip,section *sec,taddr pc,
         if (aa4ldst)
           cpu_error(19);  /* signed/halfword ldr/str doesn't support shifts */
         if (op.type==SHIM1 && !(*insn&0x01000000))
-          cpu_error(21);  /* post-indexed addressing mode exptected */
+          cpu_error(21);  /* post-indexed addressing mode expected */
 
         if (op.flags & OFL_IMMEDSHIFT) {
           if (sh_op==1 || sh_op==2) {  /* lsr/asr permit shift-count #32 */

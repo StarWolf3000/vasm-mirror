@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.4e (c) 2014-2017,2020,2021 Frank Wille";
+char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.5 (c) 2014-2017,2020,2021 Frank Wille";
 char *cpuname = "jagrisc";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -142,7 +142,7 @@ static expr *parse_cc(char **p)
 
 
 static void jagswap32(unsigned char *d,int32_t w)
-/* write a 32-bit word with swapped halfs (Jaguar MOVEI) */
+/* write a 32-bit word with swapped halves (Jaguar MOVEI) */
 {
   if (jag_big_endian) {
     *d++ = (w >> 8) & 0xff;

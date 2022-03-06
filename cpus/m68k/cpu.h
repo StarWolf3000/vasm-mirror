@@ -437,6 +437,7 @@ struct cpu_models {
 #define RSTYPE_An   1
 #define RSTYPE_FPn  2
 #define RSTYPE_Bn   3  /* Apollo only */
+#define RSTYPE_En   4  /* Apollo only */
 
 
 /* MID for a.out format */

@@ -125,7 +125,7 @@ See @code{.string}.
 @item .double <exp1>[,<exp2>...]
       Parse one of more IEEE double precision floating point expressions and
       write them into successive blocks of 8 bytes into memory using the
-      backend's endianess.
+      backend's endianness.
 
 @item .else
       Assemble the following block only if the previous @code{.if}
@@ -155,7 +155,7 @@ See @code{.string}.
         See @code{.global}.
 
 @item .fail <expression>
-      Cause a warning when <expresion> is greater or equal 500. Otherwise
+      Cause a warning when <expression> is greater or equal 500. Otherwise
       cause an error.
 
 @item .file "string"
@@ -166,7 +166,7 @@ See @code{.string}.
 @item .float <exp1>[,<exp2>...]
       Parse one of more IEEE single precision floating point expressions and
       write them into successive blocks of 4 bytes into memory using the
-      backend's endianess.
+      backend's endianness.
 
 @item .global <symbol>[,<symbol>...]
       Flag <symbol> as an external symbol, which means that <symbol> is
@@ -178,7 +178,7 @@ See @code{.string}.
 
 @item .half <exp1>[,<exp2>...]
       Assign the values of the operands into successive 16-bit words of
-      memory in the current section using the backend's endianess.
+      memory in the current section using the backend's endianness.
 
 @item .if <expression>
       Conditionally assemble the following lines if <expression> is non-zero.
@@ -233,7 +233,7 @@ See @code{.string}.
 
 @item .int <exp1>[,<exp2>...]
       Assign the values of the operands into successive words of
-      memory in the current section using the target's endianess and
+      memory in the current section using the target's endianness and
       address size.
 
 @item .irp <symbol>[,<val>...]
@@ -265,7 +265,7 @@ See @code{.string}.
 
 @item .long <exp1>[,<exp2>...]
       Assign the values of the operands into successive 32-bit words of
-      memory in the current section using the backend's endianess.
+      memory in the current section using the backend's endianness.
 
 @item .macro <name> [<argname1>[=<default>][,<argname2>...]]
       Defines a macro which can be referenced by <name>. The macro
@@ -325,7 +325,7 @@ See @code{.string}.
 @item .quad <exp1>[,<exp2>...]
       Assign the values of the operands into successive quadwords
       (64-bit) of memory in the current section using the backend's
-      endianess.
+      endianness.
 
 @item .rept <expression>
       Repeats the assembly of the block between @code{.rept} and @code{.endr}
@@ -375,7 +375,7 @@ See @code{.string}.
          section is executable
            
 @item  s 
-         section is sharable
+         section is shareable
 @end table
 
       Section Alignment: A digit, which is ignored. The assembler will
@@ -420,12 +420,12 @@ See @code{.string}.
 
 @item .short <exp1>[,<exp2>...]
       Assign the values of the operands into successive 16-bit words of
-      memory in the current section using the backend's endianess.
+      memory in the current section using the backend's endianness.
 
 @item .single <exp1>[,<exp2>...]
       Parse one of more IEEE single precision floating point expressions and
       write them into successive blocks of 4 bytes into memory using the
-      backend's endianess.
+      backend's endianness.
 
 @item .skip <exp>[,<fill>]
       Insert <exp> zero or <fill> bytes into the current section.
@@ -489,7 +489,7 @@ See @code{.string}.
  
 @item .word <exp1>[,<exp2>...]
       Assign the values of the operands into successive 16-bit words of
-      memory in the current section using the backend's endianess.
+      memory in the current section using the backend's endianness.
 
 @item .zero <exp>[,<fill>]
       Insert <exp> zero or <fill> bytes into the current section.

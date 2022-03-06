@@ -269,7 +269,7 @@ size_t instruction_size(instruction *p,section *sec,taddr pc)
 {  
   int sz=2;
 
-  //int c=translate(p,sec,pc),add=0;
+  /*int c=translate(p,sec,pc),add=0;*/
 
   if(p->op[0]&&(p->op[0]->type==OP_ABS||p->op[0]->type==OP_REL))
     sz+=2;
@@ -285,7 +285,7 @@ operand *new_operand()
   return new;
 }
 
-/* return true, if initialization was successfull */
+/* return true, if initialization was successful */
 int init_cpu()
 {
   return 1;

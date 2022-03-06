@@ -70,7 +70,7 @@ or name:
       writable (@code{acrx}).
 @item data, sections which have initialized data and may be read and
       written (@code{adrw}).
-@item bss, sections which have unitialized data and may be read and
+@item bss, sections which have uninitialized data and may be read and
       written (@code{aurw}).
 @item zero, sections which have uninitialized data, may be read
       and written, and do not have the string @code{"bss"} anywhere in
@@ -78,7 +78,7 @@ or name:
 @end itemize
 
 Up to two absolute sections (@code{ORG} directive) can be stored in
-the @code{text} and @code{data} slots, in the order of occurence.
+the @code{text} and @code{data} slots, in the order of occurrence.
 
 
 @section Restrictions

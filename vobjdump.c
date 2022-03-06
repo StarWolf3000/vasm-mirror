@@ -291,9 +291,9 @@ static int vobjdump(void)
     struct vobj_section *vsect = NULL;
 
     p += 4;	/* skip ID */
-    endian = (int)*p++;  /* endianess */
+    endian = (int)*p++;  /* endianness */
     if (endian<1 || endian>2) {
-      fprintf(stderr,"Wrong endianess: %d\n",endian);
+      fprintf(stderr,"Wrong endianness: %d\n",endian);
       return 1;
     }
 

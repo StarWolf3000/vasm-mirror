@@ -172,7 +172,7 @@ static size_t xfile_symboltable(FILE *f,symbol *sym)
 /* The symbol table only contains expression (absolute) and label symbols,
    but doesn't differentiate between local and global scope. */
 {
-  static int labtype[] = { XSYM_TEXT,XSYM_DATA,XSYM_BSS };
+  static const int labtype[] = { XSYM_TEXT,XSYM_DATA,XSYM_BSS };
   size_t len = 0;
   char *p;
 

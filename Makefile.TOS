@@ -5,7 +5,7 @@ TARGETEXTENSION = .ttp
 
 CC = vc +tos
 CCOUT = -o=
-COPTS = -c -c99 -O1 -DATARI $(OUTFMTS)
+COPTS = -c -merge-strings -O1 -DATARI $(OUTFMTS)
 
 LD = $(CC)
 LDOUT = $(CCOUT)

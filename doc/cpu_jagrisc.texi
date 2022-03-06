@@ -2,7 +2,7 @@ This chapter documents the backend for the Atari Jaguar GPU/DSP RISC processor.
 
 @section Legal
 
-    This module is written in 2014-2015 by Frank Wille and
+    This module is written in 2014-2017,2020,2021 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 
@@ -105,7 +105,7 @@ compatibility with various syntax modules.
 
 @itemize @minus
 
-@item Encoding of @code{MOVEI} instruction in little-endian mode is unkown.
+@item Encoding of @code{MOVEI} instruction in little-endian mode is unknown.
 @item The developer has to provide the necessary @code{NOP} instructions
       after jumps, or @code{OR} instructions to work around hardware bugs,
       her/himself.

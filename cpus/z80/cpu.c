@@ -126,8 +126,8 @@ mnemonic mnemonics[] = {
     
     "cpe",   { OP_ABS16 },                                      { TYPE_NONE, 0xec, CPU_80OS, 0 },
     
-    "cpi",  { OP_NONE, },                                       { TYPE_NONE, 0xeda1, CPU_RABBIT|CPU_ZILOG, 0, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, 0 },
     "cpi",  { OP_ABS },                                         { TYPE_NONE, 0xfe, CPU_80OS, 0 },
+    "cpi",  { OP_NONE, },                                       { TYPE_NONE, 0xeda1, CPU_RABBIT|CPU_ZILOG, 0, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, 0 },
     "cpir", { OP_NONE, },                                       { TYPE_NONE, 0xedb1, CPU_RABBIT|CPU_ZILOG, 0, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, RCM_EMU_LIBRARY, 0 },
     "cpl",  { OP_NONE, },                                       { TYPE_NONE, 0x2f,   CPU_ALL, F_ALTD },
     
@@ -152,7 +152,7 @@ mnemonic mnemonics[] = {
     "dwjnz",{ OP_ABS },                                         { TYPE_RELJUMP, 0xed10, CPU_RCM4000, F_ALTD },
 
 
-    "ei",   { OP_NONE, },                                       { TYPE_NONE, 0xfb,   CPU_ZILOG|CPU_8080|CPU_80OS, CPU_GB80, 0 },
+    "ei",   { OP_NONE, },                                       { TYPE_NONE, 0xfb,   CPU_ZILOG|CPU_8080|CPU_80OS|CPU_GB80, 0 },
     "ex",   { OP_AF, OP_AF | OP_ALT },                          { TYPE_NONE, 0x08, CPU_ZILOG|CPU_RABBIT, F_ALTDW }, /* ex af,af' */
     "ex",   { OP_BC, OP_HL },                                   { TYPE_NONE, 0xb3, CPU_RCM4000, 0 },
     "ex",   { OP_BC, OP_HL|OP_ALT },                            { TYPE_NONE, 0x76b3, CPU_RCM4000, 0 },
@@ -711,7 +711,7 @@ mnemonic mnemonics[] = {
 
 int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright="vasm 8080/gbz80/z80/z180/rcmX000 cpu backend 0.4 (c) 2007,2009 Dominic Morris";
+char *cpu_copyright="vasm 8080/gbz80/z80/z180/rcmX000 cpu backend 0.4b (c) 2007,2009 Dominic Morris";
 char *cpuname = "z80";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -957,7 +957,7 @@ int parse_operand(char *p, int len, operand *op, int optype)
     op->bit = 0;
 
     p = skip(p);
-    /* Here I disable the possiblity to use parentheses around constants 
+    /* Here I disable the possibility to use parentheses around constants 
      * when addressing is not possible. This old behavior created a lot of
      * inexisting instructions and bugs.
      */
@@ -1149,8 +1149,7 @@ int parse_operand(char *p, int len, operand *op, int optype)
                 }
             } else if ( (optype & OP_OFFSET)  ) {
                 if ( op->value == NULL ) {
-                    char *expr_s = "0";
-                    op->value = parse_expr(&expr_s);
+                    op->value = number_expr(0);
                     opt |= OP_OFFSET;
                 }
             } else if ( (( optype & OP_OFFSET ) == 0 && op->value) || second_reg != -1 ) {
@@ -1166,8 +1165,7 @@ int parse_operand(char *p, int len, operand *op, int optype)
                     op->reg |= REG_INDEX;
                     /* If it's an index, set an expression on it if there's not one already*/
                     if ( op->value == NULL ) {
-                        char *expr_s = "0";
-                        op->value = parse_expr(&expr_s);
+                        op->value = number_expr(0);
                         opt |= OP_OFFSET;
                     }
                 } else if ( op->value ) {
@@ -1238,8 +1236,7 @@ int parse_operand(char *p, int len, operand *op, int optype)
             if ( (optype & OP_OFFSET) ) {
                 op->reg = REG_HLREF|REG_IX;
                 if ( op->value == NULL ) {
-                    char *expr_s = "0";
-                    op->value = parse_expr(&expr_s);
+                    op->value = number_expr(0);
                     opt |= OP_OFFSET;
                 }
             }
@@ -1252,8 +1249,7 @@ int parse_operand(char *p, int len, operand *op, int optype)
             if ( (optype & OP_OFFSET) ) {
                 op->reg = REG_HLREF|REG_IY;
                 if ( op->value == NULL ) {
-                    char *expr_s = "0";
-                    op->value = parse_expr(&expr_s);
+                    op->value = number_expr(0);
                     opt |= OP_OFFSET;
                 }
             }
@@ -1269,15 +1265,22 @@ int parse_operand(char *p, int len, operand *op, int optype)
         }
     }
 
+    /* @@@ This should be done for all - only OP_DATA for now... */
+    if (BASIC_TYPE(optype) == OP_DATA) {
+        p = skip(p);
+        if (p-start < len) {
+            cpu_error(0);  /* trailing garbage */
+            return PO_CORRUPT;
+        }
+    }
     op->type = opt;
-
     return PO_MATCH;
+
 nomatch:
     if ( op->value ) {
         free_expr(op->value);
     }
     return PO_NOMATCH;
-
 }
 
 
@@ -1662,7 +1665,7 @@ static void write_opcode(mnemonic *opcode, dblock *db, int size, section *sec, t
                 *d++ = val;
             }
         } else {
-            cpu_error(0, val);
+            cpu_error(27, val);
         }
     }
 

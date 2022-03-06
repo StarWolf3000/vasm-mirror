@@ -8,7 +8,7 @@
 static char *copyright="vasm hunk format output module 2.13a (c) 2002-2021 Frank Wille";
 int hunk_onlyglobal;
 
-/* (currenty two-byte only) padding value for not 32-bit aligned code hunks */
+/* (currently two-byte only) padding value for not 32-bit aligned code hunks */
 #ifdef VASM_CPU_M68K
 static uint16_t hunk_pad = 0x4e71;
 #else
@@ -266,7 +266,7 @@ static utaddr file_size(section *sec)
 
 
 static utaddr sect_size(section *sec)
-/* recalculate full section size, subtracted by the space explicitely
+/* recalculate full section size, subtracted by the space explicitly
    reserved for databss (DX directive) */
 {
   utaddr pc=0,dxpc=0;
@@ -322,7 +322,7 @@ static struct hunkreloc *convert_reloc(rlist *rl,utaddr pc)
 
       switch (rl->type) {
         case REL_ABS:
-          if (r->size!=32 || r->bitoffset!=0 || r->mask!=-1)
+          if (r->size!=32 || r->bitoffset!=0 || r->mask!=DEFMASK)
             return NULL;
           type = HUNK_ABSRELOC32;
           break;
@@ -330,7 +330,7 @@ static struct hunkreloc *convert_reloc(rlist *rl,utaddr pc)
         case REL_PC:
           switch (r->size) {
             case 8:
-              if (r->bitoffset!=0 || r->mask!=-1)
+              if (r->bitoffset!=0 || r->mask!=DEFMASK)
                 return NULL;
               type = HUNK_RELRELOC8;
               break;
@@ -342,7 +342,7 @@ static struct hunkreloc *convert_reloc(rlist *rl,utaddr pc)
               break;
 #endif
             case 16:
-              if (r->bitoffset!=0 || r->mask!=-1)
+              if (r->bitoffset!=0 || r->mask!=DEFMASK)
                 return NULL;
               type = HUNK_RELRELOC16;
               break;
@@ -354,7 +354,7 @@ static struct hunkreloc *convert_reloc(rlist *rl,utaddr pc)
               break;
 #endif
             case 32:
-              if (kick1 || r->bitoffset!=0 || r->mask!=-1)
+              if (kick1 || r->bitoffset!=0 || r->mask!=DEFMASK)
                 return NULL;
               type = HUNK_RELRELOC32;
               break;
@@ -365,7 +365,7 @@ static struct hunkreloc *convert_reloc(rlist *rl,utaddr pc)
         case REL_PPCEABI_SDA2: /* treat as REL_SD for WarpOS/EHF */
 #endif
         case REL_SD:
-          if (r->size!=16 || r->bitoffset!=0 || r->mask!=-1)
+          if (r->size!=16 || r->bitoffset!=0 || r->mask!=DEFMASK)
             return NULL;
           type = HUNK_DREL16;
           break;
@@ -404,7 +404,7 @@ static struct hunkxref *convert_xref(rlist *rl,utaddr pc)
 
       switch (rl->type) {
         case REL_ABS:
-          if (r->bitoffset!=0 || r->mask!=-1 || (com && r->size!=32))
+          if (r->bitoffset!=0 || r->mask!=DEFMASK || (com && r->size!=32))
             return NULL;
           switch (r->size) {
             case 8:
@@ -427,7 +427,7 @@ static struct hunkxref *convert_xref(rlist *rl,utaddr pc)
         case REL_PC:
           switch (r->size) {
             case 8:
-              if (r->bitoffset!=0 || r->mask!=-1 || com)
+              if (r->bitoffset!=0 || r->mask!=DEFMASK || com)
                 return NULL;
               type = EXT_RELREF8;
               break;
@@ -439,7 +439,7 @@ static struct hunkxref *convert_xref(rlist *rl,utaddr pc)
               break;
 #endif
             case 16:
-              if (r->bitoffset!=0 || r->mask!=-1 || com)
+              if (r->bitoffset!=0 || r->mask!=DEFMASK || com)
                 return NULL;
               type = EXT_RELREF16;
               break;
@@ -451,7 +451,7 @@ static struct hunkxref *convert_xref(rlist *rl,utaddr pc)
               break;
 #endif
             case 32:
-              if (kick1 || r->bitoffset!=0 || r->mask!=-1)
+              if (kick1 || r->bitoffset!=0 || r->mask!=DEFMASK)
                 return NULL;
               if (com) {
                 type = EXT_RELCOMMON;
@@ -467,7 +467,7 @@ static struct hunkxref *convert_xref(rlist *rl,utaddr pc)
         case REL_PPCEABI_SDA2: /* treat as REL_SD for WarpOS/EHF */
 #endif
         case REL_SD:
-          if (r->size!=16 || r->bitoffset!=0 || r->mask!=-1)
+          if (r->size!=16 || r->bitoffset!=0 || r->mask!=DEFMASK)
             return NULL;
           type = EXT_DEXT16;
           break;

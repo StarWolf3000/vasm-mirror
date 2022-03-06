@@ -1,6 +1,34 @@
 vasm history
 =============
 
+- 1.9 (26.02.22)
+o Removed inappropriate warning when using equates which are greater than
+  the target's address size.
+o NARG-symbol (number of arguments in macro) can also be made
+  case-insensitive with the -nocase option.
+o Stop parsing hexadecimal escape sequences in strings after two characters.
+o m68k: Apollo banking prefix support for most important CPU instructions.
+  Patch by John Hankinson.
+o m68k: Fixed Apollo FPU instructions of the form F<op> En,En,FPn.
+o m68k: Non-standard fpu-id didn't work for some instructions. Do not
+  allow non-standard fpu-ids for CPUs with a fixed internal FPU.
+o m68k: EQUR/FEQUR register assignments do not depend on target CPU/FPU
+  settings anymore.
+o m68k: Allow Apollo vector register assignments with EQUR.
+o m68k: Supports Packed Decimal floating point constants.
+o m68k: New option -no-typechk, with the same effect like the "OPT t-"
+  directive.
+o z80: EI is a valid GBZ80 instruction.
+o z80: Warn about extra garbage characters in data operands.
+o 6800: Fixed -m68.. command line options.
+o 6809: Avoid problems with PC-relative optimizations using a distance of
+  +127 or +255.
+o mot-syntax: Improved ECHO directive.
+o mot-syntax: DC.P directive for Packed Decimal.
+o mot-syntax: REPT with a negative count should behave like REPT 0.
+o aout-output: Make baserel (small-data) relocations compatible to
+  GNU-binutils. Value is always based on .data.
+
 - 1.8l (19.07.21)
 o ASCII output modules cdef, ihex, srec and test now use the host system's
   line endings.
@@ -39,7 +67,7 @@ o Improved listing file output for macros and repetitions. Also their
   definitions are now printed.
 o New listing file options: -Lbpl=<val>, -Lall, -Llo and -Lni. All valid
   for the new wide-format.
-o New option -uspc=<val> sets the fill value for uninitalized space
+o New option -uspc=<val> sets the fill value for uninitialized space
   (defaults to zero).
 o m68k: Support 64/96 bit immediate FMOVEM.L with two or three control
   registers as destination.
@@ -320,13 +348,13 @@ o m68k: New option -sd and directive OPT ON to enable optimizations of
   relative addressing mode.
 o m68k: New option -opt-jbra and directive OPT OB to convert all absolute
   jumps to external labels into 32-bit PC-relative branches (68020 and up).
-o m68k: OPT O+ in Devpac compatibilty mode does not enable PC-relative
+o m68k: OPT O+ in Devpac compatibility mode does not enable PC-relative
   optimizations (an explicit OPT A+ is needed).
 o m68k: New Apollo Core instructions: PMULA, PMULH, STOREC, UNPACK1632.
 o m68k: -m68020up option no longer includes Apollo Core.
 o m68k: Devpac OPT Ln (with n=0,1,2,etc. for Atari) is recognized,
   although it has no effect at the moment.
-o m68k: Suppressed index registers ZRn, which are explicitely written in
+o m68k: Suppressed index registers ZRn, which are explicitly written in
   the source, are no longer optimized away.
 o PPC: -m option to select the CPU model starts working. By default the
   instruction set of a 32-bit PPC (G2, G3, G4) with AltiVec is supported.
@@ -395,7 +423,7 @@ o Avoid a crash or internal error in some output modules, when an equate
   refers to an undefined (imported) symbol.
 o m68k: Optimizing/translating to 68020+ addressing modes for MOVEM didn't
   work. For example MOVEM (40000,A0) was not automatically translated into
-  a bd32 addressing mode, but had to be explicitely written as (40000.l,A0).
+  a bd32 addressing mode, but had to be explicitly written as (40000.l,A0).
 o m68k: Optimizing MOVEM was not attempted, when using a register list
   symbol in one operand and a label in the other.
 o m68k: Fixed -opt-movem & -opt-speed optimization of MOVEM with two
@@ -685,7 +713,7 @@ o The number of 50 fast optimization passes may not be enough in some
 o Exit immediately when the maximum number of errors has been reached and
   not before printing an additional error.
 o Escape code handling in string constants is no longer the default. It
-  has to be explicitely enabled using the -esc option. Although, it is
+  has to be explicitly enabled using the -esc option. Although, it is
   still the default in the std syntax module.
 o 6800: Added some missing 6800 instructions (addb, dec).
 o 6800: Labels are always addressed in extended mode. Use the < prefix
@@ -763,7 +791,7 @@ o m68k: Support OPTC directive and __OPTC symbol in PhxAss-compatibility mode.
 o m68k: BASEREG may be reused for the same register without ENDB in PhxAss-
   compatibility mode.
 o m68k: ENDB doesn't not need to specify a register in PhxAss-compatibility
-  mode, as long as it is unambigious.
+  mode, as long as it is unambiguous.
 o m68k: An equate symbol used as displacement in a BASEREG operand, which
   is defined later in the source, no longer generates an error.
 o m68k: Removed useless optimization for LINK An,#0 into PEA/MOVE.
@@ -792,7 +820,7 @@ o Display a warning when instructions are automatically aligned. This might
   help to find missing align directives and avoid bugs.
 o Display an error when a macro name conflicts with a mnemonic or directive.
 o Expression symbols (equates) which are based on label are exported as
-  an offseted label from the same section as the base.
+  an offsetted label from the same section as the base.
 o m68k: Fixed gas-compatible mnemonics: JB<cc> -> J<cc>.
 o m68k: Fixed ColdFire ISA-B optimization "AND.L #$ff/#$ffff,Dn ->
   MVZ.B/W Dn,Dn", which always used a D0 source register.
@@ -1152,7 +1180,7 @@ o mot-syntax: With -phxass option, macro names are case-insensitive.
 o hunk-output: Report undefined symbols in hunkexe-mode as such, instead of
   just printing "unsupported reloc".
 o vobj-output: vasm-internal symbols must not be ignored in the output as
-  relocations refering to the current-pc-symbol depend on them.
+  relocations referring to the current-pc-symbol depend on them.
 
 - 1.4b (14.10.09)
 o Fixed IfNotDef directive in all syntax modules, which shouldn't regard an
@@ -1220,7 +1248,7 @@ o hunk-output: 8- and 16-bit absolute relocations are supported.
 - 1.4 (31.05.09)
 o Improved expression evaluation. More complex differences between labels
   are allowed, e.g. (lab1+x)-(lab2-y) instead of just lab1-lab2.
-o Modified CPU options (cpu type, optimization setttings, etc.) were lost
+o Modified CPU options (cpu type, optimization settings, etc.) were lost
   when the source switches between different sections. Make sure to
   remember previous option settings when continuing with another section.
 o Error output module avoids printing the same error several times for the
@@ -1232,7 +1260,7 @@ o m68k: Implemented ColdFire ISA_A+/ISA_B/ISA_C and FPU instructions.
   MOVEC understands all ColdFire registers.
 o m68k: Implemented ColdFire MAC and EMAC instructions (with their strange
   syntax). vasm uses a separate operand for the scale factor << or >>,
-  like GNU-as does, which seems to be prefered also by Freescale in their
+  like GNU-as does, which seems to be preferred also by Freescale in their
   MAC example sources.
 o m68k: MOVE.L #x,<ea> is optimized into MOV3Q #x,<ea> for ColdFire
   ISA_B and ISA_C, when x is -1 or between 1 and 7.
@@ -1258,11 +1286,11 @@ o The assembler ensures that a label, which is defined on the same line
   as an instruction, data or space atom, receives the same alignment
   restrictions.
 o The line number of the parent source text was sometimes wrong, when the
-  error occured in an included file or a macro.
+  error occurred in an included file or a macro.
 o New output module for TOS executables, available via option -Ftos.
 o New option -w hides all warnings.
 o New option -nowarn=<n> disables a single warning.
-o New option -pic (position independant code) generates an error on
+o New option -pic (position independent code) generates an error on
   every relocation being required.
 o New option -noesc makes vasm treat the escape character '\' as any
   other character.
@@ -1395,7 +1423,7 @@ o It is no longer allowed to terminate your data definition with a ','.
 o m68k: -no-opt should not disable operand-transformations which are
   required to make a displacement fit into an operand. This bug made
   ($1234,a0,d0) fail for "-m68020 -no-opt", because the operand was
-  not transformed into a 020 extended adressing mode anymore.
+  not transformed into a 020 extended addressing mode anymore.
 o Included support for Win32/MSVC++ compiler by Mikael Kalms.
 o Fixed conversion for absolute paths and multiple "./" in a path.
 
@@ -1425,7 +1453,7 @@ o std-syntax: org directive.
 
 - 1.2a (25.09.06)
 o Fixed a bug when reading CR/LF-sources on a MsDos/Windows/Atari system.
-o There is no cpu-dependant default section alignment anymore. All sections
+o There is no cpu-dependent default section alignment anymore. All sections
   start with an alignment of 1, which is increased when required. This
   fixes problems with DWARF sections!
 o mot-syntax: =,  set, equ, rs, so, fo now work with local labels too.
@@ -1449,7 +1477,7 @@ o Internal improvements of the instruction parser.
 o Empty input files are no longer rejected.
 o Redefined labels no longer cause an infinite loop of the assembler.
 o Assembler core supports local symbols (identifying them is syntax-module
-  dependant). Currently the only syntax module supporting local symbols
+  dependent). Currently the only syntax module supporting local symbols
   is "mot" ("name$" and ".name" style).
 o Assembler core supports include files.
 o Assembler core supports macros.
@@ -1469,7 +1497,7 @@ o m68k: Instructions without size-suffix get a default suffix assigned.
 o m68k: Fixed bug with optimizing of "suba.w #32768,An".
 o m68k: Float constants were only recognized when including a decimal
   point. Now it depends on FPU addressing mode and opcode extension.
-  Extensions 's','d','x' and 'p' will allways expect a floating point
+  Extensions 's','d','x' and 'p' will always expect a floating point
   constant, when the radix is 10 (i.e. no base-prefix given).
 o m68k: Fixed operand parser, which had problems with expressions in
   parentheses, like: "-(expression)" and "(expression1)+expression2(An...)".

@@ -75,7 +75,7 @@ equals-character, may be optionally preceded by a dot (@code{.}).
       versions. Note that @code{abs} is not available for the jagrisc
       cpu backend as it conflicts with an instruction name.
 
-@item assert <expresion>[,<expression>...]
+@item assert <expression>[,<expression>...]
       Assert that all conditions are true (non-zero), otherwise issue a
       warning.
 

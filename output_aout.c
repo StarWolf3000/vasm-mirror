@@ -1,16 +1,16 @@
 /* output_aout.c a.out output driver for vasm */
-/* (c) in 2008-2016,2020 by Frank Wille */
+/* (c) in 2008-2016,2020,2021 by Frank Wille */
 
 #include "vasm.h"
 #include "output_aout.h"
 #if defined(OUTAOUT) && defined(MID)
-static char *copyright="vasm a.out output module 0.8 (c) 2008-2016,2020 Frank Wille";
+static char *copyright="vasm a.out output module 0.8a (c) 2008-2016,2020-2022 Frank Wille";
 
 static section *sections[3];
 static utaddr secsize[3];
 static utaddr secoffs[3];
-static int sectype[] = { N_TEXT, N_DATA, N_BSS };
-static int secweak[] = { N_WEAKT, N_WEAKD, N_WEAKB };
+static const int sectype[] = { N_TEXT, N_DATA, N_BSS };
+static const int secweak[] = { N_WEAKT, N_WEAKD, N_WEAKB };
 
 static struct SymTabList aoutsymlist; 
 static struct StrTabList aoutstrlist; 
@@ -112,10 +112,10 @@ static uint32_t aoutstd_getrinfo(rlist **rl,int xtern,char *sname,int be)
 
     if (b!=0 && s<4) {
       if (b > 0)
-        setbits(be,&r,sizeof(r)<<3,(unsigned)b,1,1);
-      setbits(be,&r,sizeof(r)<<3,RSTDB_length,RSTDS_length,s);
-      setbits(be,&r,sizeof(r)<<3,RSTDB_extern,RSTDS_extern,xtern?1:0);
-      return readbits(be,&r,sizeof(r)<<3,RELB_reloc,RELS_reloc);
+        setbits(be,&r,32,(unsigned)b,1,1);
+      setbits(be,&r,32,RSTDB_length,RSTDS_length,s);
+      setbits(be,&r,32,RSTDB_extern,RSTDS_extern,xtern?1:0);
+      return readbits(be,&r,32,RELB_reloc,RELS_reloc);
     }
   }
 
@@ -414,9 +414,7 @@ static uint32_t aout_convert_rlist(int be,atom *a,int secid,
     symbol *refsym = r->sym;
     taddr val = get_sym_value(refsym);
     taddr add = nreloc_real_addend(r);
-#if SDAHACK
-    int based = getrinfo(&rl,-1,sections[secid]->name,be) != 0;
-#endif
+    int baserel = rl->type == REL_SD;  /* @@@ Amiga GNU-binutils compat. */
 
     if (LOCREF(refsym)) {
       /* this is a local relocation */
@@ -425,9 +423,9 @@ static uint32_t aout_convert_rlist(int be,atom *a,int secid,
       aout_addreloclist(rlst,pc+r->byteoffset,sectype[rsecid],
                         getrinfo(&rl,0,sections[secid]->name,be),
                         be);
-#if SDAHACK
-      if (!based)  /* @@@ 'based' does not really happen under Unix */
-#endif
+      if (baserel)  /* val is based on .data for small-data/bss */
+        val += rsecid==S_BSS ? secoffs[S_BSS]-secoffs[S_DATA] : 0;
+      else
         val += secoffs[rsecid];
       rsize += sizeof(struct relocation_info);
     }

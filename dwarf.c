@@ -202,7 +202,7 @@ void dwarf_init(struct dwarf_info *dinfo,
   add_bytes_atom(dsec,dinfo->producer,strlen(dinfo->producer));
   add_data_atom(dsec,1,1,' ');
   add_string_atom(dsec,cpuname);        /* vasm version and cpu-name */
-  add_data_atom(dsec,2,1,DW_LANG_ASSEMBLER);
+  add_data_atom(dsec,2,1,(taddr)DW_LANG_ASSEMBLER);
   add_string_atom(dsec,getdebugname());
   add_string_atom(dsec,get_workdir());
 
@@ -329,14 +329,15 @@ static void dwarf_set_address(struct dwarf_info *dinfo,symbol *sym)
   add_bytes_atom(dinfo->lsec,opcode,3);
   a = add_data_atom(dinfo->lsec,dinfo->addr_len,1,sym->pc);
   add_extnreloc(&a->content.db->relocs,sym,sym->pc,REL_ABS,
-                0,dinfo->addr_len<<3,0);
+                0,dinfo->addr_len*bitsperbyte,0);
 }
 
 
 static void set_atom_label(atom *a,size_t addrlen,symbol *sym)
 {
   setval(BIGENDIAN,a->content.db->data,addrlen,sym->pc);
-  add_extnreloc(&a->content.db->relocs,sym,sym->pc,REL_ABS,0,addrlen<<3,0);
+  add_extnreloc(&a->content.db->relocs,sym,sym->pc,REL_ABS,0,
+                addrlen*bitsperbyte,0);
 }
 
 
@@ -374,7 +375,7 @@ void dwarf_end_sequence(struct dwarf_info *dinfo,section *sec)
       /* enter end-of-section label reference into the ranges table */
       a = add_data_atom(dinfo->rsec,dinfo->addr_len,dinfo->addr_len,sym->pc);
       add_extnreloc(&a->content.db->relocs,sym,sym->pc,REL_ABS,
-                    0,dinfo->addr_len<<3,0);
+                    0,dinfo->addr_len*bitsperbyte,0);
     }
   }
 }
@@ -408,7 +409,7 @@ void dwarf_line(struct dwarf_info *dinfo,section *sec,int file,int line)
     add_atom(dinfo->asec,a);  /* align to double address-length */
     a = add_data_atom(dinfo->asec,dinfo->addr_len,dinfo->addr_len,0);
     add_extnreloc(&a->content.db->relocs,sym,sym->pc,REL_ABS,
-                  0,dinfo->addr_len<<3,0);
+                  0,dinfo->addr_len*bitsperbyte,0);
 
     if (dinfo->lowpc_atom) {
       if (dinfo->code_sections > 1)
@@ -423,7 +424,7 @@ void dwarf_line(struct dwarf_info *dinfo,section *sec,int file,int line)
       /* make new entry into the ranges table: .debug_ranges */
       a = add_data_atom(dinfo->rsec,dinfo->addr_len,dinfo->addr_len,0);
       add_extnreloc(&a->content.db->relocs,sym,sym->pc,REL_ABS,
-                    0,dinfo->addr_len<<3,0);
+                    0,dinfo->addr_len*bitsperbyte,0);
     }
 
     /* set relocatable address of first instruction, then advance line, etc.*/

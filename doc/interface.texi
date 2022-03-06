@@ -197,7 +197,7 @@ The following syntax modules can be selected:
 
 For Windows and various Amiga targets there are already Makefiles included,
 which you may either copy on top of the default @file{Makefile}, or call
-it explicitely with @command{make}'s @option{-f} option:
+it explicitly with @command{make}'s @option{-f} option:
 @example
     make -f Makefile.OS4 CPU=ppc SYNTAX=std
 @end example
@@ -352,7 +352,7 @@ the modules:
 @item  char *attr;
         A string describing the section flags in ELF notation (see,
         for example, documentation of the @code{.section} directive of
-        the standard syntax mopdule.
+        the standard syntax module.
 
 @item  atom *first;
 @itemx atom *last;
@@ -656,7 +656,7 @@ Assemble this block under the given base address, while the code is still
 written into the original memory region.
 
 @item #define RORGEND 12
-Ends a RORG block and returns to the original addessing.
+Ends a RORG block and returns to the original addressing.
 
 @item #define ASSERT 13
 The assertion expression is checked in the final pass and an error message
@@ -860,7 +860,7 @@ They always refer to the data in this atom only.
 
 There are a number of predefined standard relocations and it is possible
 to add other cpu-specific relocations. Note however, that it is always
-preferrable to use standard relocations, if possible. Chances that an
+preferable to use standard relocations, if possible. Chances that an
 output module supports a certain relocation are much higher if it is a
 standard relocation.
 
@@ -956,7 +956,7 @@ comma-separated list of a printf-format string and error flags. Allowed
 flags are @code{WARNING}, @code{ERROR}, @code{FATAL}, @code{MESSAGE} and
 @code{NOLINE}.
 They can be combined using or (@code{|}). @code{NOLINE} has to be set for
-error messages during initialiation or while writing the output, when
+error messages during initialization or while writing the output, when
 no source text is available. Errors cause the assembler to return false.
 @code{FATAL} causes the assembler to terminate
 immediately.
@@ -1077,7 +1077,7 @@ Defaults to unused.
 
 @subsection The file @file{syntax.c}
 
-A syntax module has to provide the following elements (all other funtions
+A syntax module has to provide the following elements (all other functions
 should be @code{static} to prevent name clashes):
 
 @table @code
@@ -1154,7 +1154,7 @@ source stream pointer after successful parsing.
 @item int expand_macro(source *,char **,char *,int);
 Expand parameters and special commands inside a macro source. The second
 argument is a pointer to the current source stream pointer, which is
-updated on any succesful expansion. The function will return the
+updated on any successful expansion. The function will return the
 number of characters written to the destination buffer (third argument)
 in this case. Returning @code{-1} means: no expansion took place.
 The last argument defines the space in characters which is left in the
@@ -1193,7 +1193,7 @@ Define this, when qualifiers shouldn't be allowed for macros. For some
 architectures, like ARM, macro qualifiers make no sense.
 
 @item typedef int32_t taddr;
-Data type to represent a target-address. Preferrably use the types from
+Data type to represent a target-address. Preferably use the types from
 @file{stdint.h}. Does not necessarily have to match the cpu's address
 bus size (refer to @code{bytespertaddr}), but the largest data you will
 be able to do calculations with. For example, you may want to allow 32-bit
@@ -1204,7 +1204,7 @@ Unsigned data type to represent a target-address.
 
 @item #define LITTLEENDIAN 1
 @itemx #define BIGENDIAN 0
-Define these according to the target endianess. For CPUs which support big-
+Define these according to the target endianness. For CPUs which support big-
 and little-endian, you may assign a global variable here. So be aware of
 it, and never use @code{#if BIGENDIAN}, but always @code{if(BIGENDIAN)} in
 your code.

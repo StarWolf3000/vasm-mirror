@@ -271,6 +271,7 @@ int init_output_vobj(char **cp,void (**wo)(FILE *,section *,symbol *),int (**oa)
   *cp=copyright;
   *wo=write_output;
   *oa=output_args;
+  secname_attr = 1; /* attribute is used to differentiate between sections */
   return 1;
 }
 

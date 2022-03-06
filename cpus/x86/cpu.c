@@ -1074,7 +1074,7 @@ static int process_operands(instruction *ip,int final)
     defaultseg = DSEG_REGNUM;
   }
 
-  /* if a segment was explicitely specified and differs from the
+  /* if a segment was explicitly specified and differs from the
      instruction's default we need to select it by another opcode prefix */
   for (i=0; i<MAX_OPERANDS; i++) {
     if (ip->op[i] != NULL) {

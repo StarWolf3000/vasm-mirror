@@ -223,7 +223,7 @@ static size_t space_size(sblock *sb,section *sec,taddr pc)
         /* generate relocations */
         for (i=0; i<space; i++)
           add_extnreloc(&sb->relocs,base,fill,REL_ABS,
-                        0,sb->size<<3,sb->size*i);
+                        0,sb->size*bitsperbyte,sb->size*i);
       }
     }
     else

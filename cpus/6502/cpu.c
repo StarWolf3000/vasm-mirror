@@ -11,7 +11,7 @@ mnemonic mnemonics[] = {
 
 int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright="vasm 6502 cpu backend 0.9c (c) 2002,2006,2008-2012,2014-2021 Frank Wille";
+char *cpu_copyright="vasm 6502 cpu backend 0.10 (c) 2002,2006,2008-2012,2014-2021 Frank Wille";
 char *cpuname = "6502";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -24,6 +24,8 @@ static char lo_c = '<';
 static char hi_c = '>';
 static int OC_JMPABS,OC_BRA;
 
+/* check for a MEGA65 quad instruction - maybe make that nicer some time ... */
+#define ISQINST(c) (mnemonics[c].name[3]=='q' || (mnemonics[c].name[2] == 'q' && mnemonics[c].name[0] != 'b'))
 
 int ext_unary_type(char *s)
 {
@@ -84,8 +86,15 @@ int parse_operand(char *p,int len,operand *op,int required)
     p = skip(p+1);
   }
 
+  if(*p == '['){
+    if(required != IND32 && required != INDZ32)
+      return PO_NOMATCH;
+    p = skip(p + 1);
+  }
+
   switch (required) {
     case IMMED:
+    case IMMED16:
       if (*p++ != '#')
         return PO_NOMATCH;
       p = skip(p);
@@ -95,8 +104,6 @@ int parse_operand(char *p,int len,operand *op,int required)
     case INDX:
     case INDY:
     case INDZ:
-    case INDZ32:
-    case IND32:
     case DPINDIR:
       if (!indir)
         return PO_NOMATCH;
@@ -340,8 +347,6 @@ static size_t get_inst_size(instruction *ip)
         case INDX:
         case INDY:
         case INDZ:
-        case IND32:
-        case INDZ32:
         case DPINDIR:
         case IMMED:
         case ZPAGE:
@@ -350,6 +355,9 @@ static size_t get_inst_size(instruction *ip)
         case ZPAGEZ:
           sz += 1;
           break;
+        case IND32:
+        case INDZ32:
+        case IMMED16:
         case REL16:
         case ABS:
         case ABSX:
@@ -365,6 +373,8 @@ static size_t get_inst_size(instruction *ip)
       }
     }
   }
+  if(ISQINST(ip->code))
+    sz += 2;
   return sz;
 }
 
@@ -483,6 +493,12 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
         break;
     }
   }
+
+  if(ISQINST(ip->code)){
+    *d++ = 0x42;
+    *d++ = 0x42;
+  }
+
   *d++ = oc;
 
   for (i=0; i<MAX_OPERANDS; i++) {
@@ -499,7 +515,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
 
           modifier = 0;
           btype = find_base(op->value,&base,sec,pc);
-          if (btype==BASE_PCREL && optype==IMMED)
+          if (btype==BASE_PCREL && (optype==IMMED || optype==IMMED16))
             op->flags |= OF_PC;  /* immediate value with pc-rel. relocation */
 
           if (optype==WBIT || btype==BASE_ILLEGAL ||
@@ -535,6 +551,11 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                 case INDIRX:
                   size = 16;
                   break;
+                case INDZ32:
+                case IND32:
+		  size = 8;
+		  offs++;
+		  break;
                 case ZPAGE:
                 case ZPAGEX:
                 case ZPAGEY:
@@ -543,8 +564,6 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                 case INDX:
                 case INDY:
                 case INDZ:
-                case INDZ32:
-                case IND32:
                 case DPINDIR:
                   size = 8;
                   break;
@@ -554,6 +573,13 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                     val += offs;
                   }
                   size = 8;
+                  break;
+                case IMMED16:
+                  if (op->flags & OF_PC) {
+                    type = REL_PC;
+                    val += offs;
+                  }
+                  size = 16;
                   break;
                 case RELJMP:
                   size = 16;
@@ -604,6 +630,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
           case ABSZ:
             if (!*(db->data)) /* STX/STY allow only ZeroPage addressing mode */
               cpu_error(5,8); /* operand doesn't fit into 8 bits */
+	  case IMMED16:
           case ABS:
           case INDIR:
           case INDIRX:
@@ -611,12 +638,15 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
             *d++ = val & 0xff;
             *d++ = (val>>8) & 0xff;
             break;
+          case INDZ32:
+          case IND32:
+	    *d = d[-1];
+	    d[-1] = 0xea;
+	    d++;
           case DPINDIR:
           case INDX:
           case INDY:
           case INDZ:
-          case INDZ32:
-          case IND32:
           case ZPAGE:
           case ZPAGEX:
           case ZPAGEY:
@@ -748,7 +778,7 @@ int cpu_args(char *p)
   else if (!strcmp(p,"-6280"))
     cpu_type = M6502 | M65C02 | WDC02 | WDC02ALL | HU6280;
   else if (!strcmp(p,"-mega65"))
-    cpu_type = M6502 | M65C02 | WDC02 | M45GS02;
+    cpu_type = M6502 | M65C02 | WDC02 | CSGCE02 | M45GS02;
   else
     return 0;
 

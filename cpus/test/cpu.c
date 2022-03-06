@@ -284,7 +284,7 @@ operand *new_operand()
   return new;
 }
 
-/* return true, if initialization was successfull */
+/* return true, if initialization was successful */
 int init_cpu()
 {
   return 1;

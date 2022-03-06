@@ -33,7 +33,7 @@ char commentchar=';';
 char commentchar='#';
 #endif
 char *defsectname = textname;
-char *defsecttype = "acrwx";
+char *defsecttype = textattr;
 
 static char macroname[] = ".macro";
 static char endmname[] = ".endm";

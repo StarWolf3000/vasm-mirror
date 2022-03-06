@@ -1,5 +1,5 @@
 /* listing.h - listing file */
-/* (c) in 2020-2021 by Volker Barthelmann and Frank Wille */
+/* (c) in 2020-2022 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -573,7 +573,7 @@ static void write_listing_wide(char *listname,section *first_section)
   }
 }
 
-static list_formats list_format_table[] = {
+static const list_formats list_format_table[] = {
   { "wide", write_listing_wide },
   { "old", write_listing_old }
 };
