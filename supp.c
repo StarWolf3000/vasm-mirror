@@ -148,7 +148,7 @@ taddr bf_sign_extend(taddr val,int numbits)
 
 
 uint64_t readval(int be,void *src,size_t size)
-/* read value with given endianess */
+/* read value with given endianness */
 {
   unsigned char *s = src;
   uint64_t val = 0;
@@ -173,7 +173,7 @@ uint64_t readval(int be,void *src,size_t size)
 
 
 void *setval(int be,void *dest,size_t size,uint64_t val)
-/* write value to destination with desired endianess */
+/* write value to destination with desired endianness */
 {
   uint8_t *d = dest;
 
@@ -199,7 +199,7 @@ void *setval(int be,void *dest,size_t size,uint64_t val)
 
 
 void *setval_signext(int be,void *dest,size_t extsz,size_t valsz,int64_t val)
-/* write a sign-extended value to destination with desired endianess */
+/* write a sign-extended value to destination with desired endianness */
 {
   uint8_t *d = dest;
   int sign = val<0 ? 0xff : 0;
@@ -231,7 +231,7 @@ uint64_t readbits(int be,void *p,unsigned bfsize,unsigned offset,unsigned size)
 /* read value from a bitfield (max. 64 bits) */
 {
   if ((bfsize&7)==0 && offset+size<=bfsize) {
-    uint64_t mask = (1 << size) - 1;
+    uint64_t mask = MAKEMASK(size);
     uint64_t val = readval(be,p,bfsize>>3);
 
     return be ? ((val >> (bfsize-(offset+size))) & mask)
@@ -275,7 +275,7 @@ int countbits(taddr val)
 
 
 void copy_cpu_taddr(void *dest,taddr val,size_t bytes)
-/* copy 'bytes' low-order bytes from val to dest in cpu's endianess */
+/* copy 'bytes' low-order bytes from val to dest in cpu's endianness */
 {
   uint8_t *d = dest;
   int i;
@@ -616,10 +616,10 @@ taddr balign(taddr addr,taddr a)
 }
 
 
-taddr palign(taddr addr,taddr a)
+taddr palign(taddr addr,int a)
 /* return number of bytes required to achieve alignment */
 {
-  return balign(addr,1<<a);
+  return balign(addr,((taddr)1)<<a);
 }
 
 

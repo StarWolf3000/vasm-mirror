@@ -4,7 +4,7 @@ M68k and ColdFire families of CPUs, which is available with the extension
 
 @section Legal
 
-    This module is written in 2002-2021 by Frank Wille and
+    This module is written in 2002-2022 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -241,12 +241,17 @@ CPU- and output-module support them):
 
 @item dc.d <exp1>[,<exp2>...]
       Assign the values of the operands into successive 64-bit words
-      of memory in the current section. Also IEEE double precision
-      floating point constants are allowed.
+      of memory in the current section, using the IEEE double precision
+      format when specifying them as floating point constants.
 
 @item dc.l <exp1>[,<exp2>...]
       Assign the values of the operands into successive 32-bit words
       of memory in the current section.
+
+@item dc.p <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 96-bit words
+      of memory in the current section, using the Packed Decimal format
+      when specifying them as floating point constants.
 
 @item dc.q <exp1>[,<exp2>...]
       Assign the values of the operands into successive 64-bit words
@@ -254,8 +259,8 @@ CPU- and output-module support them):
 
 @item dc.s <exp1>[,<exp2>...]
       Assign the values of the operands into successive 32-bit words
-      of memory in the current section. Also IEEE single precision
-      floating point constants are allowed.
+      of memory in the current section, using the IEEE single precision
+      format when specifying them as floating point constants.
 
 @item dc.w <exp1>[,<exp2>...]
       Assign the values of the operands into successive 16-bit words
@@ -263,15 +268,16 @@ CPU- and output-module support them):
 
 @item dc.x <exp1>[,<exp2>...]
       Assign the values of the operands into successive 96-bit words
-      of memory in the current section. Also IEEE extended precision
-      floating point constants are allowed.
+      of memory in the current section, using the IEEE extended precision
+      format when specifying them as floating point constants.
 
 @item dcb.b <exp>[,<fill>]
       Insert <exp> zero or <fill> bytes into the current section.
 
 @item dcb.d <exp>[,<fill>]
       Insert <exp> zero or <fill> 64-bit words into the current section.
-      <fill> might also be an IEEE double precision constant.
+      <fill> may also be a floating point constant which is then written
+      in IEEE double precision format.
 
 @item dcb.l <exp>[,<fill>]
       Insert <exp> zero or <fill> 32-bit words into the current section.
@@ -281,14 +287,16 @@ CPU- and output-module support them):
 
 @item dcb.s <exp>[,<fill>]
       Insert <exp> zero or <fill> 32-bit words into the current section.
-      <fill> might also be an IEEE single precision constant.
+      <fill> may also be a floating point constant which is then written
+      in IEEE single precision format.
 
 @item dcb.w <exp>[,<fill>]
       Insert <exp> zero or <fill> 16-bit words into the current section.
 
 @item dcb.x <exp>[,<fill>]
       Insert <exp> zero or <fill> 96-bit words into the current section.
-      <fill> might also be an IEEE extended precision constant.
+      <fill> may also be a floating point constant which is then written
+      in IEEE extended precision format.
 
 @item dl <exp1>[,<exp2>...]
       Equivalent to @code{dc.l} for ArgAsm, BAsm, HX68, Macro68, ProAsm, etc.
@@ -362,8 +370,10 @@ CPU- and output-module support them):
       Tries to allocate space in the DataBss portion of a code or
       data section. Otherwise equivalent to @code{dcb.x <exp>,0}.
 
-@item echo <string>
-      Prints <string> to stdout.
+@item echo <"string"|exp>[,<"string"|exp>]...
+      Prints one or more strings or expressions to stdout, terminated
+      by a newline. Strings are identified by single- or double-quotes.
+      In PhxAss-comapatibility mode only a single string can be printed.
 
 @item einline
       End a block of isolated local labels, started by @code{inline}.
@@ -409,7 +419,7 @@ CPU- and output-module support them):
 
 @item fail <message>
       Show an error message including the <message> string. Do not generate
-      an ouput file.
+      an output file.
 
 @item <symbol> fequ.s <expression>
       Define a new program symbol with the name <symbol> and assign to it

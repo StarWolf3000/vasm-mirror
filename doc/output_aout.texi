@@ -3,7 +3,7 @@ selected with the @option{-Faout} option.
 
 @section Legal
 
-    This module is written in 2008-2012 by Frank Wille and
+    This module is written in 2008-2016,2020,2021 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module

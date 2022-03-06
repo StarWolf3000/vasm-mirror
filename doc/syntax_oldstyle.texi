@@ -122,7 +122,7 @@ CPU- and output-module allow it):
 
 @item addr <exp1>[,<exp2>...]
       Assign the values of the operands into successive words
-      of memory in the current section, using the target's endianess
+      of memory in the current section, using the target's endianness
       and address size.
 
 @item align <bitcount>
@@ -152,7 +152,7 @@ CPU- and output-module allow it):
 
 @item blkw <exp>[,<fill>]
       Insert <exp> zero or <fill> 16-bit words into the current section,
-      using the endianess of the target CPU.
+      using the endianness of the target CPU.
 
 @item bss
       With option @option{-sect}:
@@ -194,12 +194,12 @@ CPU- and output-module allow it):
 
 @item defl <exp1>[,<exp2>...]
       Assign the values of the operands into successive 32-bit integers
-      of memory in the current section, using the endianess of the target
+      of memory in the current section, using the endianness of the target
       CPU.
 
 @item defp <exp1>[,<exp2>...]
       Assign the values of the operands into successive 24-bit integers
-      of memory in the current section, using the endianess of the target
+      of memory in the current section, using the endianness of the target
       CPU.
 
 @item defm "string"
@@ -305,7 +305,7 @@ CPU- and output-module allow it):
 
 @item fail <message>
       Show an error message including the <message> string. Do not generate
-      an ouput file.
+      an output file.
 
 @item fi
       Equivalent to @code{endif}.
@@ -509,7 +509,7 @@ CPU- and output-module allow it):
          section is executable
            
 @item s
-         section is sharable
+         section is shareable
 @end table
 
       When attributes are missing they are automatically set for the section
@@ -570,7 +570,7 @@ CPU- and output-module allow it):
 
 @item word <exp1>[,<exp2>...]
       Assign the values of the operands into successive 16-bit words
-      of memory in the current section, using the endianess of the target
+      of memory in the current section, using the endianness of the target
       CPU.
 
 @item xdef  <symbol>[,<symbol>...]

@@ -80,7 +80,7 @@ enum {
   OP_DISP5,
   OP_DISP12,
   OP_DISP16,
-  OP_DISP27,
+  OP_DISP27
 };
 
 
@@ -132,7 +132,7 @@ enum {
   EN_VREADI80,
   EN_VWRITEI80,
   EN_VARITHR80,
-  EN_VARITHI80,
+  EN_VARITHI80
 };
 
 typedef struct {

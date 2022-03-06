@@ -215,7 +215,8 @@ static expr *primary_expr(void)
     sym=find_symbol(name);
     if(!sym){
 #ifdef NARGSYM
-      if(!strcmp(name,NARGSYM)){
+      int match = nocase ? !stricmp(name,NARGSYM) : !strcmp(name,NARGSYM);
+      if(match){
         new=new_expr();
         new->type=NUM;
         new->c.val=cur_src->num_params; /*@@@ check for macro mode? */
@@ -618,7 +619,7 @@ int type_of_expr(expr *tree)
   return rtype>ltype?rtype:ltype;
 }
 
-/* Find pointer to first symbol occurence inside expression tree */
+/* Find pointer to first symbol occurrence inside expression tree */
 expr **find_sym_expr(expr **ptree,char *name)
 {
   expr **psym;

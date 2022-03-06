@@ -89,9 +89,10 @@ char *escape(char *s,char *code)
       return s;
     case 'x': case 'X':
       *code=0;
+      cnt=0;
       s++;
-      while ((*s>='0' && *s<='9') ||
-             (*s>='a' && *s<='f') || (*s>='A' && *s<='F')) {
+      while (++cnt<=2 && ((*s>='0' && *s<='9') ||
+             (*s>='a' && *s<='f') || (*s>='A' && *s<='F'))) {
         if (*s>='0' && *s<='9')
           *code = *code*16 + *s-'0';
         else if (*s>='a' && *s<='f')
@@ -770,7 +771,7 @@ int execute_macro(char *name,int name_len,char **q,int *q_len,int nq,
     }
   }
 
-  EXEC_MACRO(src);          /* syntax-module dependant initializations */
+  EXEC_MACRO(src);          /* syntax-module dependent initializations */
   cur_src = src;            /* execute! */
   return 1;
 }

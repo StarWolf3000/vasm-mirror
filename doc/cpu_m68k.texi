@@ -10,7 +10,7 @@ microprocessor family.
 @section Additional options for this module
 
 Note, that the order on the command line may be important when
-specifiying options. For example, if you specify -devpac compatibility
+specifying options. For example, if you specify -devpac compatibility
 mode behind enabling some optimization options, the Devpac-mode might
 disable these optimizations again.
 
@@ -287,6 +287,10 @@ vasm performs the following optimizations:
         Do not attempt to encode absolute PC-displacements directly.
         Example: @code{10(PC)}
 
+    @item -no-typechk
+        Do not check the size and type of expressions (@code{OPT t-}).
+        Example: @code{dc.b 300}
+
     @item -phxass
         PhxAss-compatibilty mode. The "current PC symbol" (e.g. @code{*} in
         mot-syntax module) is set to the instruction's address + 2 whenever
@@ -539,10 +543,10 @@ directives:
       @item o12
         Optimize @code{<op>.l #x,An} to @code{<op>.w #x,An}.
       @item ow
-        Show all optimizations being peformed.
+        Show all optimizations being performed.
         Default is on in Devpac-compatibility mode, otherwise off.
       @item p
-        Check if code is position independant. This will cause an error on
+        Check if code is position independent. This will cause an error on
         each relocation being required.
         Default is off.
       @item s
@@ -663,7 +667,7 @@ module:
       Define a new symbol named <symbol> and assign the data or
       address register @code{Rn}, which can be used from now on in operands.
       When 68080 code generation is enabled, also @code{Bn} base address
-      registers are allowed to be assigned.
+      registers and @code{En} vector registers are allowed to be assigned.
       Note that a register symbol must be defined before it can be
       used!
 
@@ -1014,7 +1018,6 @@ and @code{NEG.L Dn} (@option{-opt-mul} and @option{-opt-speed}).
 
 @itemize @minus
 
-@item Packed Decimal floating point constants are not yet supported!
 @item In some rare cases, mainly by stupid input sources, the optimizer
 might oscillate forever between two states. When this happens, assembly
 will be terminated automatically after some time.
@@ -1097,5 +1100,6 @@ This module has the following error messages:
 @item 2069: encoding absolute displacement directly
 @item 2070: internal symbol %s has been modified
 @item 2071: instruction too large for bank prefix
+@item 2072: bad FPU id %d for selected cpu type
 
 @end itemize

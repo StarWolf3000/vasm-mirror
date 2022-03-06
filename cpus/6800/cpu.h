@@ -64,7 +64,7 @@ typedef struct {
 #define M6801   2       /* 6801/6803: Adds D register and some extras */
 #define M68HC11 4       /* standard 68HC11 instruction set */
 
-/* adressing modes */
+/* addressing modes */
 #define INH     0
 #define IMM	1	/* #$12 */		/* IMM ii */
 #define IMM16	2	/* #$1234 */		/* IMM jj kk */

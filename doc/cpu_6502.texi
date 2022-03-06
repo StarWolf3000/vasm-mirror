@@ -46,11 +46,11 @@ This backend accepts 6502 family instructions as described in
 the instruction set reference manuals from MOS and Rockwell, which are valid
 for the following CPUs: 6502 - 6518, 6570, 6571, 6702, 7501, 8500, 8502.
 
-Optionally accepts 65C02 family instructions as decribed in the
+Optionally accepts 65C02 family instructions as described in the
 instruction set reference manuals from Rockwell and WDC. Also supports
 the WDC extensions in the W65C02 and W65C134.
 
-Optionally accepts 65CE02 family instructions as decribed in the
+Optionally accepts 65CE02 family instructions as described in the
 instruction set reference manuals from Commodore Semiconductor Group.
 
 Optionally accepts HuC6280 instructions as described in the instruction

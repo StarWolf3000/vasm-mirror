@@ -1,4 +1,4 @@
-    "index offset out of bounds (%d)",ERROR,
+    "trailing garbage in operand",WARNING,
     "Opcode not supported by %s (%s)",ERROR,
     "Index registers not available on %s",ERROR,
     "out of range for 8 bit expression (%d)",ERROR,
@@ -25,3 +25,4 @@
     "Operations between ix/iy/hl are forbidden", ERROR, 
     "Double indirection forbidden", ERROR, /* 25 */
     "Instruction %s will be assembled as '%s'", WARNING,
+    "index offset out of bounds (%d)",ERROR,

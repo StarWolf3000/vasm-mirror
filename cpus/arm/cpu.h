@@ -117,7 +117,7 @@ enum {
   TPCLW,      /* PC-relative label, has to fit into 10-bit uns.imm. >> 2 */
   TBR08,      /* 9-bit branch offset >> 1 to label at 7..0 */
   TBR11,      /* 12-bit branch offset >> 1 to label at 10..0 */
-  TBRHL       /* 23-bit branch offset >> 1 splitted into two 11-bit instr. */
+  TBRHL       /* 23-bit branch offset >> 1 split into two 11-bit instr. */
 };
 
 #define ARMOPER(x)    ((x)>=BRA24 && (x)<=RLIST)

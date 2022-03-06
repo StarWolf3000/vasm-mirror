@@ -81,7 +81,7 @@ typedef struct {
 #define M45GS02  256     /* MEGA65 45GS02 extensions on basic WDC02 instr.set */
 
 
-/* adressing modes */
+/* addressing modes */
 enum {
   IMPLIED=0,
   DATAOP,       /* data operand */
@@ -97,19 +97,20 @@ enum {
   INDX,         /* ($12,X) */
   INDY,         /* ($12),Y */
   INDZ,         /* ($12),Z */
-  INDZ32,       /* [$12],Z */
-  IND32,        /* [$12] */
   DPINDIR,      /* ($12) */
   INDIRX,       /* ($1234,X) - JMP only */
   RELJMP,       /* B!cc/JMP construction */
   REL8,         /* $1234 - 8-bit signed relative branch */
   REL16,        /* $1234 - 16-bit signed relative branch */
   IMMED,        /* #$12 */
+  IMMED16,      /* #$1234 */
   WBIT,         /* bit-number (WDC65C02) */
+  INDZ32,       /* [$12],Z */
+  IND32,         /* [$12] */
   ACCU,         /* A - all following addressing modes don't need a value! */
   DUMX,         /* dummy X as 'second' operand */
   DUMY,         /* dummy Y as 'second' operand */
-  DUMZ,         /* dummy Z as 'second' operand */
+  DUMZ          /* dummy Z as 'second' operand */
 };
 #define IS_ABS(x) ((x)>=ABS && (x)<=ABSZ)
 #define IS_REL

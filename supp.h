@@ -64,7 +64,7 @@ const char *trim(const char *);
 char *get_str_arg(const char *);
 
 taddr balign(taddr,taddr);
-taddr palign(taddr,taddr);
+taddr palign(taddr,int);
 taddr pcalign(atom *,taddr);
 int make_padding(taddr,uint8_t *,int);
 

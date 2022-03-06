@@ -155,18 +155,17 @@ int parse_operand(char *p, int len, operand *op, int requires)
       op->type = OP_IMM;
       p=skip(p+1);
       tree = parse_expr(&p);
-      if (!tree) { /* It's not a valid expresion */
+      if (!tree) { /* It's not a valid expression */
         return PO_NOMATCH;
       }
       op->value = tree;
-    } else { /* expresion that would be a immediate value */
+    } else { /* expression that would be a immediate value */
+      /*int parent=0;*/
+      expr *tree;
 #ifdef OPERAND_DEBUG
     fprintf(stderr, "expr\t");
 #endif
       op->type = OP_IMM;
-
-      /*int parent=0;*/
-      expr *tree;
 
       /*
       if (*p=='(') {
@@ -176,7 +175,7 @@ int parse_operand(char *p, int len, operand *op, int requires)
       */
 
       tree = parse_expr(&p);
-      if (!tree) { /* It's not a valid expresion */
+      if (!tree) { /* It's not a valid expression */
         return PO_NOMATCH ;
       }
 
@@ -502,7 +501,7 @@ operand *new_operand()
   return new;
 }
 
-/* return true, if initialization was successfull */
+/* return true, if initialization was successful */
 int init_cpu()
 {
   return 1;

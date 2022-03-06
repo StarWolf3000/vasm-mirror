@@ -1,5 +1,5 @@
 /* vasm.c  main module for vasm */
-/* (c) in 2002-2021 by Volker Barthelmann */
+/* (c) in 2002-2022 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,8 +10,8 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 1.8l"
-char *copyright = _VER " (c) in 2002-2021 Volker Barthelmann";
+#define _VER "vasm 1.9"
+char *copyright = _VER " (c) in 2002-2022 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 #endif
@@ -336,7 +336,7 @@ static int resolve_section(section *sec)
     }
     if(rorg){
       sec->pc=org_pc+(sec->pc-rorg_pc);
-      sec->flags&=~ABSOLUTE;  /* workaround for misssing RORGEND */
+      sec->flags&=~ABSOLUTE;  /* workaround for missing RORGEND */
     }
     /* Extend the fast-optimization phase, when there was no atom which
        became larger than in the previous pass. */
@@ -577,9 +577,9 @@ static void fix_labels(void)
     }
     /* expressions which are based on a label are turned into a new label */
     else if(sym->type==EXPRESSION){
-      if(!eval_expr(sym->expr,&val,NULL,0)){
+      if(type_of_expr(sym->expr)==NUM&&!eval_expr(sym->expr,&val,NULL,0)){
         if(find_base(sym->expr,&base,NULL,0)==BASE_OK){
-          /* turn into an offseted label symbol from the base's section */
+          /* turn into an offsetted label symbol from the base's section */
           sym->type=base->type;
           sym->sec=base->sec;
           sym->pc=val;
@@ -685,8 +685,8 @@ static int init_main(void)
       printf("*** %d mnemonic collisions!!\n",mnemohash->collisions);
   }
   new_include_path(emptystr);  /* index 0: current work directory */
-  taddrmask=MAKEMASK(bytespertaddr<<3);
-  taddrmax=((utaddr)~0)>>1;
+  taddrmask=MAKEMASK(bytespertaddr*bitsperbyte);
+  taddrmax=DEFMASK>>1;
   taddrmin=~taddrmax;
   inst_alignment=INST_ALIGN;
   return 1;

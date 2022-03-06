@@ -217,7 +217,7 @@ static void write_dri_sym(FILE *f,char *name,int type,taddr value)
 
 static void tos_symboltable(FILE *f,symbol *sym)
 {
-  static int labtype[] = { STYP_TEXT,STYP_DATA,STYP_BSS };
+  static const int labtype[] = { STYP_TEXT,STYP_DATA,STYP_BSS };
   int t;
 
   for (; sym; sym=sym->next) {

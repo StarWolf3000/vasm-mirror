@@ -7,7 +7,7 @@
 nreloc *new_nreloc(void)
 {
   nreloc *new = mymalloc(sizeof(*new));
-  new->mask = -1;
+  new->mask = DEFMASK;
   new->byteoffset = new->bitoffset = new->size = 0;
   new->addend = 0;
   return new;
@@ -47,7 +47,7 @@ rlist *add_extnreloc(rlist **relocs,symbol *sym,taddr addend,int type,
 
 rlist *add_extnreloc_masked(rlist **relocs,symbol *sym,taddr addend,int type,
                             size_t bitoffs,size_t size,size_t byteoffs,
-                            taddr mask)
+                            utaddr mask)
 /* add_extnreloc_masked() can specify byteoffset and bitoffset directly.
    Use add_nreloc_masked() for the old interface, which calculates
    byteoffset and bitoffset from offset. */

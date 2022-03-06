@@ -13,7 +13,7 @@ int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
 int		bitsperbyte = 8;
 int		bytespertaddr = 2;
-char *		cpu_copyright = "vasm 6800/6801/68hc11 cpu backend 0.4a (c) 2013-2016,2019,2021 Esben Norby";
+char *		cpu_copyright = "vasm 6800/6801/68hc11 cpu backend 0.5 (c) 2013-2016,2019,2021 Esben Norby";
 char *		cpuname = "6800";
 
 static uint8_t	cpu_type = M6800;
@@ -32,7 +32,7 @@ cpu_args(char *p)
 {
 	if (!strncmp(p, "-m68", 4)) {
 		p += 4;
-		if (p[0] == '0' && p[3] == '\0') {
+		if (p[0] == '0' && p[2] == '\0') {
 			switch(p[1]) {
 				case '0':
 				case '2':

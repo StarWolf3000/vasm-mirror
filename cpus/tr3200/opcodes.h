@@ -114,9 +114,9 @@
 "int",      {OP_IMM },                    {0x29, 0, CPU_ALL},
 
 /* NP instructions */
-"sleep",    { },                          {0x00, 0, CPU_ALL},
-"ret",      { },                          {0x01, 0, CPU_ALL},
-"rfi",      { },                          {0x02, 0, CPU_ALL},
+"sleep",    {0},                          {0x00, 0, CPU_ALL},
+"ret",      {0},                          {0x01, 0, CPU_ALL},
+"rfi",      {0},                          {0x02, 0, CPU_ALL},
 
   /* Load / Store*/
 /*          Register    Were to read  */

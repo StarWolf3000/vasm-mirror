@@ -5,7 +5,7 @@ TARGET =
 TARGETEXTENSION =
 
 CCOUT = -o $(DUMMY)
-COPTS = -c -std=c99 -O2 -Wpedantic -DUNIX $(OUTFMTS)
+COPTS = -c -std=c90 -O2 -pedantic -Wno-long-long -DUNIX $(OUTFMTS)
 
 LD = $(CC)
 LDOUT = $(CCOUT)

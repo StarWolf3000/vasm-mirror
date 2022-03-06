@@ -272,7 +272,7 @@ static void o65_header(FILE *f)
       time_t now;
 
       (void)time(&now);
-      strftime(datebuf,32,"%a %b %d %T %Z %Y",localtime(&now));
+      strftime(datebuf,32,"%a %b %d %H:%M:%S %Z %Y",localtime(&now));
       o65_fopt(f,4,datebuf,strlen(datebuf)+1);
     }
   }

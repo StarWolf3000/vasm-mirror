@@ -125,6 +125,7 @@ typedef struct {
 #define M6809           (1<<0)  /* 6809 is default */
 #define HD6309          (1<<1)  /* 6309: new registers, additional instr. */
 #define HC12            (1<<2)  /* standard 68HC12 instruction set */
+#define TURBO9          (1<<3)  /* Turbo9 */
 /* other flags */
 #define MOVE            (1<<15) /* movb, movw instruction */
 

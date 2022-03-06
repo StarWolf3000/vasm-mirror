@@ -5,7 +5,7 @@ TARGETEXTENSION =
 
 CC = vc +mint
 CCOUT = -o=
-COPTS = -c -c99 -cpu=68020 -O1 $(OUTFMTS)
+COPTS = -c -merge-strings -cpu=68020 -O1 $(OUTFMTS)
 
 LD = $(CC)
 LDOUT = $(CCOUT)

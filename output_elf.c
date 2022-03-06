@@ -226,7 +226,7 @@ static unsigned findelfsymbol(char *name)
 
 static void init_ident(unsigned char *id,uint8_t class)
 {
-  static char elfid[4] = { 0x7f,'E','L','F' };
+  static const char elfid[4] = { 0x7f,'E','L','F' };
 
   memcpy(&id[EI_MAG0],elfid,4);
   id[EI_CLASS] = class;
@@ -410,7 +410,7 @@ static utaddr make_stabreloc(utaddr pc,struct stabdef *nlist,
   nrel.byteoffset = offsetof(struct nlist32,n_value);
   nrel.bitoffset = 0;
   nrel.size = bits;
-  nrel.mask = ~0;
+  nrel.mask = DEFMASK;
   nrel.addend = nlist->value;
   nrel.sym = nlist->base;
 
@@ -889,6 +889,7 @@ int init_output_elf(char **cp,void (**wo)(FILE *,section *,symbol *),
   *cp = copyright;
   *wo = write_output;
   *oa = output_args;
+  secname_attr = 1; /* attribute is used to differentiate between sections */
   return 1;
 }
 
