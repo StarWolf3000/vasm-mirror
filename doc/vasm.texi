@@ -8,7 +8,7 @@
 @setfilename index.texi
 @settitle vasm manual
 @setchapternewpage odd
-@set UPDATED February 2022
+@set UPDATED October 2022
 
 @ifinfo
 
@@ -39,7 +39,7 @@ vasm is a portable and retargetable assembler able to create linkable
 objects in different formats as well as absolute code.
 Different CPU-, syntax and output-modules are supported.
 
-Many common directives/pseudo-opcodes are supported (depending on the
+Most common directives/pseudo-opcodes are supported (depending on the
 syntax module) as well as CPU-specific extensions.
 
 The assembler supports optimizations and relaxations (e.g. choosing
@@ -48,10 +48,10 @@ converting a branch to an absolute jump if necessary).
 
 The concept is that you get a special vasm binary for any combination of
 CPU- and syntax-module. All output modules, which make sense for the
-current CPU, are included in the vasm binary and you have to make sure to
+selected CPU, are included in the vasm binary and you have to make sure to
 choose the output file format you need (refer to the next chapter and look for
-the @code{-F} option). The default is a test output, only useful for debugging
-or analyzing the output.
+the @code{-F} option). The default is a test output format, only useful for
+debugging or analyzing the output.
 
 
 @section Legal

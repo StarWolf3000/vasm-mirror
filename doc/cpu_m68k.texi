@@ -3,7 +3,7 @@ microprocessor family.
 
 @section Legal
 
-    This module is written in 2002-2021 by Frank Wille and
+    This module is written in 2002-2022 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 
@@ -45,7 +45,7 @@ This module provides the following additional options:
         with a different opcode (vasm will use the 040/060 version).
 
     @item -m68080
-        Generate code for the Apollo Core AC68080 FPGA CPU.
+        Generate code for the Apollo Core AC68080 CPU.
 
     @item -mcpu32
         Generate code for the CPU32 family (MC6833x, MC6834x, etc.).
@@ -307,6 +307,11 @@ vasm performs the following optimizations:
         option the errors 2026, 2030, 2033 and 2037 will be displayed as
         a warning, allowing the user to create an object file.
 
+    @item -regsymredef
+        Allow redefining register symbols with @code{EQUR}. This should
+        only be used for compatibility with old sources. Not many assemblers
+        support that.
+
     @item -sdreg=<n>
         Set the small data base register to @code{An}. <n> is valid
         between 0 and 6.
@@ -315,11 +320,6 @@ vasm performs the following optimizations:
         Additionally allow immediate operands to be prefixed by
         @code{&} instead of just by @code{#}. This syntax was used by
         the SGS assembler.
-
-    @item -regsymredef
-        Allow redefining register symbols with @code{EQUR}. This should
-        only be used for compatibility with old sources. Not many assemblers
-        support that.
 @end table
 
 @section General
@@ -627,8 +627,8 @@ directives:
         Enable immediate float constant optimizations (refer to
         @option{-opt-fconst}).
       @item og
-        Enable generic vasm optimizations. All optimizations which cannot
-        be controlled by another option.
+        Enable generic vasm optimizations. This includes all safe
+        optimizations which cannot be controlled by another option.
       @item oj
         Enable branch to jump translations (refer to @option{-opt-brajmp}).
       @item ol
@@ -656,7 +656,8 @@ directives:
         Enable optimization for size, even if the code becomes slower
         (refer to @option{-opt-size}).
    @end table
-   The default state is 'off' for all those vasm specific options.
+   The default state is 'off' for all those vasm specific options,
+   except for @code{of} and @code{og}, which are 'on'.
 @end table
 
 The following directives are only available for the Motorola syntax
@@ -702,6 +703,7 @@ module:
 
 @section Optimizations
 
+@subsection Operand optimizations
 This backend performs the following operand optimizations:
 
 @itemize @minus
@@ -778,9 +780,12 @@ This backend performs the following operand optimizations:
 @end itemize
 
 Note that an operand optimization will only take place when a displacement's
-size was not enforced by the programmer (e.g. @code{(4.l,a0)})!
+size was not enforced by the programmer through an explicite size
+extension (e.g. @code{(4.l,a0)})!
 
-This backend performs the following instruction optimizations:
+@subsection Instruction optimizations
+This backend performs the following instruction optimizations and
+translations:
 
 @itemize @minus
 
@@ -1021,6 +1026,11 @@ and @code{NEG.L Dn} (@option{-opt-mul} and @option{-opt-speed}).
 @item In some rare cases, mainly by stupid input sources, the optimizer
 might oscillate forever between two states. When this happens, assembly
 will be terminated automatically after some time.
+
+@item When using @code{FMOVE} immediate addressing modes, but without
+specifying a size extension, constants between @code{$80000000} and
+@code{$ffffffff} are stored with 32 bits, which leads to sign-extension
+problems when the instruction is really 64 or 96 bits.
 
 @end itemize
 

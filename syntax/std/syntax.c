@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2021 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2022 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 #include "stabs.h"
@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm std syntax module 5.3b (c) 2002-2021 Volker Barthelmann";
+char *syntax_copyright="vasm std syntax module 5.4 (c) 2002-2022 Volker Barthelmann";
 hashtable *dirhash;
 int dotdirs = 1;
 
@@ -66,11 +66,13 @@ static struct namelen endr_dirlist[] = {
   { 4,&endrname[1] }, { 0,0 }
 };
 
+static int gas_compat;
 static int parse_end;
 static int alloccommon;
 static int align_data;
 static int noesc;
-static taddr sdlimit=-1; /* max size of common data in .sbss section */
+static unsigned local_labno[10]; /* ser.no. of GNU-as local labels 0 .. 9 */
+static taddr sdlimit=-1;         /* max size of common data in .sbss section */
 
 
 char *skip(char *s)
@@ -160,36 +162,39 @@ static taddr comma_constexpr(char **s)
 static void handle_section(char *s)
 {
   char *name,*attr,*new,*p;
+  strbuf *namebuf;
   uint32_t mem=0;
   section *sec;
 
-  if(!(name=parse_name(&s))){
+  if(!(namebuf=parse_name(0,&s))){
     syntax_error(20);  /* section name */
     return;
   }
+  name=namebuf->str;
+  s=skip(s);
   if(*s==','){
+    strbuf *attrbuf;
     s=skip(s+1);
-    if(*s!='\"')
-      general_error(6,'\"');  /* quote expected */
-    if(attr=parse_name(&s)){
+    if (attrbuf=get_raw_string(&s,'\"')){
+      attr=attrbuf->str;
+      s=skip(s+1);
       if(*s==','){
         p=s=skip(s+1);
         if(*s=='@'||*s=='%'){
           /* ELF section type "progbits" or "nobits" */
+          strbuf *typebuf;
           s++;
-          if(new=parse_identifier(&s)){
-            if(!strcmp(new,"nobits")){
-              myfree(new);
+          if(typebuf=parse_identifier(0,&s)){
+            if(!strcmp(typebuf->str,"nobits")){
               if(strchr(attr,'u')==NULL){
-                new=mymalloc(strlen(attr)+2);
+                new=strbuf_alloc(typebuf,attrbuf->len+2);
+                new=mymalloc(attrbuf->len+2);
                 sprintf(new,"u%s",attr);
-                myfree(attr);
                 attr=new;
               }
             }else{
-              if(strcmp(new,"progbits"))
+              if(strcmp(typebuf->str,"progbits"))
                 syntax_error(14);  /* invalid sectiont type ignored */
-              myfree(new);
             }
           }
         }else{
@@ -331,9 +336,9 @@ static void handle_data(char *s,int size,int noalign)
 
 static void do_equ(char *s,int equiv)
 {
-  char *labname;
+  strbuf *labname;
 
-  if(!(labname=parse_identifier(&s))){
+  if(!(labname=parse_identifier(0,&s))){
     syntax_error(10);  /* identifier expected */
     return;
   }
@@ -342,9 +347,8 @@ static void do_equ(char *s,int equiv)
     general_error(6,',');  /* comma expected */
   else
     s=skip(s+1);
-  if(equiv) check_symbol(labname);
-  new_abs(labname,parse_expr_tmplab(&s));
-  myfree(labname);
+  if(equiv) check_symbol(labname->str);
+  new_abs(labname->str,parse_expr_tmplab(&s));
   eol(s);
 }
 
@@ -361,15 +365,14 @@ static void handle_equiv(char *s)
 static void do_binding(char *s,int bind)
 {
   symbol *sym;
-  char *name;
+  strbuf *name;
 
   while(1){
-    if(!(name=parse_identifier(&s))){
+    if(!(name=parse_identifier(0,&s))){
       syntax_error(10);  /* identifier expected */
       return;
     }
-    sym=new_import(name);
-    myfree(name);
+    sym=new_import(name->str);
     if(((sym->flags&(EXPORT|WEAK|LOCAL))!=0 &&
         (sym->flags&(EXPORT|WEAK|LOCAL))!=bind)
        || ((sym->flags&COMMON) && bind==LOCAL))
@@ -490,15 +493,14 @@ static void handle_space(char *s)
 
 static void handle_size(char *s)
 {
-  char *name;
+  strbuf *name;
   symbol *sym;
 
-  if(!(name=parse_identifier(&s))){
+  if(!(name=parse_identifier(0,&s))){
     syntax_error(10);  /* identifier expected */
     return;
   }
-  sym=new_import(name);
-  myfree(name);
+  sym=new_import(name->str);
   s=skip(s);
   if(*s==',')
     s=skip(s+1);
@@ -510,15 +512,14 @@ static void handle_size(char *s)
 
 static void handle_type(char *s)
 {
-  char *name;
+  strbuf *name;
   symbol *sym;
 
-  if(!(name=parse_identifier(&s))){
+  if(!(name=parse_identifier(0,&s))){
     syntax_error(10);  /* identifier expected */
     return;
   }
-  sym=new_import(name);
-  myfree(name);
+  sym=new_import(name->str);
   s=skip(s);
   if(*s==','){
     s=skip(s+1);
@@ -540,13 +541,13 @@ static void handle_type(char *s)
 
 static void new_bss(char *s,int global)
 {
-  char *name;
+  strbuf *name;
   symbol *sym;
   atom *a;
   taddr size;
   section *bss;
 
-  if(!(name=parse_identifier(&s))){
+  if(!(name=parse_identifier(0,&s))){
     syntax_error(10);  /* identifier expected */
     return;
   }
@@ -559,11 +560,10 @@ static void new_bss(char *s,int global)
     if(!(bss=find_section(bssname,bssattr)))
       bss=new_section(bssname,bssattr,1);
   }
-  sym=new_labsym(bss,name);
+  sym=new_labsym(bss,name->str);
   sym->flags|=TYPE_OBJECT;
   if(global) sym->flags|=EXPORT;
   sym->size=number_expr(size);
-  myfree(name);
   s=skip(s);
   if(*s==','){
     s=skip(s+1);
@@ -584,25 +584,24 @@ static void new_bss(char *s,int global)
 
 static void handle_comm(char *s)
 {
-  char *name,*start=s;
+  strbuf *name;
+  char *start=s;
   symbol *sym;
 
   if (alloccommon){
     new_bss(s,1);
     return;
   }
-  if(!(name=parse_identifier(&s))){
+  if(!(name=parse_identifier(0,&s))){
     syntax_error(10);  /* identifier expected */
     return;
   }
-  if ((sym=find_symbol(name))&&(sym->flags&LOCAL)) {
-    myfree(name);
+  if ((sym=find_symbol(name->str))&&(sym->flags&LOCAL)) {
     new_bss(start,0);  /* symbol is local, make it .lcomm instead */
     return;
   }
 
-  sym=new_import(name);
-  myfree(name);
+  sym=new_import(name->str);
   s=skip(s);
   if(*s==',')
     s=skip(s+1);
@@ -689,30 +688,30 @@ static void handle_stabd(char *s)
 
 static void handle_incdir(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_name(&s))
-    new_include_path(name);
+  if (name = parse_name(0,&s))
+    new_include_path(name->str);
   eol(s);
 }
 
 static void handle_include(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_name(&s)) {
+  if (name = parse_name(0,&s)) {
     eol(s);
-    include_source(name);
+    include_source(name->str);
   }
 }
 
 static void handle_incbin(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_name(&s)) {
+  if (name = parse_name(0,&s)) {
     eol(s);
-    include_binary_file(name,0,0);
+    include_binary_file(name->str,0,0);
   }
 }
 
@@ -728,16 +727,16 @@ static void handle_rept(char *s)
 
 static void do_irp(int type,char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if(!(name=parse_identifier(&s))){
+  if(!(name=parse_identifier(0,&s))){
     syntax_error(10);  /* identifier expected */
     return;
   }
   s=skip(s);
   if (*s==',')
     s=skip(s+1);
-  new_repeat(type,name,mystrdup(s),
+  new_repeat(type,name->str,mystrdup(s),
              dotdirs?drept_dirlist:rept_dirlist,
              dotdirs?dendr_dirlist:endr_dirlist);
 }
@@ -759,15 +758,14 @@ static void handle_endr(char *s)
 
 static void handle_macro(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if(name = parse_identifier(&s)){
+  if(name = parse_identifier(0,&s)){
     s=skip(s);
     if(ISEOL(s))
       s=NULL;
-    new_macro(name,dotdirs?dmacro_dirlist:macro_dirlist,
+    new_macro(name->str,dotdirs?dmacro_dirlist:macro_dirlist,
               dotdirs?dendm_dirlist:endm_dirlist,s);
-    myfree(name);
   }else
     syntax_error(10);  /* identifier expected */
 }
@@ -791,7 +789,6 @@ static void ifdef(char *s,int b)
     result = sym->type != IMPORT;
   else
     result = 0;
-  myfree(name);
   cond_if(result == b);
   eol(s);
 }
@@ -980,10 +977,10 @@ static void handle_title(char *s)
 
 static void handle_ident(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if(name=parse_name(&s))
-    setfilename(name);
+  if(name=parse_name(0,&s))
+    setfilename(mystrdup(name->str));
   eol(s);
 }
 
@@ -1138,6 +1135,26 @@ static int handle_directive(char *line)
   return 0;
 }
 
+static char *parse_stdlabel(char **start)
+{
+  char *s,*name;
+
+  s = skip(*start);
+  if (isdigit((unsigned char)s[0]) && s[1]==':') {
+    /* redefinable local label 0 .. 9 */
+    strbuf *buf;
+    char serno[16];
+
+    buf = make_local_label(0,s,1,serno,
+                           sprintf(serno,"%u",++local_labno[*s-'0']));
+    name = buf->str;
+    *start = s+2;
+  }
+  else
+    name = parse_labeldef(start,1);
+  return name;
+}
+
 void parse(void)
 {
   char *s,*line,*ext[MAX_QUALIFIERS?MAX_QUALIFIERS:1],*op[MAX_OPERANDS];
@@ -1160,8 +1177,7 @@ void parse(void)
       int idx;
 
       s = line;
-      if (labname = parse_labeldef(&s,1))  /* skip label field */
-        myfree(labname);
+      (void)parse_stdlabel(&s);  /* skip label field */
       idx = check_directive(&s);
       if (idx >= 0) {
         if (!strncmp(directives[idx].name,"if",2))
@@ -1184,11 +1200,10 @@ void parse(void)
     if(ISEOL(s))
       continue;
 
-    if(labname=parse_labeldef(&s,1)){
+    if(labname=parse_stdlabel(&s)){
       /* we have found a valid global or local label */
       add_atom(0,new_label_atom(new_labsym(0,labname)));
       s=skip(s);
-      myfree(labname);
     }
 
     if(ISEOL(s))
@@ -1420,29 +1435,43 @@ char *const_suffix(char *start,char *end)
   return end;
 }
 
-char *get_local_label(char **start)
-/* local labels start with a '.' or end with '$': "1234$", ".1" */
+strbuf *get_local_label(int n,char **start)
+/* Local label have digits only. Either they end with '$' or start with
+   '.' (not in gas-compatibility mode). Additionally multiple single-
+  digit local labels from '0' to '9' are allowed and referenced with
+  'Nb' for the previous and 'Nf' for the next definition. */
 {
   char *s = *start;
-  char *name = NULL;
+  strbuf *name = NULL;
 
-  if (*s == '.') {
+  if (!gas_compat && *s=='.') {
     s++;
     while (isdigit((unsigned char)*s) || *s=='_')  /* '_' needed for ".\@" */
       s++;
     if (s > (*start+1)) {
-      name = make_local_label(NULL,0,*start,s-*start);
+      name = make_local_label(n,NULL,0,*start,s-*start);
       *start = skip(s);
     }
   }
   else if (isdigit((unsigned char)*s) || *s=='_') {  /* '_' needed for "\@$" */
     s++;
-    while (isdigit((unsigned char)*s))
-      s++;
-    if (*s=='$' && isdigit((unsigned char)*(s-1))) {
-      s++;
-      name = make_local_label(NULL,0,*start,s-*start);
-      *start = skip(s);
+    if (*s=='b' || *s=='f') {
+      unsigned serno = local_labno[*(s-1)-'0'];
+      char sernostr[16];
+
+      if (*s-- == 'f')
+        serno++;
+      name = make_local_label(n,s,1,sernostr,sprintf(sernostr,"%u",serno));
+      *start = skip(s+2);
+    }
+    else {
+      while (isdigit((unsigned char)*s))
+        s++;
+      if (*s=='$' && isdigit((unsigned char)*(s-1))) {
+        s++;
+        name = make_local_label(n,NULL,0,*start,s-*start);
+        *start = skip(s);
+      }
     }
   }
   return name;
@@ -1452,11 +1481,13 @@ int init_syntax()
 {
   size_t i;
   hashdata data;
-  dirhash=new_hashtable(0x200); /*FIXME: */
+  dirhash=new_hashtable(0x1000);
   for(i=0;i<dir_cnt;i++){
     data.idx=i;
     add_hashentry(dirhash,directives[i].name,data);
   }
+  if(debug && dirhash->collisions)
+    fprintf(stderr,"*** %d directive collisions!!\n",dirhash->collisions);
 
   cond_init();
 #if defined(VASM_CPU_X86)
@@ -1471,8 +1502,16 @@ int syntax_args(char *p)
 {
   int i;
 
-  if (!strcmp(p,"-align")) {
+  if (!strcmp(p,"-ac")) {
+    alloccommon = 1;
+    return 1;
+  }
+  else if (!strcmp(p,"-align")) {
     align_data = 1;
+    return 1;
+  }
+  else if (!strcmp(p,"-gas")) {
+    gas_compat = 1;
     return 1;
   }
   else if (!strcmp(p,"-nodotneeded")) {
@@ -1481,10 +1520,6 @@ int syntax_args(char *p)
   }
   else if (!strcmp(p,"-noesc")) {
     noesc = 1;
-    return 1;
-  }
-  else if (!strcmp(p,"-ac")) {
-    alloccommon = 1;
     return 1;
   }
   else if (!strncmp(p,"-sdlimit=",9)) {

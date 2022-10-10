@@ -84,8 +84,8 @@ struct relocation_info {
 
 /* vasm specific - used to generate a.out files */
 
-#define STRHTABSIZE 0x10000
-#define SYMHTABSIZE 0x10000
+#define ASTRTABSIZE 0x10000
+#define ASYMTABSIZE 0x10000
 
 struct StrTabNode {
   struct node n;

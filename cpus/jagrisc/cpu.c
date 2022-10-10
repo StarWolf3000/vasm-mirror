@@ -163,6 +163,7 @@ static void jagswap32(unsigned char *d,int32_t w)
 char *parse_cpu_special(char *start)
 /* parse cpu-specific directives; return pointer to end of cpu-specific text */
 {
+  strbuf *buf;
   char *name=start;
   char *s;
 
@@ -187,9 +188,8 @@ char *parse_cpu_special(char *start)
              s-name==9 && !strnicmp(name,"equrundef",9)) {
       /* undefine a register symbol */
       s = skip(s);
-      if (name = parse_identifier(&s)) {
-        undef_regsym(name,0,RTYPE_R);
-        myfree(name);
+      if (buf = parse_identifier(0,&s)) {
+        undef_regsym(buf->str,0,RTYPE_R);
         eol(s);
         return skip_line(s);
       }
@@ -198,9 +198,8 @@ char *parse_cpu_special(char *start)
     else if (s-name==7 && !strnicmp(name,"ccundef",7)) {
       /* undefine a condition code symbol */
       s = skip(s);
-      if (name = parse_identifier(&s)) {
-        undef_regsym(strtolower(name),0,RTYPE_CC);
-        myfree(name);
+      if (buf = parse_identifier(0,&s)) {
+        undef_regsym(strtolower(buf->str),0,RTYPE_CC);
         eol(s);
         return skip_line(s);
       }

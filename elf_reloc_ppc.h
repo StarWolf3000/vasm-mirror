@@ -80,6 +80,10 @@
 
     switch ((*rl)->type) {
 
+      case REL_NONE:
+        t = R_PPC_NONE;
+        break;
+
       case REL_ABS:
         if (pos==0 && mask==~0) {
           if (size == 32)

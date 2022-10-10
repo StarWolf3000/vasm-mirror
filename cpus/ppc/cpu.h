@@ -7,7 +7,7 @@ extern int ppc_endianess;
 #define BIGENDIAN (ppc_endianess)
 #define LITTLEENDIAN (!ppc_endianess)
 #define VASM_CPU_PPC 1
-#define MNEMOHTABSIZE 0x18000
+#define MNEMOHTABSIZE 0x20000
 
 /* maximum number of operands for one mnemonic */
 #define MAX_OPERANDS 5

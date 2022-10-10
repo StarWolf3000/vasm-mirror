@@ -1,10 +1,10 @@
 This chapter documents the backend for the MOS/Rockwell 6502
-microprocessor family. It also supports the Rockwell/WDC 65C02 and the
-Hudson Soft HuC6280 instruction sets.
+microprocessor family. It also supports the Rockwell/WDC 65C02,
+the Hudson Soft HuC6280 and the WDC 65802/65816 instruction sets.
 
 @section Legal
 
-    This module is written in 2002,2006,2008-2012,2014-2021 by Frank Wille
+    This module is written in 2002,2006,2008-2012,2014-2022 by Frank Wille
     and is covered by the vasm copyright without modifications.
 
 
@@ -15,6 +15,13 @@ This module provides the following additional options:
 @table @option
     @item -6280
         Recognize all HuC6280 instructions.
+    @item -802
+        Same as @option{-816}. There is no difference in the instruction set.
+    @item -816
+        Enables the 8/16 bit instruction set for the WDC65816/65802 and
+        additional directives to switch loading of the accumulator and/or
+        the index register between 8 and 16 bits.
+        The target address size is 24 bits.
     @item -bbcade
         Swap meaning of @code{<} and @code{>} unary operators for compatibility
         with the BBC ADE assembler.
@@ -58,7 +65,10 @@ set reference manuals from Hudson Soft.
 
 Optionally accepts 45GS02 instructions as defined by the Mega65 project.
 
-The target address type is 16 bit.
+Optionally accepts WDC65816 insructions as described in the Programming
+Manual by The Western Design Center.
+
+The target address type is 16 bits, or 24 bits in WDC65816 mode.
 
 Instructions consist of one up to three bytes for the standard 6502 family
 (up to 7 bytes for the 6280) and require no alignment.
@@ -68,6 +78,12 @@ All known mnemonics for illegal instructions are optionally recognized (e.g.
 @code{dcm} and @code{dcp} refer to the same instruction). Some illegal
 insructions (e.g. @code{$ab}) are known to show unpredictable behaviour,
 or do not always work the same on different CPUs.
+
+Note that the WDC65816 @code{MVN} and @code{MVP} block move instructions
+require a full 24-bit address (or a label) for the source and destination,
+as documented in WDC's Programming Manual. This assembler additionally
+allows to specify the bank byte directly, which is triggered by a constant
+value between 0 and 255.
 
 @section Extensions
 
@@ -79,16 +95,18 @@ This backend provides the following specific extensions:
  of a 16-bit word. The character @code{<} is used to select the low-byte
  and @code{>} for the high-byte. It has to be the first character before
  an expression. See also option @option{-bbcade}.
+ In WDC65816 mode the character @code{^} can be used to select the
+ bank-byte (bits 16 to 23) of a full 24 bit address.
 
-@item When applying the operation @code{/256}, @code{%256} or @code{&256}
- on a label, an appropriate lo/hi-byte relocation will automatically be
- generated.
+@item When applying the operation @code{>>8}, @code{/256}, @code{%256}
+ or @code{&256} on a label, an appropriate lo/hi-byte relocation will
+ automatically be generated.
 
 @item The hi/lo-modifier can also be used in front of absolute addressing
  modes, to enforce absolute 16-bit addressing (hi/@code{>}) or
- zero/direct-page 8-bit addressing (lo/@code{<}). For compatibility with
- other assemblers also @code{!} and @code{|} may be used instead of
- @code{>}.
+ zero/direct-page 8-bit addressing (lo/@code{<}).
+ In WDC65816 mode the @code{>} character selects full 24-bit addressing
+ instead, and @code{!} or @code{|} may be used to enforce 16-bit addressing.
 
 @end itemize
 
@@ -101,10 +119,26 @@ directives:
       as a zero page symbol and use zero page addressing whenever
       <symbol> is used in a memory addressing mode.
 
+@item a8
+      Declares that immediate instructions loading the accumulator
+      read 8 bits (default, WDC65816 only).
+
+@item a16
+      Declares that immediate instructions loading the accumulator
+      read 16 bits (WDC65816 only).
+
 @item setdp <expr>
       Set the current base address of the zero/direct page for
       optimizations from absolute to zero-page addressing modes.
       Example: set it to @code{$2000} for the HuC6280/PC-Engine.
+
+@item x8
+      Declares that immediate instructions loading the index registers
+      read 8 bits (default, WDC65816 only).
+
+@item x16
+      Declares that immediate instructions loading the index registers
+      read 16 bits (WDC65816 only).
 
 @item zero
       Switch to a zero page section called @code{zero} or @code{.zero},
@@ -123,12 +157,14 @@ dot (@code{.}).
 
 @section Optimizations
 
-This backend performs the following operand optimizations:
+This backend performs the following operand optimizations and translations:
 
 @itemize @minus
 
 @item Absolute addressing modes are optimized to zero-page (or direct-page)
   addressing modes, whenever possible.
+@item An absolute addressing mode will be promoted to long addressing
+  (24 bits) for the WDC65816, when needed.
 @item Conditional branches, where the destination is out of range, are
   translated into @code{B<!cc> *+5} and an absolute @code{JMP} instruction
   (@option{-opt-branch}).
@@ -142,9 +178,7 @@ This backend performs the following operand optimizations:
     Some known problems of this module at the moment:
 
 @itemize @minus
-
-@item CSG65CE02 support is incomplete.
-@item 45GS02 (MEGA65) support is incomplete.
+@item None?
 
 @end itemize
 
@@ -156,7 +190,7 @@ This module has the following error messages:
 
 @item 2001: instruction not supported on selected architecture
 @item 2002: trailing garbage in operand
-@item 2003: missing closing parenthesis in addressing mode
+@item 2003: addressing mode selector ignored
 @item 2004: data size %d not supported
 @item 2005: relocation does not allow hi/lo modifier
 @item 2006: operand doesn't fit into %d bits
@@ -166,7 +200,6 @@ This module has the following error messages:
 @item 2010: multiple hi/lo modifiers
 @item 2011: zero/direct-page addressing not available
 @item 2012: operand not in zero/direct-page range
-@item 2013: signed addend doesn't fit into %d bits
-@item 2014: missing closing square-bracket in addressing mode
+@item 2013: absolute-long addressing not available
 
 @end itemize

@@ -193,6 +193,7 @@ void general_error(int n,...)
   va_list vl;
   va_start(vl,n);
   error(n,vl,general_err_out,FIRST_GENERAL_ERROR);
+  va_end(vl);
 }
 
 
@@ -201,6 +202,7 @@ void syntax_error(int n,...)
   va_list vl;
   va_start(vl,n);
   error(n,vl,syntax_err_out,FIRST_SYNTAX_ERROR);
+  va_end(vl);
 }
 
 
@@ -209,6 +211,7 @@ void cpu_error(int n,...)
   va_list vl;
   va_start(vl,n);
   error(n,vl,cpu_err_out,FIRST_CPU_ERROR);
+  va_end(vl);
 }
 
 
@@ -217,6 +220,7 @@ void output_error(int n,...)
   va_list vl;
   va_start(vl,n);
   error(n,vl,output_err_out,FIRST_OUTPUT_ERROR);
+  va_end(vl);
 }
 
 
@@ -231,6 +235,7 @@ void output_atom_error(int n,atom *a,...)
   cur_src->line = a->line;
   error(n,vl,output_err_out,FIRST_OUTPUT_ERROR);
   cur_src = old;
+  va_end(vl);
 }
 
 
@@ -241,7 +246,6 @@ static void modify_errors(struct err_out *err,int flags,va_list vl)
   while (n = va_arg(vl,int)) {
     err[n].flags = flags;
   }
-  va_end(vl);
 }
 
 
@@ -250,6 +254,7 @@ void modify_gen_err(int flags,...)
   va_list vl;
   va_start(vl,flags);
   modify_errors(general_err_out,flags,vl);
+  va_end(vl);
 }
 
 
@@ -258,6 +263,7 @@ void modify_syntax_err(int flags,...)
   va_list vl;
   va_start(vl,flags);
   modify_errors(syntax_err_out,flags,vl);
+  va_end(vl);
 }
 
 
@@ -266,6 +272,7 @@ void modify_cpu_err(int flags,...)
   va_list vl;
   va_start(vl,flags);
   modify_errors(cpu_err_out,flags,vl);
+  va_end(vl);
 }
 
 

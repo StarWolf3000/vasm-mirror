@@ -9,12 +9,6 @@ selected with the @option{-Fbin} option.
 @section Additional options for this module
  
 @table @option
-    @item -exec=<symbol>
-        Use the given symbol @code{<symbol>} as entry point of the program,
-        for those output format headers which support it. Otherwise this
-        option will be silently ignored.
-        Omitting this option will usually define the execution address
-        to be the same as the load address.
     @item -atari-com
         Writes an Atari DOS COM header preceding the output file. It has
         a standard header (@code{0xFFFF}), which is followed by any
@@ -38,6 +32,12 @@ selected with the @option{-Fbin} option.
         taken from the first section's start address. This will also be
         the execute-address, when not specified otherwise. Refer to
         option @option{-exec}.
+    @item -exec=<symbol>
+        Use the given symbol @code{<symbol>} as entry point of the program,
+        for those output format headers which support it. Otherwise this
+        option will be silently ignored.
+        Omitting this option will usually define the execution address
+        to be the same as the load address.
     @item -oric-mc
         Writes a machine code file header for Oric-1, Oric-Atmos and
         compatible systems. It includes the file type and name, as well as

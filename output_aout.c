@@ -133,10 +133,10 @@ static void aout_initwrite(section *firstsec)
     mid = MID;
 
   initlist(&aoutstrlist.l);
-  aoutstrlist.hashtab = mycalloc(STRHTABSIZE*sizeof(struct StrTabNode *));
+  aoutstrlist.hashtab = mycalloc(ASTRTABSIZE*sizeof(struct StrTabNode *));
   aoutstrlist.nextoffset = 4;  /* first string is always at offset 4 */
   initlist(&aoutsymlist.l);
-  aoutsymlist.hashtab = mycalloc(SYMHTABSIZE*sizeof(struct SymbolNode *));
+  aoutsymlist.hashtab = mycalloc(ASYMTABSIZE*sizeof(struct SymbolNode *));
   aoutsymlist.nextindex = 0;
   initlist(&treloclist);
   initlist(&dreloclist);
@@ -193,7 +193,7 @@ static uint32_t aout_addstr(char *s)
     return 0;
 
   /* search string in hash table */
-  chain = &aoutstrlist.hashtab[hashcode(s)%STRHTABSIZE];
+  chain = &aoutstrlist.hashtab[hashcode(s)%ASTRTABSIZE];
   while (sn = *chain) {
     if (!strcmp(s,sn->str))
       return (sn->offset);  /* it's already in, return offset */
@@ -235,7 +235,7 @@ static uint32_t aout_addsymhash(char *name,taddr value,int bind,
 {
   struct SymbolNode **chain,*sym;
 
-  chain = &aoutsymlist.hashtab[hashcode(name?name:emptystr)%SYMHTABSIZE];
+  chain = &aoutsymlist.hashtab[hashcode(name?name:emptystr)%ASYMTABSIZE];
   while (sym = *chain)
     chain = &sym->hashchain;
 
@@ -249,7 +249,7 @@ static uint32_t aout_addsymhash(char *name,taddr value,int bind,
 static int aout_findsym(char *name,int be)
 /* find a symbol by its name, return symbol table index or -1 */
 {
-  struct SymbolNode **chain = &aoutsymlist.hashtab[hashcode(name)%SYMHTABSIZE];
+  struct SymbolNode **chain = &aoutsymlist.hashtab[hashcode(name)%ASYMTABSIZE];
   struct SymbolNode *sym;
 
   while (sym = *chain) {

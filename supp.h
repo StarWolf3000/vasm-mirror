@@ -1,5 +1,5 @@
 /* supp.h miscellaneous support routines */
-/* (c) in 2008-2021 by Frank Wille */
+/* (c) in 2008-2022 by Frank Wille */
 
 #ifndef SUPP_H
 #define SUPP_H
@@ -58,6 +58,8 @@ int stricmp(const char *,const char *);
 int strnicmp(const char *,const char *,size_t);
 char *mystrdup(char *);
 char *cnvstr(const char *,int);
+char *cutstr(strbuf *,const char *,size_t);
+char *strbuf_alloc(strbuf *,size_t);
 char *strtolower(char *);
 int str_is_graph(const char *);
 const char *trim(const char *);

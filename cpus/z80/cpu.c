@@ -250,6 +250,9 @@ mnemonic mnemonics[] = {
     "ld",   { OP_BC|OP_INDIR, OP_A },                           { TYPE_NONE, 0x02, CPU_ALL, F_IO }, /* ld (bc),a */
     "ld",   { OP_DE|OP_INDIR, OP_A },                           { TYPE_NONE, 0x12, CPU_ALL, F_IO }, /* ld (de),a */
 
+    "ld",   { OP_PORT, OP_A },                                  { TYPE_NONE, 0xe2, CPU_GB80, 0 }, /* ld (c),a (ff00 + c) */
+    "ld",   { OP_A, OP_PORT },                                  { TYPE_NONE, 0xf2, CPU_GB80, 0 }, /* ld a,(c) (ff00 + c) */
+
     "ld",   { OP_REG8|OP_INDEX|OP_RALT, OP_REG8|OP_INDEX},      { TYPE_LD8, 0x40, CPU_ALL, F_ALL|F_ALTDWHL, 0, 0, RCM_EMU_INCREMENT, 0 }, /* ld r8,r8 */
     "ld",   { OP_REG8|OP_INDEX|OP_RALT, OP_REG8|OP_INDEX},      { TYPE_LD8, 0x7f40, CPU_RCM4000, F_ALL|F_ALTDWHL }, /* ld r8,r8 (only those without a or (hl) */
 
@@ -390,9 +393,6 @@ mnemonic mnemonics[] = {
     "ld",   { OP_ARITH16| OP_INDEX|OP_RALT, OP_ABS16 },         { TYPE_ARITH16, 0x01, CPU_ALL, F_ALTD }, /* ld hl,bc,de,xx */
     "ld",   { OP_R, OP_A },                                     { TYPE_NONE, 0xed4f, CPU_ZILOG|CPU_RABBIT, F_ALTD }, /* ld r,a */
     "ld",   { OP_I, OP_A },                                     { TYPE_NONE, 0xed47, CPU_ZILOG|CPU_RABBIT, F_ALTD }, /* ld i,a */
-
-    "ld",   { OP_PORT, OP_A },                                  { TYPE_NONE, 0xe2, CPU_GB80, 0 }, /* ld (c),a (ff00 + c) */
-
 
     "ld",   { OP_ADDR, OP_SP },                                 { TYPE_NONE, 0xED73, CPU_ZILOG|CPU_RABBIT|CPU_GB80, F_IO, 0, 0, 0, RCM_EMU_INCREMENT }, /* ld (xx),sp */
     "ld",   { OP_ADDR, OP_SP },                                 { TYPE_NONE, 0x08, CPU_GB80, 0 }, /* ld (xx), sp */
@@ -1349,7 +1349,7 @@ char *parse_z80asm_pseudo(char *s)
         s++;
     if ( s - name == 6 && strnicmp(name,"module", 6) == 0 ) {
         s = skip(s);
-        parse_name(&s);  /* We throw away the result */
+        (void)parse_name(0,&s);  /* We throw away the result */
         eol(s);
     } else {
         /* defb, defw, defl, defm, xdef, xref, lib, xlib, defc, defp dealt with by old syntax module */

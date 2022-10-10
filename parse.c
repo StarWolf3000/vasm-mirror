@@ -1,13 +1,14 @@
 /* parse.c - global parser support functions */
-/* (c) in 2009-2021 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2022 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
-int esc_sequences = 0;  /* do not handle escape sequences by default */
-int nocase_macros = 0;  /* macro names are case-insensitive */
+int esc_sequences;      /* do not handle escape sequences by default */
+int nocase_macros;      /* macro names are case-insensitive */
 int maxmacparams = MAXMACPARAMS;
 int maxmacrecurs = MAXMACRECURS;
 int msource_disable;    /* true: disable source level debugging within macro */
+int colon_at_label;     /* colon must be attached to label definition */
 
 #ifndef MACROHTABSIZE
 #define MACROHTABSIZE 0x800
@@ -117,9 +118,11 @@ char *cut_trail_blanks(char *s)
 }
 
 
-char *parse_name(char **start)
-/* parses a quoted or unquoted name-string and returns a pointer to it */
+strbuf *parse_name(int n,char **start)
+/* Parses a quoted or unquoted name-string and returns a pointer to a
+   null-terminated string in one of two temporary buffers. */
 {
+  static strbuf buf[2];
   char *s = *start;
   char c,*name;
 
@@ -128,7 +131,7 @@ char *parse_name(char **start)
     name = s;
     while (*s && *s!=c)
       s++;
-    name = cnvstr(name,s-name);
+    cutstr(&buf[n],name,s-name);
     if (*s)
       s = skip(s+1);
   }
@@ -138,7 +141,7 @@ char *parse_name(char **start)
     name = s;
     while (*s && *s!='>')
       s++;
-    name = cnvstr(name,s-name);
+    cutstr(&buf[n],name,s-name);
     if (*s)
       s = skip(s+1);
   }
@@ -148,14 +151,14 @@ char *parse_name(char **start)
     while (!ISEOL(s) && !isspace((unsigned char)*s) && *s!=',')
       s++;
     if (s != name) {
-      name = cnvstr(name,s-name);
+      cutstr(&buf[n],name,s-name);
       s = skip(s);
     }
     else
-      name = NULL;  /* nothing read */
+      return NULL;  /* nothing read */
   }
   *start = s;
-  return name;
+  return &buf[n];
 }
 
 
@@ -191,16 +194,45 @@ char *skip_identifier(char *s)
 }
 
 
-char *parse_identifier(char **s)
+strbuf *parse_identifier(int n,char **s)
+/* Parses an identifier string, as used for symbol names, and returns a
+   pointer to a null-terminated string in one of two temporary buffers. */
 {
+  static strbuf buf[EXPBUFNO+1];
   char *name = *s;
   char *endname;
 
   if (endname = skip_identifier(name)) {
     *s = endname;
-    return cnvstr(name,endname-name);
+    cutstr(&buf[n],name,endname-name);
+    return &buf[n];
   }
   return NULL;
+}
+
+
+strbuf *get_raw_string(char **str,char delim)
+/* parse a raw string (i.e. no escape handling) between the given
+   delimitters, return NULL on error, otherwise update stream pointer */
+{
+  static strbuf buf;
+  char *p = *str;
+  char *start;
+
+  if (*p++ != delim) {
+    general_error(6,delim);  /* " expected */
+    return NULL;
+  }
+  start = p;
+  while (*p&&*p!=delim)
+    p++;
+  if (!*p) {
+    general_error(6,delim);  /* " expected */
+    return NULL;
+  }
+  cutstr(&buf,start,p-start);
+  *str = ++p;
+  return &buf;
 }
 
 
@@ -299,14 +331,14 @@ dblock *parse_string(char **str,char delim,int width)
 
 
 char *parse_symbol(char **s)
-/* return pointer to an allocated local/global symbol string, or NULL */
+/* return ptr to a local/global symbol string in a static buffer, or NULL */
 {
-  char *name;
+  strbuf *name;
 
-  name = get_local_label(s);
+  name = get_local_label(0,s);
   if (name == NULL)
-    name = parse_identifier(s);
-  return name;
+    name = parse_identifier(0,s);
+  return name ? name->str : NULL;
 }
 
 
@@ -325,15 +357,14 @@ char *parse_labeldef(char **line,int needcolon)
   }
 
   if (labname = parse_symbol(&s)) {
-    s = skip(s);
+    if (!colon_at_label)
+      s = skip(s);  /* blanks between label and colon allowed */
     if (*s == ':') {
       s++;
       needcolon = 0;
     }
-    if (needcolon) {
-      myfree(labname);
+    if (needcolon)
       labname = NULL;
-    }
     else
       *line = s;
   }
@@ -447,7 +478,7 @@ void new_repeat(int rcnt,char *name,char *vals,
     enddir_minlen = dirlist_minlen(endrlist);
     reptdir_list = reptlist;
     rept_start = cur_src->srcptr;
-    rept_name = name;
+    rept_name = name ? mystrdup(name) : NULL;
     rept_vals = vals;
     rept_cnt = rcnt;  /* also REPT_IRP or REPT_IRPC */
 
@@ -804,7 +835,7 @@ static void start_repeat(char *rept_end)
 {
   char buf[MAXPATHLEN];
   source *src;
-  char *p,*val;
+  char *p;
   int i;
 
   reptdir_list = NULL;
@@ -832,10 +863,11 @@ static void start_repeat(char *rept_end)
           src->repeat = 1;
         }
         else {
+          strbuf *buf;
+
           src->repeat = 0;
-          while (val = parse_name(&p)) {
-            addmacarg(&src->irpvals,val,val+strlen(val));
-            myfree(val);
+          while (buf = parse_name(0,&p)) {
+            addmacarg(&src->irpvals,buf->str,buf->str+buf->len);
             src->repeat++;
             p = skip(p);
             if (*p == ',')

@@ -7,6 +7,11 @@ hashtable *new_hashtable(size_t size)
 {
   hashtable *new = mymalloc(sizeof(*new));
 
+#ifdef LOWMEM
+  /* minimal hash tables */
+  if (size > 0x100)
+    size = 0x100;
+#endif
   new->size = size;
   new->collisions = 0;
   new->entries = mycalloc(size*sizeof(*new->entries));

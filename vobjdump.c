@@ -62,7 +62,7 @@ static const char emptystr[] = "";
 static const char sstr[] = "s";
 static const char *reloc_name[] = {
   "NONE","ABS","PC","GOT","GOTPC","GOTOFF","GLOBDAT","PLT","PLTPC","PLTOFF",
-  "SD","UABS","LOCALPC","LOADREL","COPY","JMPSLOT","SECOFF",NULL
+
 };
 static const char *type_name[] = {
   "","obj","func","sect","file",NULL
@@ -200,7 +200,7 @@ static void read_section(struct vobj_section *vsect,
       addend = read_number(1);
       sym = (int)read_number(0) - 1;  /* symbol index */
 
-      if (offs<0 || offs+(bpos>>3)>=vsect->dsize) {
+      if (offs<0 || offs+((bpos+bsiz-1)>>3)>=vsect->dsize) {
         printf("offset 0x%llx is outside of section!\n",
                BPTMASK(offs+(bpos>>3)));
         continue;
@@ -375,12 +375,12 @@ static int vobjdump(void)
 
 static size_t filesize(FILE *fp,const char *name)
 {
-  long oldpos,size;
+  long size;
 
-  if ((oldpos = ftell(fp)) >= 0)
+  if (fgetc(fp) != EOF)
     if (fseek(fp,0,SEEK_END) >= 0)
       if ((size = ftell(fp)) >= 0)
-        if (fseek(fp,oldpos,SEEK_SET) >= 0)
+        if (fseek(fp,0,SEEK_SET) >= 0)
           return (size_t)size;
   fprintf(stderr,"Cannot determine size of file \"%s\"!\n",name);
   return 0;
@@ -413,7 +413,7 @@ int main(int argc,char *argv[])
       fprintf(stderr,"Cannot open \"%s\" for reading!\n",argv[1]);
   }
   else
-    fprintf(stderr,"vobjdump V0.5\nWritten by Frank Wille\n"
+    fprintf(stderr,"vobjdump V0.5b\nWritten by Frank Wille\n"
             "Usage: %s <file name>\n",argv[0]);
 
   return rc;

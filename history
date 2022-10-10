@@ -1,6 +1,54 @@
 vasm history
 =============
 
+- 1.9a (02.10.22)
+o Reads the input from stdin when no source file name is given.
+o Small performance improvements. Tuned hash table sizes. Reduced
+  memory allocations and deallocations.
+o Do not ignore the path from the main source when looking for a file.
+o Can build low-memory version of vasm with minimal hash tables, by
+  compiling with -DLOWMEM.
+o Do not allow exporting equates which are based on imported symbols.
+o Search for include files in the current work directory first, then
+  in the compile directory.
+o New option -maxpasses to adjust the maximum number of passes while
+  resolving a section.
+o New option -nocompdir to disable compile directory based include file
+  lookup completely.
+o New option -v to print version and copyright.
+o m68k: -no-opt option really ovrrides all "opt o" and "opt a" directives
+  from the source now.
+o m68k: Fixed 68030/68851 PMOVE issue with TC and MMUSR, caused by a
+  conflict with MOVEC control registers of the same name.
+o m68k: New Apollo instructions DBcc.L and MOVE2.
+o m68k: Fixed Apollo MOVE immediate addressing mode to vector register.
+o m68k: Fixed Apollo SUBI banked instruction (one word missing).
+o m68k: Added Apollo banking prefix support for MOVE.L Bn,<ea> and
+  MOVE.L <ea>,Bn.
+o m68k: Apollo LSLQ and LSRQ default to a .W operation size when missing.
+  The remaining AMMX instructions should be .Q.
+o m68k: Make sure AMMX 64-bit constants are parsed with full precision.
+o m68k: Added missing Apollo FMOVE addressing modes.
+o 6502: Added support for the WDC 65816 and 65802 8/16 bits instruction set,
+  including some new directives for selecting Accumulator and Index width.
+o z80: Fix for GBZ80 "ld (c),a" and "ld a,(c)".
+o mot-syntax: ASSERT directive.
+o mot-syntax: macro arguments within <..> allow additional '>' characters
+  inside a string without terminating the argument (vasm default mode only,
+  not for Devpac-compatibility).
+o std-syntax: New option -gas for stricter GNU-as compatibility.
+o std-syntax: Supports one-digit temporary labels, where the nearest
+  previous label may be referenced by Nb and the nearest following by Nf.
+o oldstyle-syntax: New directives SYMDEPEND and NEEDS. They define a
+  dependency of the current section from an external symbol, which must
+  be resolved by the linker.
+o oldstyle-syntax: Anonymous labels may be defined with a single ':' and
+  referenced by ':+' or ':-'.
+o hunk-output: Converts NONE-relocs to 8-bit ABS with a warning.
+o hunk-output: Improved short-reloc output and work around AmigaOS
+  LoadSeg() limitations/bugs.
+o o65-output: Check bad addends for 8-bit relocations.
+
 - 1.9 (26.02.22)
 o Removed inappropriate warning when using equates which are greater than
   the target's address size.
@@ -20,6 +68,8 @@ o m68k: New option -no-typechk, with the same effect like the "OPT t-"
   directive.
 o z80: EI is a valid GBZ80 instruction.
 o z80: Warn about extra garbage characters in data operands.
+o 6502: Added complete instruction set 65CE02 and all 32-bit MEGA65
+  extensions.
 o 6800: Fixed -m68.. command line options.
 o 6809: Avoid problems with PC-relative optimizations using a distance of
   +127 or +255.

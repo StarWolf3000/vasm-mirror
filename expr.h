@@ -21,6 +21,10 @@ struct expr {
   } c;
 };
 
+/* strbuf-number to use for the expression parser only in
+   parse_identifier() and get_local_label() */
+#define EXPBUFNO 2
+
 /* Macros for extending the unary operation types (e.g. '<' and '>' for 6502).
    Cpu module has to define EXT_UNARY_EVAL(type,val,res,c) for evaluation. */
 #ifndef EXT_UNARY_NAME

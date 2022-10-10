@@ -1,11 +1,11 @@
 /* output_elf.c ELF output driver for vasm */
-/* (c) in 2002-2016,2020 by Frank Wille */
+/* (c) in 2002-2016,2020,2022 by Frank Wille */
 
 #include "vasm.h"
 #include "output_elf.h"
 #include "stabs.h"
 #if ELFCPU && defined(OUTELF)
-static char *copyright="vasm ELF output module 2.7 (c) 2002-2016,2020 Frank Wille";
+static char *copyright="vasm ELF output module 2.7a (c) 2002-2016,2020,2022 Frank Wille";
 
 static int keep_empty_sects;
 
@@ -316,7 +316,7 @@ static utaddr get_reloc_type(rlist **rl,
   utaddr mask;
   int pos,size;
 
-  utaddr t = 0;
+  utaddr t = RTYPE_ILLEGAL;
 
   *roffset = 0;
   *addend = 0;
@@ -347,7 +347,7 @@ static utaddr get_reloc_type(rlist **rl,
 #include "elf_reloc_jag.h"
 #endif
 
-  if (!t)
+  if (t == RTYPE_ILLEGAL)
     unsupp_reloc_error(*rl);
 
   return t;
@@ -368,7 +368,8 @@ static utaddr make_relocs(rlist *rl,utaddr pc,
       taddr addend;
       symbol *refsym;
 
-      if (rtype = get_reloc_type(&rl,&offset,&addend,&refsym)) {
+      rtype = get_reloc_type(&rl,&offset,&addend,&refsym);
+      if (rtype != RTYPE_ILLEGAL) {
 
         if (LOCREF(refsym)) {
           /* this is a local relocation */
@@ -869,7 +870,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
     output_error(1,cpuname);  /* output module doesn't support cpu */
 
   if (debug && elfsymhash->collisions)
-    printf("*** %d ELF symbol collisions!\n",elfsymhash->collisions);
+    fprintf(stderr,"*** %d ELF symbol collisions!\n",elfsymhash->collisions);
 }
 
 

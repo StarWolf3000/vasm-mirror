@@ -1,11 +1,11 @@
-# Atari TOS
+# Atari TOS 68000 low memory
 
 TARGET = _TOS
 TARGETEXTENSION = .ttp
 
 CC = vc +tos
 CCOUT = -o=
-COPTS = -c -merge-strings -O1 -DATARI $(OUTFMTS)
+COPTS = -c -merge-strings -O1 -size -DATARI -DLOWMEM -DOUTBIN -DOUTAOUT -DOUTTOS -DOUTVOBJ
 
 LD = $(CC)
 LDOUT = $(CCOUT)

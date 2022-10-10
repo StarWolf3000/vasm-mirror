@@ -1,5 +1,5 @@
 /* vasm.h  main header file for vasm */
-/* (c) in 2002-2021 by Volker Barthelmann */
+/* (c) in 2002-2022 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -19,6 +19,13 @@ typedef struct source source;
 typedef struct listing listing;
 typedef struct regsym regsym;
 
+typedef struct strbuf {
+  size_t size;
+  size_t len;
+  char *str;
+} strbuf;
+#define STRBUFINC 0x100
+
 #define MAXPADBYTES 8  /* max. pattern size to pad alignments */
 
 #include "cpu.h"
@@ -27,9 +34,9 @@ typedef struct regsym regsym;
 #include "syntax.h"
 #include "symtab.h"
 #include "expr.h"
+#include "atom.h"
 #include "parse.h"
 #include "source.h"
-#include "atom.h"
 #include "cond.h"
 #include "listing.h"
 #include "supp.h"
@@ -85,6 +92,7 @@ typedef unsigned int bvtype;
 #define PREVABS          (1<<5) /* saved ABSOLUTE-flag during RORG-block */
 #define IN_RORG          (1<<6)       
 #define NEAR_ADDRESSING  (1<<7)
+#define FAR_ADDRESSING   (1<<8)
 #define SECRSRVD       (1L<<24) /* bits 24-31 are reserved for output modules */
 
 /* section description */
@@ -128,7 +136,7 @@ extern int secname_attr,unnamed_sections;
 extern taddr inst_alignment;
 extern hashtable *mnemohash;
 extern source *cur_src;
-extern section *current_section;
+extern section *current_section,container_section;
 extern char *filename;
 extern char *debug_filename;  /* usually an absolute C source file name */
 extern char *inname,*outname;
@@ -235,7 +243,7 @@ char *skip(char *);
 void eol(char *);
 char *const_prefix(char *,int *);
 char *const_suffix(char *,char *);
-char *get_local_label(char **);
+strbuf *get_local_label(int,char **);
 
 /* provided by output_xxx.c */
 #ifdef OUTTOS

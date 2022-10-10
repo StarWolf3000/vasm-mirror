@@ -1751,6 +1751,8 @@ int cpu_args(char *p)
     opt_ldrpc = 1;
   else if (!strcmp(p,"-opt-adr"))
     opt_adr = 1;
+  else
+    return 0;
 
   return 1;
 }

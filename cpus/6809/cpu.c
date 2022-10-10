@@ -303,7 +303,7 @@ int parse_operand(char *p,int len,operand *op,int required)
           ierror(0);
         op->mode = AM_REGXB;
         op->curval |= reg;      /* encode for PSH/PUL postbyte */
-        ret = PO_AGAIN;         /* do it again until out of operands */
+        ret = PO_COMB_OPT;      /* do it again until out of operands */
         break;
 
       case BMR:
@@ -353,7 +353,7 @@ int parse_operand(char *p,int len,operand *op,int required)
       /* empty operand */
       if (!op->mode && (required & IDX0)) {
         op->mode = AM_NOFFS;
-        return PO_AGAIN;  /* may be a ,R addressing mode without offset */
+        return PO_COMB_OPT;  /* may be a ,R addressing mode without offset */
       }
       return PO_NOMATCH;
     }
@@ -479,7 +479,7 @@ int parse_operand(char *p,int len,operand *op,int required)
         case AM_DIR:
         case AM_EXT:
         case AM_ADDR:
-          ret = PO_AGAIN;
+          ret = PO_COMB_OPT;
           break;
       }
     }
@@ -522,11 +522,10 @@ char *parse_cpu_special(char *start)
       return skip_line(s);
     }
     else if (s-name==6 && !strnicmp(name,"direct",6)) {
-      char *name;
+      strbuf *buf;
       s = skip(s);
-      if (name = parse_identifier(&s)) {
-        symbol *sym = new_import(name);
-        myfree(name);
+      if (buf = parse_identifier(0,&s)) {
+        symbol *sym = new_import(buf->str);
         if (!(cpu_type & HC12))
           sym->flags |= DPAGESYM;
         else

@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2021 by Frank Wille */
+/* (c) in 2002-2022 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm oldstyle syntax module 0.16 (c) 2002-2021 Frank Wille";
+char *syntax_copyright="vasm oldstyle syntax module 0.17 (c) 2002-2022 Frank Wille";
 hashtable *dirhash;
 int dotdirs;
 
@@ -62,6 +62,7 @@ static struct namelen dendr_dirlist[] = {
 };
 
 static char local_modif_name[] = "_";  /* ._ for abyte directive */
+static char current_pc_str[2];
 
 static int autoexport,parse_end,nocprefix,nointelsuffix;
 static int astcomment,dot_idchar,sect_directives;
@@ -69,6 +70,7 @@ static taddr orgmode = ~0;
 static section *last_alloc_sect;
 static taddr dsect_offs;
 static int dsect_active;
+static unsigned anon_labno;
 
 /* isolated local labels block */
 #define INLSTACKSIZE 100
@@ -191,10 +193,10 @@ static void handle_data_mod(char *s,int size,expr *tree)
 
   if (tree) {
     /* modifier-expression is given, check for special symbol ._ in it */
-    char *modname = make_local_label(NULL,0,
-                                     local_modif_name,
-                                     sizeof(local_modif_name)-1);
-    if (mod = find_sym_expr(&tree,modname)) {
+    strbuf *buf = make_local_label(0,NULL,0,
+                                   local_modif_name,
+                                   sizeof(local_modif_name)-1);
+    if (mod = find_sym_expr(&tree,buf->str)) {
       /* convert ._ into a harmless LABSYM symbol */
       (*mod)->c.sym->type = LABSYM;
       free_expr(*mod);
@@ -204,7 +206,6 @@ static void handle_data_mod(char *s,int size,expr *tree)
       tree = make_expr(ADD,NULL,tree);
       mod = &tree->left;
     }
-    myfree(modname);
   }
   else
     mod = NULL;  /* no modifier */
@@ -576,25 +577,26 @@ static void handle_roffs(char *s)
 
 static void handle_section(char *s)
 {
-  char *name,*attr;
+  char *name,*attr=NULL;
   section *sec;
+  strbuf *buf;
 
-  if (!(name=parse_name(&s)))
+  if (buf = parse_name(0,&s))
+    name = buf->str;
+  else
     return;
-  if (*s==',') {
+
+  s = skip(s);
+  if (*s == ',') {
+    strbuf *attrbuf;
+
     s = skip(s+1);
-    attr = s;
-    if (*s!= '\"')
-      syntax_error(7,'\"');  /* " expected */
-    else
-      s++;
-    attr = s;
-    while (*s&&*s!='\"')
-      s++;    
-    attr = cnvstr(attr,s-attr);
-    s = skip(s+1);
+    if (attrbuf = get_raw_string(&s,'\"')) {
+      attr = attrbuf->str;
+      s = skip(s+1);
+    }
   }
-  else {
+  if (attr == NULL) {
     if (!strcmp(name,textname) || !strcmp(name,textname+1))
       attr = textattr;
     else if (!strcmp(name,dataname) || !strcmp(name,dataname+1))
@@ -649,13 +651,12 @@ static void handle_dend(char *s)
 static void do_binding(char *s,int bind)
 {
   symbol *sym;
-  char *name;
+  strbuf *name;
 
   while (1) {
-    if (!(name=parse_identifier(&s)))
+    if (!(name=parse_identifier(0,&s)))
       return;
-    sym = new_import(name);
-    myfree(name);
+    sym = new_import(name->str);
     if (sym->flags&(EXPORT|WEAK|LOCAL)!=0 &&
         sym->flags&(EXPORT|WEAK|LOCAL)!=bind)
       general_error(62,sym->name,get_bind_name(sym)); /* binding already set */
@@ -688,6 +689,12 @@ static void handle_local(char *s)
 }
 
 
+static void handle_symdepend(char *s)
+{
+  do_space(0,number_expr(0),parse_expr(&s));
+  eol(s);
+}
+
 static void ifdef(char *s,int b)
 {
   char *name;
@@ -702,7 +709,6 @@ static void ifdef(char *s,int b)
     result = sym->type != IMPORT;
   else
     result = 0;
-  myfree(name);
   cond_if(result == b);
   eol(s);
 }
@@ -710,18 +716,18 @@ static void ifdef(char *s,int b)
 
 static void ifused(char *s, int b)
 {
-  char *name;
+  strbuf *name;
   symbol *sym;
   int result;
 
-  if (!(name = parse_identifier(&s))) {
+  if (!(name = parse_identifier(0,&s))) {
       syntax_error(10);  /* identifier expected */
       return;
   }
 
-  if (sym = find_symbol(name)) {
+  if (sym = find_symbol(name->str)) {
     if (sym->type != IMPORT) {
-      syntax_error(22,name);
+      syntax_error(22,name->str);
       result = 0;
     }
     else
@@ -730,7 +736,6 @@ static void ifused(char *s, int b)
   else
     result = 0;
 
-  myfree(name);
   cond_if(result == b);
   eol(s);
 }
@@ -839,7 +844,7 @@ static void handle_endif(char *s)
 
 static void handle_assert(char *s)
 {
-  char *expstr,*msgstr;
+  char *expstr,*msgstr=NULL;
   size_t explen;
   expr *aexp;
   atom *a;
@@ -849,11 +854,12 @@ static void handle_assert(char *s)
   explen = s - expstr;
   s = skip(s);
   if (*s == ',') {
+    strbuf *buf;
+
     s = skip(s+1);
-    msgstr = parse_name(&s);
+    if (buf = parse_name(0,&s))
+      msgstr = mystrdup(buf->str);
   }
-  else
-    msgstr = NULL;
 
   a = new_assert_atom(aexp,cnvstr(expstr,explen),msgstr);
   add_atom(0,a);
@@ -862,32 +868,32 @@ static void handle_assert(char *s)
 
 static void handle_incdir(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_name(&s))
-    new_include_path(name);
+  if (name = parse_name(0,&s))
+    new_include_path(name->str);
   eol(s);
 }
 
 
 static void handle_include(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_name(&s)) {
+  if (name = parse_name(0,&s)) {
     eol(s);
-    include_source(name);
+    include_source(name->str);
   }
 }
 
 
 static void handle_incbin(char *s)
 {
-  char *name;
+  strbuf *name;
   long delta = 0;
   unsigned long nbbytes = 0;
 
-  if (name = parse_name(&s)) {
+  if (name = parse_name(0,&s)) {
     s = skip(s);
     if (*s == ',') {
       s = skip(s+1);
@@ -901,7 +907,7 @@ static void handle_incbin(char *s)
       }
     }
     eol(s);
-    include_binary_file(name,delta,nbbytes);
+    include_binary_file(name->str,delta,nbbytes);
   }
 }
 
@@ -925,9 +931,9 @@ static void handle_endr(char *s)
 
 static void handle_macro(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_identifier(&s)) {
+  if (name = parse_identifier(0,&s)) {
     s = skip(s);
     if (*s == ',') {  /* named macro arguments are given? */
       s++;
@@ -936,9 +942,8 @@ static void handle_macro(char *s)
       eol(s);
       s = NULL;
     }
-    new_macro(name,dotdirs?dmacro_dirlist:macro_dirlist,
+    new_macro(name->str,dotdirs?dmacro_dirlist:macro_dirlist,
               dotdirs?dendm_dirlist:endm_dirlist,s);
-    myfree(name);
   }
   else
     syntax_error(10);  /* identifier expected */
@@ -953,17 +958,16 @@ static void handle_endm(char *s)
 
 static void handle_defc(char *s)
 {
-  char *name;
+  strbuf *name;
 
   s = skip(s);
-  name = parse_identifier(&s);
-  if ( name != NULL ) {
+  name = parse_identifier(0,&s);
+  if (name != NULL) {
     s = skip(s);
-    if ( *s == '=' ) {
+    if (*s == '=') {
       s = skip(s+1);
-      new_abs(name,parse_expr_tmplab(&s));
+      new_abs(name->str,parse_expr_tmplab(&s));
     }
-    myfree(name);
   }
   else
     syntax_error(10);
@@ -1003,14 +1007,13 @@ static void handle_listspace(char *s)
 
 static void handle_struct(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_identifier(&s)) {
+  if (name = parse_identifier(0,&s)) {
     s = skip(s);
     eol(s);
-    if (new_structure(name))
+    if (new_structure(name->str))
       current_section->flags |= LABELS_ARE_LOCAL;
-    myfree(name);
   }
   else
     syntax_error(10);  /* identifier expected */
@@ -1176,6 +1179,8 @@ struct {
   "extern",handle_global,
   "local",handle_local,
   "weak",handle_weak,
+  "needs",handle_symdepend,
+  "symdepend",handle_symdepend,
   "ascii",handle_string,
   "asciiz",handle_string,
   "string",handle_string,
@@ -1355,12 +1360,26 @@ static char *parse_label_or_pc(char **start)
 {
   char *s,*name;
 
-  name = parse_labeldef(start,0);
-  s = skip(*start);
-  if (name==NULL && *s==current_pc_char && !ISIDCHAR(*(s+1))) {
-    name = cnvstr(s,1);
+  s = *start;
+  if (*s == ':') {
+    /* anonymous label definition */
+    strbuf *buf;
+    char num[16];
+
+    buf = make_local_label(0,":",1,num,sprintf(num,"%u",++anon_labno));
+    name = buf->str;
     s = skip(s+1);
   }
+  else {
+    name = parse_labeldef(start,0);
+    s = skip(*start);
+  }
+
+  if (name==NULL && *s==current_pc_char && !ISIDCHAR(*(s+1))) {
+    name = current_pc_str;
+    s = skip(s+1);
+  }
+
   if (name)
     *start = s;
   return name;
@@ -1374,15 +1393,12 @@ static char *read_next_statement(void)
   char *line,c;
 
   if (s == NULL) {
-    char *lab;
-
     s = line = read_next_line();
     if (s == NULL)
       return NULL;  /* no more lines in source */
 
     /* skip label field and possible statement delimiters therein */
-    if (lab = parse_label_or_pc(&s))
-      myfree(lab);
+    (void)parse_label_or_pc(&s);
   }
   else {
     /* make the new statement start with a blank - there is no label field */
@@ -1445,8 +1461,7 @@ void parse(void)
       int idx;
 
       s = line;
-      if (labname = parse_label_or_pc(&s))
-        myfree(labname);
+      (void)parse_label_or_pc(&s);
       idx = check_directive(&s);
       if (idx >= 0) {
         if (!strncmp(directives[idx].name,"if",2))
@@ -1503,14 +1518,13 @@ void parse(void)
                (isspace((unsigned char)*(s+5+dotdirs)) ||
                 *(s+5+dotdirs)=='\0')) {
         char *params = skip(s + (*(s+3+dotdirs)=='r'?5+dotdirs:3+dotdirs));
+        strbuf *buf;
 
         s = line;
-        myfree(labname);
-        if (!(labname = parse_identifier(&s)))
+        if (!(buf = parse_identifier(0,&s)))
           ierror(0);
-        new_macro(labname,dotdirs?dmacro_dirlist:macro_dirlist,
+        new_macro(buf->str,dotdirs?dmacro_dirlist:macro_dirlist,
                   dotdirs?dendm_dirlist:endm_dirlist,params);
-        myfree(labname);
         continue;
       }
 #ifdef PARSE_CPU_LABEL
@@ -1525,7 +1539,6 @@ void parse(void)
 
       if (!is_local_label(labname) && autoexport)
           label->flags |= EXPORT;
-      myfree(labname);
     }
 
     /* check for directives first */
@@ -1695,7 +1708,6 @@ int expand_macro(source *src,char **line,char *d,int dlen)
               nc = -1;
           }
         }
-        myfree(name);
         if (*s++ != '>') {
           syntax_error(11);  /* invalid numeric expansion */
           return 0;
@@ -1843,10 +1855,11 @@ static char *skip_local(char *p)
 }
 
 
-char *get_local_label(char **start)
+strbuf *get_local_label(int n,char **start)
 /* Local labels start with a '.' or end with '$': "1234$", ".1" */
 {
-  char *s,*p,*name;
+  char *s,*p;
+  strbuf *name;
 
   name = NULL;
   s = *start;
@@ -1857,18 +1870,34 @@ char *get_local_label(char **start)
     /* skip local part of global.local label */
     s = p + 1;
     p = skip_local(p);
-    name = make_local_label(*start,(s-1)-*start,s,p-s);
+    name = make_local_label(n,*start,(s-1)-*start,s,p-s);
     *start = skip(p);
   }
   else if (p!=NULL && p>(s+1) && *s=='.') {  /* .label */
     s++;
-    name = make_local_label(NULL,0,s,p-s);
+    name = make_local_label(n,NULL,0,s,p-s);
     *start = skip(p);
   }
   else if (p!=NULL && p>s && *p=='$') { /* label$ */
     p++;
-    name = make_local_label(NULL,0,s,p-s);
+    name = make_local_label(n,NULL,0,s,p-s);
     *start = skip(p);
+  }
+  else if (*s++ == ':') {
+    /* anonymous label reference */
+    if (*s=='+' || *s=='-') {
+      unsigned refno = (*s++=='+')?anon_labno+1:anon_labno;
+      char refnostr[16];
+
+      while (*s=='+' || *s=='-') {
+        if (*s++ == '+')
+          refno++;  /* next anonynmous label */
+        else
+          refno--;  /* previous anonymous label */
+      }
+      name = make_local_label(n,":",1,refnostr,sprintf(refnostr,"%u",refno));
+      *start = skip(s);
+    }
   }
 
   return name;
@@ -1880,15 +1909,22 @@ int init_syntax()
   size_t i;
   hashdata data;
 
-  dirhash = new_hashtable(0x200); /* @@@ */
+  dirhash = new_hashtable(0x1000);
   for (i=0; i<dir_cnt; i++) {
     data.idx = i;
     add_hashentry(dirhash,directives[i].name,data);
   }
+  if (debug && dirhash->collisions)
+    fprintf(stderr,"*** %d directive collisions!!\n",dirhash->collisions);
 
   cond_init();
   set_internal_abs(REPTNSYM,-1); /* reserve the REPTN symbol */
   current_pc_char = '*';
+  current_pc_str[0] = current_pc_char;
+  current_pc_str[1] = 0;
+
+  /* colon must be attached to the label to make anonymous labels work */
+  colon_at_label = 1;
 
   if (orgmode != ~0)
     set_section(new_org(orgmode));

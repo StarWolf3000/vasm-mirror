@@ -1,5 +1,5 @@
 /* atom.c - atomic objects from source */
-/* (c) in 2010-2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2022 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -15,12 +15,10 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
 #endif
   int i,inst_found=0;
   hashdata data;
+  mnemonic *mnemo;
   instruction *new;
+  static strbuf buf;
 
-  new = mymalloc(sizeof(*new));
-#if HAVE_INSTRUCTION_EXTENSION
-  init_instruction_ext(&new->ext);
-#endif
 #if MAX_OPERANDS!=0 && CLEAR_OPERANDS_ON_START!=0
   /* reset operands to allow the cpu-backend to parse them only once */
   memset(ops,0,sizeof(ops));
@@ -32,6 +30,8 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
     /* try all mnemonics with the same name until operands match */
     do {
       inst_found = 1;
+      mnemo = &mnemonics[i];
+
       if (!MNEMONIC_VALID(i)) {
         i++;
         continue;  /* try next */
@@ -39,16 +39,16 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
 
 #if MAX_OPERANDS!=0
 
-#if CLEAR_OPERANDS_ON_MNEMO!=0
-  /* reset all operands for every new mnemonic */
-  memset(ops,0,sizeof(ops));
+#if CLEAR_OPERANDS_ON_MNEMO
+      /* reset all operands for every new mnemonic */
+      memset(ops,0,sizeof(ops));
 #endif
 
 #if 0 /* @@@ was ALLOW_EMPTY_OPS */
       mnemo_opcnt = op_cnt<MAX_OPERANDS ? op_cnt : MAX_OPERANDS;
 #else
       for (j=0; j<MAX_OPERANDS; j++)
-        if (mnemonics[i].operand_type[j] == 0)
+        if (mnemo->operand_type[j] == 0)
           break;
       mnemo_opcnt = j;	/* number of expected operands for this mnemonic */
 #endif
@@ -58,7 +58,7 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
       for (j=k=omitted=skipped=0,again=-1; j<mnemo_opcnt; j++) {
 
         if (op_cnt+omitted < mnemo_opcnt &&
-            OPERAND_OPTIONAL(&ops[j],mnemonics[i].operand_type[j])) {
+            OPERAND_OPTIONAL(&ops[j],mnemo->operand_type[j])) {
           omitted++;
         }
         else {
@@ -67,23 +67,21 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
           if (k >= op_cnt) {
             /* we may be missing mandatory operands */
             if (j == again)
-              j++;  /* but probably not after PO_AGAIN */
+              j++;  /* but probably not after PO_COMB_OPT */
             break;
           }
 
-          rc = parse_operand(op[k],op_len[k],&ops[j],
-                             mnemonics[i].operand_type[j]);
+          rc = parse_operand(op[k],op_len[k],&ops[j],mnemo->operand_type[j]);
 
           if (rc == PO_CORRUPT) {
             /* operand has errors and will never match */
-            myfree(new);
             restore_symbols();
             return 0;
           }
           if (rc == PO_NOMATCH)
             break;     /* operand type does not match */
           if (rc == PO_NEXT)
-            continue;  /* after PO_AGAIN: use this arg. on the next operand */
+            continue;  /* after PO_COMB_OPT: use this arg. on next operand */
 
           /* MATCH, proceed to next parsed operand */
           k++;
@@ -92,8 +90,12 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
             j++;
             skipped++;
           }
-          else if (rc == PO_AGAIN) {
-            /* try to work on the same operand again with next arg. */
+          else if (rc == PO_COMB_REQ) {
+            /* work on same operand again, with a required next argument */
+            j--;
+          }
+          else if (rc == PO_COMB_OPT) {
+            /* work on same operand again, with an optional next argument */
             again = j--;
           }
         }
@@ -107,7 +109,11 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
         continue;
       }
 
-      /* Matched! Copy operands. */
+      /* Matched! Create instruction and copy operands. */
+      new = mymalloc(sizeof(*new));
+#if HAVE_INSTRUCTION_EXTENSION
+      init_instruction_ext(&new->ext);
+#endif
       mnemo_opcnt -= skipped;
       for (j=0; j<mnemo_opcnt; j++) {
         new->op[j] = mymalloc(sizeof(operand));
@@ -121,8 +127,7 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
       new->code = i;
       return new;
     }
-    while (i<mnemonic_cnt && !strnicmp(mnemonics[i].name,inst,len)
-           && mnemonics[i].name[len]==0);
+    while (i<mnemonic_cnt && mnemonics[i].name==mnemo->name);
   }
 
   switch (inst_found) {
@@ -133,11 +138,10 @@ instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
       general_error(0);  /* illegal operand types */
       break;
     default:
-      general_error(1,cnvstr(inst,len));  /* completely unknown mnemonic */
+      general_error(1,cutstr(&buf,inst,len)); /* completely unknown mnemonic */
       break;
   }
-  myfree(new);
-  return 0;
+  return NULL;
 }
 
 
@@ -221,9 +225,16 @@ static size_t space_size(sblock *sb,section *sec,taddr pc)
       copy_cpu_taddr(sb->fill,fill,sb->size);
       if (base && !sb->relocs) {
         /* generate relocations */
-        for (i=0; i<space; i++)
-          add_extnreloc(&sb->relocs,base,fill,REL_ABS,
-                        0,sb->size*bitsperbyte,sb->size*i);
+        if (sb->size) {
+          for (i=0; i<space; i++)
+            add_extnreloc(&sb->relocs,base,fill,REL_ABS,
+                          0,sb->size*bitsperbyte,sb->size*i);
+        }
+        else {
+          /* xrefs with size zero usually come from a "symdepend" directive */
+          add_extnreloc(&sb->relocs,base,0,REL_NONE,0,0,0);
+          base->flags |= EXPORT;  /* symdepend has an implicit xref */
+        }
       }
     }
     else
@@ -244,18 +255,8 @@ static size_t roffs_size(reloffs *roffs,section *sec,taddr pc)
 }
 
 
-/* adds an atom to the specified section; if sec==0, the current
-   section is used */
-void add_atom(section *sec,atom *a)
+static void internal_add_atom(section *sec,atom *a)
 {
-  if (!sec) {
-    sec = default_section();
-    if (!sec) {
-      general_error(3);
-      return;
-    }
-  }
-
   a->changes = 0;
   a->src = cur_src;
   a->line = cur_src!=NULL ? cur_src->line : 0;
@@ -289,6 +290,31 @@ void add_atom(section *sec,atom *a)
   }
   else
     a->list = 0;
+}
+
+
+/* adds an atom to the specified section;
+   if sec==0, the current section is used;
+   if the current section doesn't exist, then a default section is created */
+void add_atom(section *sec,atom *a)
+{
+  if (!sec) {
+    sec = default_section();
+    if (!sec) {
+      general_error(3);
+      return;
+    }
+  }
+  internal_add_atom(sec,a);
+}
+
+
+/* like add_atom(), but intermediately stores atoms in container_section,
+   when there is not yet a current_section */
+void add_or_save_atom(atom *a)
+{
+  section *sec = current_section ? current_section : &container_section;
+  internal_add_atom(sec,a);
 }
 
 
@@ -602,8 +628,6 @@ atom *new_space_atom(expr *space,size_t size,expr *fill)
 {
   atom *new = new_atom(SPACE,1);
 
-  if (size<1)
-    ierror(0);  /* usually an error in syntax-module */
   new->content.sb = new_sblock(space,size,fill);
   return new;
 }  

@@ -1,5 +1,5 @@
 /* source.h - source files, include paths and dependencies */
-/* (c) in 2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2020,2022 by Volker Barthelmann and Frank Wille */
 
 #ifndef SOURCE_H
 #define SOURCE_H
@@ -68,15 +68,15 @@ struct deplist {
 
 
 extern char *compile_dir;
-extern int ignore_multinc,depend,depend_all;
+extern int ignore_multinc,nocompdir,depend,depend_all;
 
 void write_depends(FILE *);
 source *new_source(char *,struct source_file *,char *,size_t);
 void end_source(source *);
+source *stdin_source(void);
 source *include_source(char *);
 void include_binary_file(char *,long,unsigned long);
 void source_debug_init(int,void *);
-void main_include_path(char *);
 struct include_path *new_include_path(char *);
 
 #endif /* SOURCE_H */

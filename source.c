@@ -1,5 +1,5 @@
 /* source.c - source files, include paths and dependencies */
-/* (c) in 2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2020,2022 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 #include "osdep.h"
@@ -8,7 +8,7 @@
 #define SRCREADINC (64*1024)  /* extend buffer in these steps when reading */
 
 char *compile_dir;
-int ignore_multinc,depend,depend_all;
+int ignore_multinc,nocompdir,depend,depend_all;
 
 static struct include_path *first_incpath;
 static struct source_file *first_source;
@@ -118,7 +118,7 @@ static FILE *locate_file(char *filename,char *mode,struct include_path **ipath_u
     /* locate file name in all known include paths */
     for (ipath=first_incpath; ipath; ipath=ipath->next) {
       if ((f = open_path(emptystr,ipath->path,filename,mode)) == NULL) {
-        if (compile_dir && !abs_path(ipath->path) &&
+        if (!nocompdir && compile_dir && !abs_path(ipath->path) &&
             (f = open_path(compile_dir,ipath->path,filename,mode)))
           ipath->compdir_based = 1;
       }
@@ -131,6 +131,51 @@ static FILE *locate_file(char *filename,char *mode,struct include_path **ipath_u
   }
   general_error(12,filename);
   return NULL;
+}
+
+
+static struct source_file *read_source_file(FILE *f)
+{
+  static int srcfileidx;
+  struct source_file *srcfile;
+  char *text;
+  size_t size;
+
+  for (text=NULL,size=0; ; size+=SRCREADINC) {
+    size_t nchar;
+
+    text = myrealloc(text,size+SRCREADINC);
+    nchar = fread(text+size,1,SRCREADINC,f);
+    if (nchar < SRCREADINC) {
+      size += nchar;
+      break;
+    }
+  }
+  if (feof(f)) {
+    if (size > 0) {
+      text = myrealloc(text,size+2);
+      *(text+size) = '\n';
+      *(text+size+1) = '\0';
+      size++;
+    }
+    else {
+      myfree(text);
+      text = "\n";
+      size = 1;
+    }
+    srcfile = mymalloc(sizeof(struct source_file));
+    srcfile->next = NULL;
+    srcfile->name = NULL;
+    srcfile->incpath = NULL;
+    srcfile->text = text;
+    srcfile->size = size;
+    srcfile->index = ++srcfileidx;
+  }
+  else {
+    general_error(29,filename);
+    srcfile = NULL;
+  }
+  return srcfile;
 }
 
 
@@ -197,14 +242,26 @@ void end_source(source *s)
 }
 
 
+source *stdin_source(void)
+{
+  struct source_file *srcfile;
+
+  if (srcfile = read_source_file(stdin)) {
+    srcfile->name = "stdin";
+    srcfile->next = first_source;
+    first_source = srcfile;
+    cur_src = new_source(srcfile->name,srcfile,srcfile->text,srcfile->size);
+    return cur_src;
+  }
+  return NULL;
+}
+
+
 source *include_source(char *inc_name)
 {
-  static int srcfileidx;
-  char *filename;
   struct source_file **nptr = &first_source;
   struct source_file *srcfile;
-  source *newsrc = NULL;
-  FILE *f;
+  char *filename;
 
   filename = convert_path(inc_name);
 
@@ -221,57 +278,27 @@ source *include_source(char *inc_name)
   if (nptr != NULL) {
     /* allocate, locate and read a new source file */
     struct include_path *ipath;
+    FILE *f;
 
     if (f = locate_file(filename,"r",&ipath)) {
-      char *text;
-      size_t size;
-
-      for (text=NULL,size=0; ; size+=SRCREADINC) {
-        size_t nchar;
-        text = myrealloc(text,size+SRCREADINC);
-        nchar = fread(text+size,1,SRCREADINC,f);
-        if (nchar < SRCREADINC) {
-          size += nchar;
-          break;
-        }
-      }
-      if (feof(f)) {
-        if (size > 0) {
-          text = myrealloc(text,size+2);
-          *(text+size) = '\n';
-          *(text+size+1) = '\0';
-          size++;
-        }
-        else {
-          myfree(text);
-          text = "\n";
-          size = 1;
-        }
-        srcfile = mymalloc(sizeof(struct source_file));
-        srcfile->next = NULL;
+      if (srcfile = read_source_file(f)) {
         srcfile->name = filename;
         srcfile->incpath = ipath;
-        srcfile->text = text;
-        srcfile->size = size;
-        srcfile->index = ++srcfileidx;
         *nptr = srcfile;
-        cur_src = newsrc = new_source(filename,srcfile,text,size);
+        fclose(f);
       }
-      else
-        general_error(29,filename);
-      fclose(f);
+      else {
+        fclose(f);
+        return NULL;
+      }
     }
   }
-  else {
-    /* same source was already loaded before, source_file node exists */
-    if (ignore_multinc)
-      return NULL;  /* ignore multiple inclusion of this source completely */
+  else if (ignore_multinc)
+    return NULL;  /* ignore multiple inclusion of this source completely */
+  /* otherwise reuse existing source file instance */
 
-    /* new source instance from existing source file */
-    cur_src = newsrc = new_source(srcfile->name,srcfile,srcfile->text,
-                                  srcfile->size);
-  }
-  return newsrc;
+  cur_src = new_source(srcfile->name,srcfile,srcfile->text,srcfile->size);
+  return cur_src;
 }
 
 
@@ -329,17 +356,6 @@ static char *make_canonical_path(char *pathname)
   pathname = append_path_delimiter(newpath);  /* append '/', when needed */
   myfree(newpath);
   return pathname;
-}
-
-
-/* add the main source include path, which is searched first */
-void main_include_path(char *pathname)
-{
-  struct include_path *ipath;
-
-  ipath = new_ipath_node(make_canonical_path(pathname));
-  ipath->next = first_incpath;
-  first_incpath = ipath;
 }
 
 

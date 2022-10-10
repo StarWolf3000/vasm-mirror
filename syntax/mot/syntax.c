@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm motorola syntax module 3.15d (c) 2002-2022 Frank Wille";
+char *syntax_copyright="vasm motorola syntax module 3.16 (c) 2002-2022 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -436,10 +436,13 @@ static void handle_section(char *s)
 {
   char attr[32];
   char *name;
+  strbuf *buf;
   uint32_t mem = 0;
 
   /* read section name */
-  if (!(name = parse_name(&s)))
+  if (buf = parse_name(0,&s))
+    name = buf->str;
+  else
     return;
 
   if (*s == ',') {
@@ -583,16 +586,15 @@ static void handle_rorg(char *s)
 static void do_bind(char *s,int bind)
 {
   symbol *sym;
-  char *name;
+  strbuf *name;
 
   do {
     s = skip(s);
-    if (!(name = parse_identifier(&s))) {
+    if (!(name = parse_identifier(0,&s))) {
       syntax_error(10);  /* identifier expected */
       return;
     }
-    sym = new_import(name);
-    myfree(name);
+    sym = new_import(name->str);
     if ((sym->flags & (EXPORT|WEAK|NEAR)) != 0 &&
         (sym->flags & (EXPORT|WEAK|NEAR)) != bind)
       general_error(62,sym->name,get_bind_name(sym)); /* binding already set */
@@ -624,7 +626,7 @@ static void handle_nref(char *s)
 
 static void handle_comm(char *s)
 {
-  char *name = parse_identifier(&s);
+  strbuf *name = parse_identifier(0,&s);
   symbol *sym;
   taddr sz = 4;
 
@@ -632,9 +634,8 @@ static void handle_comm(char *s)
     syntax_error(10);  /* identifier expected */
     return;
   }
-  sym = new_import(name);
+  sym = new_import(name->str);
   sym->flags |= COMMON;
-  myfree(name);
 
   s = skip(s);
   if (*s == ',') {
@@ -962,16 +963,40 @@ static void handle_end(char *s)
 
 static void handle_fail(char *s)   
 { 
-  add_atom(0,new_assert_atom(NULL,NULL,mystrdup(s)));
+  add_or_save_atom(new_assert_atom(NULL,NULL,mystrdup(s)));
+}
+
+
+static void handle_assert(char *s)
+{
+  char *expstr,*msgstr;
+  size_t explen;
+  expr *aexp;
+
+  msgstr = NULL;
+  expstr = skip(s);
+  aexp = parse_expr(&s);
+  explen = s - expstr;
+
+  s = skip(s);
+  if (*s == ',') {
+    strbuf *buf;
+
+    s = skip(s+1);
+    if (buf = parse_name(0,&s))
+      msgstr = mystrdup(buf->str);
+  }
+
+  add_or_save_atom(new_assert_atom(aexp,cnvstr(expstr,explen),msgstr));
 }
 
 
 static void handle_idnt(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_name(&s))
-    setfilename(name);
+  if (name = parse_name(0,&s))
+    setfilename(mystrdup(name->str));
 }
 
 
@@ -1010,37 +1035,36 @@ static void handle_nopage(char *s)
 
 static void handle_output(char *s)
 {
-  char *name;
+  strbuf *buf;
 
-  if (name = parse_name(&s)) {
-    if (*name=='.') {
+  if (buf = parse_name(0,&s)) {
+    if (*(buf->str)=='.') {
       char *p;
       int outlen;
 
       if (!outname)
-        outname = inname;
+        outname = inname ? inname : "a";
       if (p = strrchr(outname,'.'))
         outlen = p - outname;
       else
         outlen = strlen(outname);
-      p = mymalloc(outlen+strlen(name)+1);
+      p = mymalloc(outlen+buf->len+1);
       memcpy(p,outname,outlen);
-      strcpy(p+outlen,name);
-      myfree(name);
+      strcpy(p+outlen,buf->str);
       outname = p;
     }
     else if (!outname)
-      outname = name;
+      outname = mystrdup(buf->str);
   }
 }
 
 
 static void handle_dsource(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_name(&s))
-    setdebugname(name);
+  if (name = parse_name(0,&s))
+    setdebugname(mystrdup(name->str));
 }
 
 
@@ -1073,10 +1097,10 @@ static void handle_vdebug(char *s)
 
 static void handle_incdir(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  while (name = parse_name(&s)) {
-    new_include_path(name);
+  while (name = parse_name(0,&s)) {
+    new_include_path(name->str);
     if (*s != ',') {
       return;
     }
@@ -1088,21 +1112,21 @@ static void handle_incdir(char *s)
 
 static void handle_include(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_name(&s)) {
-    include_source(name);
+  if (name = parse_name(0,&s)) {
+    include_source(name->str);
   }
 }
 
 
 static void handle_incbin(char *s)
 {
-  char *name;
+  strbuf *name;
   taddr offs = 0;
   taddr length = 0;
 
-  if (name = parse_name(&s)) {
+  if (name = parse_name(0,&s)) {
     s = skip(s);
     if (*s == ',') {
       if (!devpac_compat && !phxass_compat) {
@@ -1119,7 +1143,7 @@ static void handle_incbin(char *s)
       else
         syntax_error(7);
     }
-    include_binary_file(name,offs,length);
+    include_binary_file(name->str,offs,length);
   }
 }
 
@@ -1140,10 +1164,10 @@ static void handle_endr(char *s)
 
 static void handle_macro(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_identifier(&s))
-    new_macro(name,macro_dirlist,endm_dirlist,NULL);
+  if (name = parse_identifier(0,&s))
+    new_macro(name->str,macro_dirlist,endm_dirlist,NULL);
   else
     syntax_error(10);  /* identifier expected */
 }
@@ -1164,13 +1188,12 @@ static void handle_mexit(char *s)
 #if STRUCT
 static void handle_struct(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_identifier(&s)) {
+  if (name = parse_identifier(0,&s)) {
     s = skip(s);
-    if (new_structure(name))
+    if (new_structure(name->str))
       current_section->flags |= LABELS_ARE_LOCAL;
-    myfree(name);
   }
   else
     syntax_error(10);  /* identifier expected */
@@ -1218,14 +1241,14 @@ static void handle_ifnb(char *s)
 
 static void ifc(char *s,int b)
 {
-  char *str1,*str2;
+  strbuf *str1,*str2;
   int result;
 
-  str1 = parse_name(&s);
+  str1 = parse_name(0,&s);
   if (str1!=NULL && *s==',') {
     s = skip(s+1);
-    if (str2 = parse_name(&s)) {
-      result = strcmp(str1,str2) == 0;
+    if (str2 = parse_name(1,&s)) {
+      result = strcmp(str1->str,str2->str) == 0;
       cond_if(result == b);
       return;
     }
@@ -1257,7 +1280,6 @@ static void ifdef(char *s,int b)
     result = sym->type != IMPORT;
   else
     result = 0;
-  myfree(name);
   cond_if(result == b);
 }
 
@@ -1519,7 +1541,6 @@ static void handle_cargs(char *s)
       /* define new stack offset symbol */
       new_abs(name,copy_tree(offs));
     }
-    myfree(name);
 
     /* increment offset by given size */
     if (*s == '.') {
@@ -1559,17 +1580,17 @@ static void handle_cargs(char *s)
 
 static void handle_printt(char *s)
 {
-  char *txt;
+  strbuf *txt;
 
-  while (txt = parse_name(&s)) {
-    add_atom(0,new_text_atom(txt));
+  while (txt = parse_name(0,&s)) {
+    add_or_save_atom(new_text_atom(mystrdup(txt->str)));
     s = skip(s);
     if (*s != ',')
       break;
-    add_atom(0,new_text_atom(NULL));  /* new line */
+    add_or_save_atom(new_text_atom(NULL));  /* new line */
     s = skip(s+1);
   }
-  add_atom(0,new_text_atom(NULL));  /* new line */
+  add_or_save_atom(new_text_atom(NULL));  /* new line */
 }
 
 static void handle_printv(char *s)
@@ -1578,15 +1599,15 @@ static void handle_printv(char *s)
 
   for (;;) {
     x = parse_expr(&s);
-    add_atom(0,new_text_atom("$"));
-    add_atom(0,new_expr_atom(x,PEXP_HEX,32));
-    add_atom(0,new_text_atom(" "));
-    add_atom(0,new_expr_atom(x,PEXP_SDEC,32));
-    add_atom(0,new_text_atom(" \""));
-    add_atom(0,new_expr_atom(x,PEXP_ASC,32));
-    add_atom(0,new_text_atom("\" %"));
-    add_atom(0,new_expr_atom(x,PEXP_BIN,32));
-    add_atom(0,new_text_atom(NULL));  /* new line */
+    add_or_save_atom(new_text_atom("$"));
+    add_or_save_atom(new_expr_atom(x,PEXP_HEX,32));
+    add_or_save_atom(new_text_atom(" "));
+    add_or_save_atom(new_expr_atom(x,PEXP_SDEC,32));
+    add_or_save_atom(new_text_atom(" \""));
+    add_or_save_atom(new_expr_atom(x,PEXP_ASC,32));
+    add_or_save_atom(new_text_atom("\" %"));
+    add_or_save_atom(new_expr_atom(x,PEXP_BIN,32));
+    add_or_save_atom(new_text_atom(NULL));  /* new line */
     s = skip(s);
     if (*s != ',')
       break;
@@ -1597,19 +1618,19 @@ static void handle_printv(char *s)
 static void handle_echo(char *s)
 {
   if (phxass_compat) {
-    char *txt = parse_name(&s);
+    strbuf *txt = parse_name(0,&s);
     if (txt)
-      add_atom(0,new_text_atom(txt));
+      add_or_save_atom(new_text_atom(mystrdup(txt->str)));
   }
   else {
     for (;;) {
       if (*s=='\"' || *s=='\'') {
-        char *txt = parse_name(&s);
+        strbuf *txt = parse_name(0,&s);
         if (txt)
-          add_atom(0,new_text_atom(txt));
+          add_or_save_atom(new_text_atom(mystrdup(txt->str)));
       }
       else {
-        add_atom(0,new_expr_atom(parse_expr(&s),PEXP_SDEC,32));
+        add_or_save_atom(new_expr_atom(parse_expr(&s),PEXP_SDEC,32));
       }
       s = skip(s);
       if (*s != ',')
@@ -1617,18 +1638,18 @@ static void handle_echo(char *s)
       s = skip(s+1);
     }
   }
-  add_atom(0,new_text_atom(NULL));  /* new line */
+  add_or_save_atom(new_text_atom(NULL));  /* new line */
 }
 
 static void handle_showoffset(char *s)
 {
-  char *txt;
+  strbuf *txt;
 
-  if (txt = parse_name(&s))
-    add_atom(0,new_text_atom(txt));
-  add_atom(0,new_text_atom(" "));
-  add_atom(0,new_expr_atom(curpc_expr(),PEXP_HEX,32));
-  add_atom(0,new_text_atom(NULL));  /* new line */
+  if (txt = parse_name(0,&s))
+    add_or_save_atom(new_text_atom(mystrdup(txt->str)));
+  add_or_save_atom(new_text_atom(" "));
+  add_or_save_atom(new_expr_atom(curpc_expr(),PEXP_HEX,32));
+  add_or_save_atom(new_text_atom(NULL));  /* new line */
 }
 
 static void handle_dummy_expr(char *s)
@@ -1802,6 +1823,7 @@ struct {
 #endif
   "end",P|D,handle_end,
   "fail",P|D,handle_fail,
+  "assert",0,handle_assert,
   "idnt",P|D,handle_idnt,
   "ttl",P|D,handle_idnt,
   "list",P|D,handle_list,
@@ -2106,7 +2128,6 @@ void parse(void)
       if (labname = parse_labeldef(&s,0)) {
         if (*s == ':')
           s++;  /* skip double-colon */
-        myfree(labname);
       }
       /* advance to directive */
       s = skip(s);
@@ -2186,12 +2207,12 @@ void parse(void)
                (isspace((unsigned char)*(s+5)) || *(s+5)=='\0'
                 || *(s+5)==commentchar)) {
         /* reread original label field as macro name, no local macros */
+        strbuf *buf;
+
         s = line;
-        myfree(labname);
-        if (!(labname = parse_identifier(&s)))
+        if (!(buf = parse_identifier(0,&s)))
           ierror(0);
-        new_macro(labname,macro_dirlist,endm_dirlist,NULL);
-        myfree(labname);
+        new_macro(buf->str,macro_dirlist,endm_dirlist,NULL);
         continue;
       }
 #ifdef PARSE_CPU_LABEL
@@ -2203,7 +2224,6 @@ void parse(void)
         label->flags |= symflags;
         add_atom(0,new_label_atom(label));
       }
-      myfree(labname);
     }
 
     /* check for directives first */
@@ -2320,6 +2340,8 @@ char *parse_macro_arg(struct macro *m,char *s,
           return s + 1;
         }
       }
+      else if (!devpac_compat && (*s=='\'' || *s=='\"'))
+        s = skip_string(s,*s,NULL) - 1;
     }
     param->len = s - param->name;
   }
@@ -2476,7 +2498,6 @@ int expand_macro(source *src,char **line,char *d,int dlen)
               nc = -1;
           }
         }
-        myfree(name);
         if (*s++ != '>') {
           syntax_error(19);  /* invalid numeric expansion */
           return 0;
@@ -2586,10 +2607,11 @@ char *const_suffix(char *start,char *end)
 }
 
 
-char *get_local_label(char **start)
+strbuf *get_local_label(int n,char **start)
 /* Motorola local labels start with a '.' or end with '$': "1234$", ".1" */
 {
-  char *s,*p,*name;
+  char *s,*p;
+  strbuf *name;
 
   name = NULL;
   s = *start;
@@ -2599,7 +2621,7 @@ char *get_local_label(char **start)
     /* skip local part of global\local label */
     s = p + 1;
     if (p = skip_local(s)) {
-      name = make_local_label(*start,(s-1)-*start,s,*(p-1)=='$'?(p-1)-s:p-s);
+      name = make_local_label(n,*start,(s-1)-*start,s,*(p-1)=='$'?(p-1)-s:p-s);
       *start = skip(p);
     }
     else
@@ -2608,12 +2630,12 @@ char *get_local_label(char **start)
   else if (p!=NULL && p>(s+1)) {  /* identifier with at least 2 characters */
     if (*s == local_char) {
       /* .label */
-      name = make_local_label(NULL,0,s,p-s);
+      name = make_local_label(n,NULL,0,s,p-s);
       *start = skip(p);
     }
     else if (*(p-1) == '$') {
       /* label$ */
-      name = make_local_label(NULL,0,s,(p-1)-s);
+      name = make_local_label(n,NULL,0,s,(p-1)-s);
       *start = skip(p);
     }
   }
@@ -2633,13 +2655,15 @@ int init_syntax(void)
   else if (phxass_compat) avail = 2;
   else avail = 0;
 
-  dirhash = new_hashtable(0x200); /* @@@ */
+  dirhash = new_hashtable(0x1800);
   for (i=0; i<dir_cnt; i++) {
     if ((directives[i].avail & avail) == avail) {
       data.idx = i;
       add_hashentry(dirhash,directives[i].name,data);
     }
   }
+  if (debug && dirhash->collisions)
+    fprintf(stderr,"*** %d directive collisions!!\n",dirhash->collisions);
   
   cond_init();
   current_pc_char = '*';
@@ -2653,7 +2677,7 @@ int init_syntax(void)
   if (!phxass_compat && !devpac_compat)
     set_internal_abs(line_name,0);
 
-  if (phxass_compat) {
+  if (phxass_compat && inname!=NULL) {
     if (!outname) {
       /* set a default output name in PhxAss mode */
       char *p;

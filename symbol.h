@@ -1,5 +1,5 @@
 /* symbol.h - manage all kinds of symbols */
-/* (c) in 2014-2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2014-2022 by Volker Barthelmann and Frank Wille */
 
 #ifndef SYMBOL_H
 #define SYMBOL_H
@@ -78,7 +78,7 @@ void restore_symbols(void);
 int check_symbol(char *);
 char *set_last_global_label(char *);
 int is_local_label(char *);
-char *make_local_label(char *,int,char *,int);
+strbuf *make_local_label(int,char *,int,char *,int);
 symbol *new_abs(char *,expr *);
 symbol *new_equate(char *,expr *);
 symbol *new_import(char *);
@@ -96,5 +96,6 @@ int undef_regsym(char *,int,int);
 #endif /* HAVE_REGSYMS */
 
 int init_symbol(void);
+void exit_symbol(void);
 
 #endif

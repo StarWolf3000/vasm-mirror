@@ -3,7 +3,7 @@ with the extension @code{std}.
 
 @section Legal
 
-    This module is written in 2002-2021 by Volker Barthelmann and
+    This module is written in 2002-2022 by Volker Barthelmann and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -18,6 +18,9 @@ This syntax module provides the following additional options:
 @item -align
  Enforces the backend's natural alignment for all data directives
  (@code{.word}, @code{.long}, @code{.float}, etc.).
+@item -gas
+ Enable GNU-as compatibility mode. Currently this will only prevent
+ labels prefixed by a dot to be recognized as local labels.
 @item -nodotneeded
  Recognize assembly directives without a leading dot (@code{.}).
 @item -sdlimit=<n>
@@ -28,10 +31,18 @@ This syntax module provides the following additional options:
 
 @section General Syntax
 
-Labels have to be terminated with a colon (@code{:}).
-Local labels may either be preceded by a '@code{.}' or terminated by
-'@code{$}', and consist out of digits only.
-Local labels exist and keep their value between two global label definitions.
+Labels always have to be terminated by a colon (@code{:}), therefore
+they don't necessarily have to start at the first column of a line.
+
+Local labels may either be preceded by a '@code{.}' (unless option
+@option{-gas} was given) or terminated by '@code{$}',
+and consist out of digits only.
+These labels exist and keep their value between two global label definitions.
+
+A special form of reusable "local" labels, independant of global labels,
+may be defined by using a single digit from @code{0} to @code{9}.
+You can reference the nearest previous digit-label with @code{Nb} and the
+nearest following digit-label with @code{Nf}, where @code{N} is such a digit.
 
 Make sure that you don't define a label on the same line as a
 directive for conditional assembly (if, else, endif)! This is not supported.

@@ -1,5 +1,5 @@
 /* supp.c miscellaneous support routines */
-/* (c) in 2008-2021 by Frank Wille */
+/* (c) in 2008-2022 by Frank Wille */
 
 #include <math.h>
 #include "vasm.h"
@@ -502,14 +502,14 @@ taddr fwpcalign(FILE *f,atom *a,section *sec,taddr pc)
 size_t filesize(FILE *fp)
 /* @@@ Warning! filesize() only works reliably on binary streams! @@@ */
 {
-  long oldpos,size;
+  long size;
 
-  if ((oldpos = ftell(fp)) >= 0)
+  if (fgetc(fp) != EOF)
     if (fseek(fp,0,SEEK_END) >= 0)
       if ((size = ftell(fp)) >= 0)
-        if (fseek(fp,oldpos,SEEK_SET) >= 0)
-          return ((size_t)size);
-  return -1;
+        if (fseek(fp,0,SEEK_SET) >= 0)
+          return (size_t)size;
+  return 0;
 }
 
 
@@ -556,6 +556,29 @@ char *cnvstr(const char *name,int l)
   memcpy(p,name,l);
   p[l]=0;
   return p;
+}
+
+
+char *strbuf_alloc(strbuf *buf,size_t sz)
+/* make sure static strbuf has space for 'sz' bytes */
+{
+  if (sz > buf->size) {
+    buf->size = (sz+(STRBUFINC-1)) & ~(STRBUFINC-1);
+    return buf->str = myrealloc(buf->str,buf->size);
+  }
+  return buf->str;
+}
+
+
+char *cutstr(strbuf *buf,const char *name,size_t len)
+{
+  if (len >= buf->size) {
+    buf->size = (len+STRBUFINC) & ~(STRBUFINC-1);
+    buf->str = myrealloc(buf->str,buf->size);
+  }
+  buf->str[len] = 0;
+  buf->len = len;
+  return memcpy(buf->str,name,len);
 }
 
 

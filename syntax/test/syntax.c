@@ -174,15 +174,13 @@ static void handle_data(char *s,int size,int noalign,int zeroterm)
 static void handle_global(char *s)
 {
   symbol *sym;
-  char *name;
-  name=s;
-  if(!(name=parse_identifier(&s))){
+  strbuf *name;
+  if(!(name=parse_identifier(0,&s))){
     syntax_error(10);
     return;
   }
-  sym=new_import(name);
+  sym=new_import(name->str);
   sym->flags|=EXPORT;
-  myfree(name);
   eol(s);
 }
 
@@ -392,7 +390,7 @@ char *const_suffix(char *start,char *end)
   return end;
 }
 
-char *get_local_label(char **start)
+strbuf *get_local_label(int n,char **start)
 {
   return NULL;
 }

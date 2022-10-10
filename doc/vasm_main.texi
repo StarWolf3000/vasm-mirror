@@ -1,18 +1,24 @@
 This chapter describes the module-independent part of the assembler. It
 documents the options and extensions which are not specific to a certain
 target, syntax or output driver. Be sure to also read the chapters on the
-backend, syntax- and output-module you are using. They will
+cpu-backend, syntax- and output-module you are using. They will
 likely contain important additional information like data-representation
 or additional options.
 
 @node General Assembler Options
 @section General Assembler Options
 
-    @command{vasm} is run using the following syntax:
+    @command{vasm} is run from the command line using the following syntax:
 
 @example
-      @command{vasm<target>_<syntax> [options] file}
+      @command{vasm<target>_<syntax> [options] [sourcefile]}
 @end example
+
+    When the source file name is missing, then the assembler reads the
+    source text from @file{stdin} until @code{EOF} (end-of-file,
+    which is @code{CTRL-D} in Unix shells, or @code{CTRL-\} in AmigaOS
+    shells). Note, that most debugging formats (DWARF, etc.) no longer
+    work with such temporary source texts.
 
     The following options are supported by the machine independent part
     of @command{vasm}:
@@ -29,12 +35,13 @@ or additional options.
 
 @item -depend=<type>
         Print all dependencies while assembling the source with the given
-        options. No output is generated. <type> may be @option{list} for
-        printing one file name in each new line, or @option{make} for printing
-        a sequence of file names on a single line, suitable for Makefiles.
+        options. No output is generated. <type> may be the word @option{list}
+        for printing one file name in each new line, or @option{make} for
+        printing a sequence of file names on a single line, suitable for
+        Makefiles.
         When the output file name is given by @option{-o outname} then
         @command{vasm} will also print @code{outname:} in front of it.
-        Note that unlike with option @option{-dependall} only relative
+        Note that in contrast to option @option{-dependall} only relative
         include file dependencies will be listed (which is the common case).
 
 @item -dependall=<type>
@@ -44,22 +51,22 @@ or additional options.
 @item -depfile <filename>
         Used together with @option{-depend} or @option{-dependall} and
         instructs vasm to output all dependencies to a new file, instead
-        of stdout. Code will be generated in parallel to the dependencies
-        output.
+        of stdout. Additionally, code will be generated in parallel to the
+        dependencies output.
 
 @item -dwarf[=<version>]
         Automatically generate DWARF debugging sections, suitable for
-        source level debugging. When the version specification is missing
-        DWARF V3 will be generated. The only difference to V2 is that it
+        source level debugging. When the version specification is missing,
+        DWARF V3 will be emitted. The only difference to V2 is that it
         creates a @code{.debug_ranges} section, with address ranges for all
         sections, instead of a bad workaround specifying
         @code{DW_AT_low_pc=0} and @code{DW_AT_high_pc=~0}.
-        Note that when you build vasm from source, you may have to specify
+        Note, that when you build vasm from source, you may have to specify
         your host operating system with @code{-Dname} in the Makefile to
         include the appropriate code which can determine the current
-        work directory. Otherwise, the default would be to set the current
+        work directory. Otherwise the default would be to set the current
         work directory to an empty string. Currently supported are:
-        @code{UNIX}, @code{AMIGA}, @code{ATARI}, @code{MSDOS},
+        @code{AMIGA}, @code{ATARI}, @code{UNIX}, @code{MSDOS},
         @code{_WIN32}.
 
 @item -esc
@@ -108,17 +115,25 @@ or additional options.
         Do not include symbols in the listing file (fmt=wide).
 
 @item -maxerrors=<n>
-        Defines the maximum number of errors to display before assembly
+        Sets the maximum number of errors to display before assembly
         is aborted. When <n> is 0 then there is no limit. Defaults to 5.
 
 @item -maxmacrecurs=<n>
-        Defines the maximum of number of recursions within a macro.
+        Defines the maximum number of recursion levels within a macro.
         Defaults to 1000.
+
+@item -maxpasses=<n>
+        Adjusts the maximum number of passes while resolving a section.
+        Defaults to 1500.
 
 @item -nocase
         Disables case-sensitivity for everything - identifiers, directives
         and instructions. Note that directives and instructions may already
         be case-insensitive by default in some modules.
+
+@item -nocompdir
+        Do not search for include files relative to the compile directory
+        (where the main input source is located).
 
 @item -noesc
         No escape character sequences. This will make vasm treat the
@@ -185,6 +200,10 @@ or additional options.
 @item -wfail
         The return code of vasm will no longer be 0 (success), when there
         was a warning. Errors always make the return code fail.
+
+@item -v
+        Print version and copyright messages from the assembler and all
+        its modules, then exit.
 
 @item -x
         Show an error message, when referencing an undefined symbol.
@@ -361,14 +380,14 @@ Vasm supports include files and defining include paths. Whether this
 functionality is available depends on the syntax module, which has to
 provide the appropriate directives.
 
-On startup vasm defines two default include paths: the compile
-directory, which is the directory where the input file is
-located, and the current work directory (which might be the same).
+On startup vasm defines one or two default include paths: the current
+work directory and, when the main source is not located there, the
+compile directory.
 
 Include paths are searched in the following order:
 @enumerate 1
-@item Compile directory (path to main source).
 @item Current work directory.
+@item Compile directory (path to main source).
 @item Paths specified by @option{-I} in the order of occurrence on the
       command line.
 @item Paths specified by directives in the source text (in the order
@@ -378,6 +397,9 @@ Include paths are searched in the following order:
 Additionally, all the relative paths, defined by @option{-I} or directives,
 are first appended to the current work directory name, then to the
 compile directory name, while searching for an include file.
+
+Searching for include files in paths based on the compile directory can be
+completely disabled by @option{-nocompdir}.
 
 @section Macros
 
@@ -429,6 +451,7 @@ Has to be provided completely by the syntax module.
     @item Sebastian Pachuta
     @item Thorsten Otto
     @item Esben Norby
+    @item Tom Noorduin
     @item Gunther Nikl
     @item George Nakos
     @item Timm S. Mueller
@@ -489,7 +512,7 @@ The frontend has the following error messages:
 @item 13: could not open <%s> for input
 @item 14: could not open <%s> for output
 @item 15: unknown option <%s>
-@item 16: no input file specified
+@item 16:
 @item 17: could not initialize output module <%s>
 @item 18: out of memory
 @item 19: symbol <%s> recursively defined
@@ -555,5 +578,6 @@ The frontend has the following error messages:
 @item 79: illegal value for option: %s
 @item 80: %s backend does not support floating point
 @item 81: unknown listing file format "%s" ignored
+@item 82: cannot export equate based on imported symbol: <%s>
 
 @end itemize
