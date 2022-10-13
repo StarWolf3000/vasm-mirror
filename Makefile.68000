@@ -1,0 +1,16 @@
+# AmigaOS/68000 low memory
+
+TARGET = _aos68000
+TARGETEXTENSION = 
+
+CC = vc +aos68k
+CCOUT = -o=
+COPTS = -c -merge-strings -size -DLOWMEM -DAMIGA -DOUTBIN -DOUTHUNK -DOUTVOBJ -O1
+
+LD = $(CC)
+LDOUT = $(CCOUT)
+LDFLAGS = -lmieee
+
+RM = delete force quiet
+
+include make.rules

@@ -17,7 +17,7 @@ selected with the @option{-Faout} option.
 
 @section General
 
-This output module outputs the @code{a.out} (assembler output)
+This output module emits the @code{a.out} (assembler output)
 format, which is an older 32-bit format for Unix-like operating systems,
 originally invented by AT&T.
 
@@ -47,7 +47,6 @@ are not suitable for most RISC CPUs. The extended relocations format occupies
     Some known problems of this module at the moment:
 
 @itemize @minus
-@item Support for stab debugging symbols is still missing.
 @item The extended relocation format is not supported.
 @end itemize
 

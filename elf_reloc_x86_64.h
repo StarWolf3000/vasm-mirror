@@ -41,6 +41,10 @@
 
     switch ((*rl)->type) {
 
+      case REL_NONE:
+        t = R_X86_64_NONE;
+        break;
+
       case REL_ABS:
         if (pos==0 && mask==~0) {
           if (size == 64)

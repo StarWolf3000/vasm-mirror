@@ -4,7 +4,7 @@ which is available with the extension @code{oldstyle}.
 
 @section Legal
 
-    This module is written in 2002-2021 by Frank Wille and
+    This module is written in 2002-2022 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -62,6 +62,16 @@ Local labels are valid between two global label definitions.
 It is allowed, but not recommended, to refer to any local symbol starting with
 '@code{.}' in the source, by preceding its name with the name of the last
 previously defined global symbol: @code{global_name.local_name}.
+
+Anonymous labels are supported by defining them with a single '@code{:}'
+at the beginning of a line. They may be referenced by '@code{:}' followed
+directly by one or more '@code{+}' or '@code{-}' signs. A @code{+} selects
+the first anonymous label following the point of reference. A @code{++}
+select the second anonymous label in that direction, and so on. A @code{-}
+selects the first anonymous label before the point of reference. Example:
+@example
+:       jmp     :-    ;infinite loop
+@end example
 
 The option @option{-ldots} allows dots (@code{.}) within labels and other
 identifiers, but disables the above mentioned feature.
@@ -428,6 +438,9 @@ CPU- and output-module allow it):
 @item mdat <file>
       Equivalent to @code{incbin <file>}.
 
+@item needs <expression>
+      Equivalent to @code{symdepend <expression>}.
+
 @item nolist
       The following lines will not be visible in a listing file.
 
@@ -545,9 +558,15 @@ CPU- and output-module allow it):
 @item structure <name>
       Equivalent to @code{struct <name>}.
 
+@item symdepend <expression>
+      Declare the current section being dependent on an externally defined
+      symbol from @code{<expression>}. In object file formats which
+      support it, this will generate an external symbol reference without
+      any actual relocation being performed (@code{R_NONE} in ELF).
+
 @item text "<string>"
-      Places a single string constant operands into successive bytes of
-      memory in the current section. The string delimiters may be any
+      Puts a single string constant into successive bytes of
+      memory of the current section. The string delimiters may be any
       printable ASCII character.
       (Not available with option @option{-sect}.)
 

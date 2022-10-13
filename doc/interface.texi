@@ -101,6 +101,12 @@ Directory the object modules will be stored in.
        Building without specifying a host-OS is allowed. Then vasm
        defaults to Unix-style path handling and will not define a
        file system symbol for conditional assembly.
+       Other options:
+       @table @code
+          @item -DLOWMEM
+          Builds for a host-OS with a low amount of memory. This will
+          bascially reduce all hash tables to minimal size.
+       @end table
 
     @item CCOUT
        Here you define the option which is used to specify the name of
@@ -393,9 +399,14 @@ the modules:
         information are generated.
 @item NEAR_ADDRESSING
         Section is marked as suitable for cpu-specific "near" addressing
-        modes. For example, base-register relative. The cpu backend can use
-        this information as an optimization hint when referencing symbols
-        from this section.
+        modes. For example, base-register relative or zero/direct-page.
+        The cpu backend can use this information as an optimization hint
+        when referencing symbols from this section.
+@item FAR_ADDRESSING
+        Section requires cpu-specific "far" addressing modes. For example
+        an addressing mode including the bank or "segment". The cpu backend
+        may use this information to select appropriate addressing modes
+        when referencing symbols from this section.
 @end table
 
 @item  taddr org;
@@ -1376,16 +1387,20 @@ is successfully recognized.
 @item PO_SKIP
 Works like @code{PO_MATCH}, but skips the next operand from the mnemonic
 table (because it was already handled together with the current operand).
-@item PO_AGAIN
-Works like @code{PO_MATCH}, but requests parsing of the next chunk of
-source text, if any, with a pointer to the same @code{operand} structure
+@item PO_COMB_OPT
+Works like @code{PO_MATCH}, but requests parsing of the next argument from
+the source text, if any, with a pointer to the same @code{operand} structure
 as before. This makes it possible to merge multiple operands into a
 single operand structure.
+@item PO_COMB_REQ
+Like @code{PO_COMB_OPT}, requests parsing of the next argument
+with a pointer to the same @code{operand} structure. But this time the
+argument is mandatory.
 @item PO_NEXT
 Source did not match the given operand type in @code{requires}. Request
 parsing the same chunk of source text again, but using the following
-operand type. Can be used to break a @code{PO_AGAIN} attempt and
-continue normally.
+operand type. Can be used to break a @code{PO_COMB_OPT} or @code{PO_COMB_REQ}
+attempt and continue normally.
 @end table
 
 @item taddr instruction_size(instruction *ip, section *sec, taddr pc);

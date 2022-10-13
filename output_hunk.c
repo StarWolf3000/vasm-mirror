@@ -1,11 +1,11 @@
 /* output_hunk.c AmigaOS hunk format output driver for vasm */
-/* (c) in 2002-2021 by Frank Wille */
+/* (c) in 2002-2022 by Frank Wille */
 
 #include "vasm.h"
 #include "osdep.h"
 #include "output_hunk.h"
 #if defined(OUTHUNK) && (defined(VASM_CPU_M68K) || defined(VASM_CPU_PPC))
-static char *copyright="vasm hunk format output module 2.13a (c) 2002-2021 Frank Wille";
+static char *copyright="vasm hunk format output module 2.14b (c) 2002-2022 Frank Wille";
 int hunk_onlyglobal;
 
 /* (currently two-byte only) padding value for not 32-bit aligned code hunks */
@@ -119,8 +119,12 @@ static section *prepare_sections(section *first_sec,symbol *sym)
 {
   section *sec,*first_nonbss;
   symbol *nextsym;
+  utaddr pc;
   rlist *rl;
   atom *a;
+
+  if (inname==NULL && genlinedebug)
+    genlinedebug = 0;  /* no line debug info when source is stdin */
 
   for (sec_cnt=0,sec=first_sec,first_nonbss=NULL; sec!=NULL; sec=sec->next) {
     /* ignore empty sections without symbols, unless -keepempty was given */
@@ -136,11 +140,15 @@ static section *prepare_sections(section *first_sec,symbol *sym)
     if (first_nonbss==NULL && scan_attr(sec)!=HUNK_BSS)
       first_nonbss = sec;
 
-    /* flag all present common-symbol references from this section */
-    for (a=sec->first; a; a=a->next) {
-      if (a->type == DATA) {
-        for (rl=a->content.db->relocs; rl; rl=rl->next) {
+    for (a=sec->first,pc=sec->org; a; a=a->next) {
+      pc = pcalign(a,pc);
+
+      if (a->type==DATA || a->type==SPACE) {
+        for (rl=a->type==DATA?a->content.db->relocs:a->content.sb->relocs;
+             rl; rl=rl->next) {
+
           if (rl->type==REL_ABS || rl->type==REL_PC) {
+            /* flag all present common-symbol references from this section */
             if (((nreloc *)rl->reloc)->size==32) {
               symbol *s = ((nreloc *)rl->reloc)->sym;
 
@@ -148,8 +156,26 @@ static section *prepare_sections(section *first_sec,symbol *sym)
                 s->flags |= COMM_REFERENCED;
             }
           }
+
+          else if (rl->type==REL_NONE && !exec_out) {
+            /* warn about unsupported NONE-relocations and convert them into
+               8-bit ABS, hoping to find a non-destructive definition... */
+            nreloc *r = (nreloc *)rl->reloc;
+
+            if (pc < (utaddr)sec->pc) {
+              r->byteoffset = r->bitoffset = 0;
+              r->size = 8;
+              r->mask = DEFMASK;
+              r->addend = 0;
+              rl->type = REL_ABS;
+              output_error(16,r->sym->name);  /* conversion warning */
+            }
+            else
+              output_error(17,r->sym->name);  /* no space for conversion */
+          }
         }
       }
+      pc += atom_size(a,sec,pc);
     }
   }
 
@@ -532,61 +558,75 @@ static void process_relocs(atom *a,struct list *reloclist,
 static void reloc_hunk(FILE *f,uint32_t type,int shrt,struct list *reloclist)
 /* write all section-offsets for one relocation type */
 {
-  int bytes = 0;
+  unsigned long bytes = 0;
   uint32_t idx;
 
   for (idx=0; idx<sec_cnt; idx++) {
+    struct list myreloclist;
     struct hunkreloc *r,*next;
-    uint32_t n;
-    int off16;
+    unsigned long cnt,n;
 
-    for (r=(struct hunkreloc *)reloclist->first,n=0,off16=1;
-         r->n.next; r=(struct hunkreloc *)r->n.next) {
-      if (r->hunk_id==type && r->hunk_index==idx) {
-        n++;
-        if (r->hunk_offset >= 0x10000)
-          off16 = 0;
+    /* move appropriate relocs into the list for this hunk */
+    initlist(&myreloclist);
+    cnt = 0;
+
+    r = (struct hunkreloc *)reloclist->first;
+    while (next = (struct hunkreloc *)r->n.next) {
+      if (r->hunk_id==type && r->hunk_index==idx &&
+          (!shrt || r->hunk_offset < 0x10000)) {
+        remnode(&r->n);
+        addtail(&myreloclist,&r->n);
+        cnt++;
       }
+      r = next;
     }
-    if (shrt && (n>=0x10000 || off16==0))
-      continue;  /* relocs for this hunk don't fit into 16-bit entries */
-    if (n > 0) {
-      if (bytes == 0) {
+
+    if (cnt) {
+      /* output hunk-id, before the first reloc */
+      if (!bytes) {
         if (shrt && type==HUNK_ABSRELOC32)
           fw32(f,HUNK_DREL32,1);  /* RELOC32SHORT is DREL32 for OS2.0 */
         else
           fw32(f,type,1);
         bytes = 4;
       }
+
       if (shrt) {
-        fw16(f,n,1);
-        fw16(f,idx,1);
-        bytes += 4;
-      }
-      else {
-        fw32(f,n,1);
-        fw32(f,idx,1);
-        bytes += 8;
-      }
-      r = (struct hunkreloc *)reloclist->first;
-      while (next = (struct hunkreloc *)r->n.next) {
-        if (r->hunk_id==type && r->hunk_index==idx) {
-          if (shrt) {
+        /* output up to 65535 short relocs with unsigned 16-bit offsets */
+        while (n = cnt) {
+          if (n > 0xffff)
+            n = 0xffff;  /* maximum entries for short relocs */
+          fw16(f,n,1);   /* number of relocations */
+          fw16(f,idx,1); /* referenced section index */
+          cnt -= n;
+  
+          while (n-- && (r=(struct hunkreloc *)remhead(&myreloclist))) {
             fw16(f,r->hunk_offset,1);
             bytes += 2;
+            myfree(r);
           }
-          else {
-            fw32(f,r->hunk_offset,1);
-            bytes += 4;
-          }
-          remnode(&r->n);
-          myfree(r);
         }
-        r = next;
+      }
+      else {
+        /* output up to 65536 normal relocs with 32-bit offsets */
+        while (n = cnt) {
+          if (exec_out && n>0x10000)
+            n = 0x10000; /* limitation from AmigaDOS LoadSeg() */
+          fw32(f,n,1);   /* number of relocations */
+          fw32(f,idx,1); /* referenced section index */
+          cnt -= n;
+
+          while (n-- && (r=(struct hunkreloc *)remhead(&myreloclist))) {
+            fw32(f,r->hunk_offset,1);
+            myfree(r);
+          }
+        }
       }
     }
   }
+
   if (bytes) {
+    /* no more relocation entries for this hunk - output terminating zero */
     if (shrt) {
       fw16(f,0,1);
       fwalign(f,bytes+2,4);
@@ -758,6 +798,7 @@ static void ext_defs(FILE *f,int symtype,int global,size_t idx,
 {
   int header = 0;
   symbol *sym;
+  uint32_t len;
 
   for (sym=secsyms[idx]; sym; sym=sym->next) {
     if (sym->type==symtype && (sym->flags&global)==global) {
@@ -768,8 +809,16 @@ static void ext_defs(FILE *f,int symtype,int global,size_t idx,
         else
           extheader(f);
       }
-      fw32(f,(xtype<<24) | strlen32(sym->name),1);
-      fwname(f,sym->name);
+      len = strlen32(sym->name);
+      if (exec_out && len>31) {
+        /* LoadSeg() doesn't allow names with more than 31 longwords */
+        fw32(f,(xtype<<24)|31,1);
+        fwdata(f,sym->name,124);
+      }
+      else {
+        fw32(f,(xtype<<24)|len,1);
+        fwname(f,sym->name);
+      }
       fw32(f,(uint32_t)get_sym_value(sym),1);
     }
   }

@@ -1,5 +1,5 @@
 /* symbol.c - manage all kinds of symbols */
-/* (c) in 2014-2018 by Volker Barthelmann and Frank Wille */
+/* (c) in 2014-2022 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -150,7 +150,7 @@ void restore_symbols(void)
       }
       else {
         rem_hashentry(symhash,symp->name,nocase);
-        /* myfree(symp->name);  could be dangerous? */
+        myfree(symp->name);
         myfree(symp);
       }
     }
@@ -189,24 +189,26 @@ char *set_last_global_label(char *name)
 
 
 int is_local_label(char *name)
-/* returns true when name belong to a label with local scope */
+/* returns true when name belongs to a label with local scope */
 {
   return *name == ' ';
 }
 
 
-char *make_local_label(char *glob,int glen,char *loc,int llen)
+strbuf *make_local_label(int n,char *glob,int glen,char *loc,int llen)
 /* construct a local label of the form:
-   " " + global_label_name + " " + local_label_name */
+   " " + global_label_name + " " + local_label_name
+   return pointer a one of two static string buffers */
 {
-  char *name,*p;
+  static strbuf buf[EXPBUFNO+1];
+  char *p;
 
   if (glen == 0) {
     /* use the last defined global label */
     glob = last_global_label;
     glen = strlen(last_global_label);
   }
-  p = name = mymalloc(llen+glen+3);
+  p = strbuf_alloc(&buf[n],llen+glen+3);
   *p++ = ' ';
   if (glen) {
     memcpy(p,glob,glen);
@@ -215,7 +217,7 @@ char *make_local_label(char *glob,int glen,char *loc,int llen)
   *p++ = ' ';
   memcpy(p,loc,llen);
   *(p + llen) = '\0';
-  return name;
+  return &buf[n];
 }
 
 
@@ -306,8 +308,11 @@ symbol *new_labsym(section *sec,char *name)
 
   sec->flags |= HAS_SYMBOLS;
 
-  if (sec->flags&LABELS_ARE_LOCAL)
-    name = make_local_label(sec->name,strlen(sec->name),name,strlen(name));
+  if (sec->flags&LABELS_ARE_LOCAL) {
+    strbuf *buf;
+    buf = make_local_label(1,sec->name,strlen(sec->name),name,strlen(name));
+    name = buf->str;
+  }
 
   if (new = find_symbol(name)) {
     if (new->type!=IMPORT) {
@@ -321,10 +326,7 @@ symbol *new_labsym(section *sec,char *name)
   }
   else {
     new = mymalloc(sizeof(*new));
-    if (sec->flags&LABELS_ARE_LOCAL)
-      new->name = name;
-    else
-      new->name = mystrdup(name);
+    new->name = mystrdup(name);
     add = 1;
   }
 
@@ -485,4 +487,17 @@ int init_symbol(void)
   regsymhash = new_hashtable(REGSYMHTSIZE);
 #endif
   return 1;
+}
+
+
+void exit_symbol(void)
+{
+  if (debug) {
+    if (symhash->collisions)
+      fprintf(stderr,"*** %d symbol collisions!!\n",symhash->collisions);
+#ifdef HAVE_REGSYMS
+    if (regsymhash->collisions)
+      fprintf(stderr,"*** %d register symbol collisions!!\n",regsymhash->collisions);
+#endif
+  }
 }

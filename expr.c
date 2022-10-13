@@ -42,7 +42,6 @@ expr *make_expr(int type,expr *left,expr *right)
 expr *copy_tree(expr *old)
 {
   expr *new=0;
-
   if(old){
     new=make_expr(old->type,copy_tree(old->left),copy_tree(old->right));
     new->c=old->c;
@@ -82,8 +81,9 @@ static void update_curpc(expr *exp,section *sec,taddr pc)
 
 static expr *primary_expr(void)
 {
+  strbuf *buf;
   expr *new;
-  char *m,*name;
+  char *m;
   int base;
 
   if(*s=='('){
@@ -97,13 +97,12 @@ static expr *primary_expr(void)
     EXPSKIP();
     return new;
   }
-  if(name=get_local_label(&s)){
-    symbol *sym=find_symbol(name);
+  if(buf=get_local_label(EXPBUFNO,&s)){
+    symbol *sym=find_symbol(buf->str);
     if(!sym)
-      sym=new_import(name);
+      sym=new_import(buf->str);
     sym->flags|=USED;
     new=(sym->type!=EXPRESSION)?new_sym_expr(sym):copy_tree(sym->expr);
-    myfree(name);
     return new;
   }
   m=const_prefix(s,&base);
@@ -209,13 +208,13 @@ static expr *primary_expr(void)
     }else new=curpc_expr();
     return new;
   }
-  if(name=parse_identifier(&s)){
+  if(buf=parse_identifier(EXPBUFNO,&s)){
     symbol *sym;    
     EXPSKIP();
-    sym=find_symbol(name);
+    sym=find_symbol(buf->str);
     if(!sym){
 #ifdef NARGSYM
-      int match = nocase ? !stricmp(name,NARGSYM) : !strcmp(name,NARGSYM);
+      int match = nocase?!stricmp(buf->str,NARGSYM):!strcmp(buf->str,NARGSYM);
       if(match){
         new=new_expr();
         new->type=NUM;
@@ -223,11 +222,10 @@ static expr *primary_expr(void)
         return new;
       }
 #endif
-      sym=new_import(name);
+      sym=new_import(buf->str);
     }
     sym->flags|=USED;
     new=(sym->type!=EXPRESSION)?new_sym_expr(sym):copy_tree(sym->expr);
-    myfree(name);
     return new;
   }
   if(*s=='\''||*s=='\"'){

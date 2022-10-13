@@ -1,5 +1,5 @@
 /* reloc.c - relocation support functions */
-/* (c) in 2010-2016,2020 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2016,2020,2022 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -122,12 +122,14 @@ void unsupp_reloc_error(rlist *rl)
 
 void print_reloc(FILE *f,int type,nreloc *p)
 {
-  if (type<=LAST_STANDARD_RELOC){
+  if (type==REL_NONE)
+    fprintf(f,"rnone(");
+  else if (type<=LAST_STANDARD_RELOC){
     static const char *rname[] = {
-      "none","abs","pc","got","gotrel","gotoff","globdat","plt","pltrel",
+      "abs","pc","got","gotrel","gotoff","globdat","plt","pltrel",
       "pltoff","sd","uabs","localpc","loadrel","copy","jmpslot","secoff"
     };
-    fprintf(f,"r%s(%u,%u-%u,0x%llx,0x%llx,",rname[type],
+    fprintf(f,"r%s(%u,%u-%u,0x%llx,0x%llx,",rname[type-1],
             (unsigned)p->byteoffset,(unsigned)p->bitoffset,
             (unsigned)(p->bitoffset+p->size-1),
             ULLTADDR(p->mask),ULLTADDR(p->addend));

@@ -13,7 +13,7 @@
   "could not open <%s> for input",ERROR|FATAL,
   "could not open <%s> for output",NOLINE|ERROR|FATAL,
   "unknown option <%s>",NOLINE|ERROR,
-  "no input file specified",NOLINE|ERROR|FATAL,                 /* 15 */
+  "",NOLINE|ERROR|FATAL,                                        /* 15 */
   "could not initialize output module <%s>",NOLINE|ERROR|FATAL,
   "out of memory",NOLINE|ERROR|FATAL,
   "symbol <%s> recursively defined",ERROR|FATAL,
@@ -79,3 +79,4 @@
   "illegal value for option: %s",NOLINE|ERROR,
   "%s backend does not support floating point",ERROR|FATAL,
   "unknown listing file format \"%s\" ignored",NOLINE|WARNING,  /* 80 */
+  "cannot export equate based on imported symbol: <%s>",NOLINE|ERROR,

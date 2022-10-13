@@ -4,15 +4,16 @@ selected with the @option{-Fhunk} option to generate objects and with the
 
 @section Legal
 
-    This module is written in 2002-2021 by Frank Wille and
+    This module is written in 2002-2022 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
 @table @option
     @item -hunkpad=<code>
         Sets a two-byte code used for aligning a code hunk to the
-        next 32-bit border. Defaults to 0x4e71 on M68k to allow linking
-        of functions which extend over two object files.
+        next 32-bit border. Defaults to 0x4e71 for M68k code sections, to
+        allow linking of functions which extend over two object files.
+        Otherwise it defaults to zero.
     @item -keepempty
         Do not delete empty sections without any symbol definition.
     @item -kick1hunks
@@ -26,7 +27,7 @@ selected with the @option{-Fhunk} option to generate objects and with the
     @item -linedebug
         Automatically generate an SAS/C-compatible LINE DEBUG hunk for
         the input source. Overrides any line debugging directives from
-        the source.
+        the source text.
 @end table
 
 These options are valid for the @code{hunkexe} module only:
@@ -113,4 +114,7 @@ This module has the following error messages:
 @item 3011: weak symbol <%s> not supported by output format, treating as global
 @item 3014: data definition following a databss space directive
 @item 3016: absolute file path exceeds maximum size of %d characters
+@item 3017: converting NONE relocation <%s> to 8-bit ABS with zero addend
+@item 3018: no additional space in section to convert NONE relocation <%s> to ABS
+
 @end itemize

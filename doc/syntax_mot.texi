@@ -76,7 +76,7 @@ Labels must either start at the first column of a line or have to be
 terminated by a colon (@code{:}). In the first case the mnemonic
 has to be separated from the label by whitespace (not required in any case,
 e.g. with the @code{=} directive). A double colon (@code{::})
-automatically makes the label externally visible (refer to @code{xdef}).
+automatically makes the label externally visible (see also @code{xdef}).
 
 Local labels are preceded by '@code{.}' or terminated by '@code{$}'.
 For the rest, any alphanumeric character including '@code{_}' is allowed.
@@ -146,6 +146,10 @@ CPU- and output-module support them):
       Insert as many zero bytes as required to reach an address where
       <bitcount> low order bits are zero. For example @code{align 2} would
       make an alignment to the next 32-bit boundary.
+
+@item assert <expression>[,<message>]
+      Display an error with the optional <message> when the expression
+      is false.
 
 @item blk.b <exp>[,<fill>]
       Equivalent to @code{dcb.b <exp>,<fill>}.
@@ -526,13 +530,13 @@ foo IIF bar equ 42
       The @code{foo} label will be assigned with @code{42} if @code{bar}
       evaluates to true, otherwise @code{foo} will be assigned with the
       current program counter.
-      The case when assigning a value in the @code{IIF <statement>} using
-      the equal (@code{=}) operator and the option @option{-spaces}
-      is used can't work as the equal operator
-      will be evaluated as part of the expression.
-      I.e. @code{foo IIF 1+1 = 42} will work, but @code{foo IIF 1 + 1 = 42}
-      when the option @option{-spaces} is specified won't work as
-      @code{= 42} will be evaluated as part of the expression.
+      Assigning a value in the @code{IIF <statement>} using
+      the equal (@code{=}) operator, while the option @option{-spaces}
+      was given, cannot work, because the equal operator will be
+      evaluated as part of the expression.
+      I.e. @code{foo IIF 1+1 = 42} works, but @code{foo IIF 1 + 1 = 42},
+      when the option @option{-spaces} was specified, won't, as
+      @code{= 42} is evaluated as part of the expression.
 
 @item incbin <file>[,<offset>[,<length>]]
       Inserts the binary contents of <file> into the object code at
@@ -547,7 +551,10 @@ foo IIF bar equ 42
       searched first.
 
 @item include <file>
-      Include source text of <file> at this position.
+      Include source text of <file> at this position. When the file name
+      specified has no absolute path, then search it in all defined
+      paths in the order of occurence, starting with the current work
+      directory.
 
 @item inline
       Local labels in the following block are isolated from previous
@@ -562,10 +569,10 @@ foo IIF bar equ 42
       Currently without any effect.
 
 @item macro <name>
-      Defines a macro which can be referenced by <name>. The <name>
-      may optionally appear at the left side of the @code{macro} directive,
-      starting on the first column. Then the operand field is ignored.
-      The macro definition is closed
+      Defines a macro which can be referenced by <name>. For compatibility,
+      the <name> may alternatively appear on the left side of
+      the @code{macro} directive, starting on the first column.
+      Then the operand field is ignored. The macro definition is closed
       by an @code{endm} directive. When calling a macro you may pass
       up to 9 arguments, separated by comma. Those arguments are
       referenced within the macro context as @code{\1} to @code{\9}.
@@ -574,6 +581,11 @@ foo IIF bar equ 42
       In Devpac- and PhxAss-compatibility mode, or with option
       @option{-allmp}, up to 35 arguments are accepted,
       where argument 10-35 can be referenced by @code{\a} to @code{\z}.
+      In case you have a macro argument which contains commas or spaces you
+      may enclose it between @code{<} and @code{>} characters. A @code{>}
+      character may still be included by writing @code{>>}, or when
+      embedded within a string. (Note that strings are ignored in Devpac
+      compatibility mode.)
 
       Special macro parameters:
 @table @code
@@ -590,7 +602,7 @@ foo IIF bar equ 42
       macro's current unique id is not affected by this operation.
 @item \#
       Insert the number of arguments that have been passed to this macro.
-      Equivalent to the contents of @code{NARG}.
+      Equivalent to the contents of the symbol @code{NARG}.
 @item \?n
       Insert the length of the @code{n}'th macro argument.
 @item \.
@@ -646,18 +658,18 @@ foo IIF bar equ 42
 
 @item offset [<expression>]
       Switches to a special offset-section, similar to a @code{section}
-      directive. Although the contents of such a section is not included
-      in the output. Their labels may be referenced as absolute
-      offset symbols. Can be used to define structure offsets.
+      directive, although its contents is not included in the output.
+      Its labels may be referenced as absolute offset symbols.
+      Can be used to define structure offsets.
       The optional <expression> gives the start offset for this section.
-      When missing the last offset of the previous offset-section is used,
+      When missing, the last offset of the previous offset-section is used,
       or 0.
       @code{<expression>} must evaluate as a constant!
 
 @item org <expression>
       Sets the base address for the subsequent code. Note that it is allowed
       to embed such an absolute ORG block into a section. Return to
-      relocatable mode with any new section directive. Although in Devpac
+      relocatable mode with any new section directive. Although, in Devpac
       compatibility mode the previous section will stay absolute.
 
 @item output <name>
@@ -703,15 +715,17 @@ foo IIF bar equ 42
 
 @item rept <expression>
       Repeats the assembly of the block between @code{rept} and @code{endr}
-      <expression> number of times. <expression> has to be positive.
+      <expression> number of times. <expression> should be positive,
+      negative values are regarded like @code{0}.
       The internal symbol @code{REPTN} always holds the iteration counter
       of the inner repeat loop, starting with 0. @code{REPTN} is -1 outside
       of any repeat block.
 
 @item rorg <expression>[,<fill>]
-      Sets the program counter <expression> bytes behind the start of the
-      current section. The new program counter must not be smaller than the
-      current one. The space will be padded by the optional <fill> value,
+      Sets the program counter to an offset relative to the start
+      of the current section, as defined by <expression>.
+      The new program counter (section offset) must not be smaller than the
+      current one. Any space will be padded by the optional <fill> value,
       or zero.
 
 @item <label> rs.<size> <expression>
@@ -735,15 +749,14 @@ foo IIF bar equ 42
       argument makes vasm interpret the first argument, @code{<name>},
       as section type instead. Otherwise a missing @code{<sec_type>}
       defaults to a @code{code} section with the given name.
-      The optional @code{<mem_type>} defines a 32-bit
+      The optional @code{<mem_type>} has currently only a meaning for
+      the hunk-format output module and defines a 32-bit
       memory attribute which specifies where to load the section.
       @code{<mem_type>} is either a numerical constant or one of the
       keywords @code{chip} (for Chip-RAM) or @code{fast} (for Fast-RAM).
       Optionally it is also possible to attach the suffix @code{_C}, @code{_F}
       or @code{_P} to the @code{<sec_type>} argument for defining the memory
       type.
-      The memory attributes are currently only used in the hunk-format
-      output module.
 
 @item <symbol> set <expression>
       Create a new symbol with the name <symbol> and assign

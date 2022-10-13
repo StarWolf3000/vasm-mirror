@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2015-2021 by Frank Wille */
+/* (c) in 2015-2022 by Frank Wille */
 
 #include "vasm.h"
 #include "error.h"
@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm madmac syntax module 0.4h (c) 2015-2021 Frank Wille";
+char *syntax_copyright="vasm madmac syntax module 0.5a (c) 2015-2022 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -123,7 +123,7 @@ char *const_suffix(char *start,char *end)
 }
 
 
-char *get_local_label(char **start)
+strbuf *get_local_label(int n,char **start)
 /* local labels start with '.' */
 {
   char *name = *start;
@@ -133,7 +133,7 @@ char *get_local_label(char **start)
     end = skip_identifier(name+1);
     if (end != NULL) {
       *start = skip(end);
-      return make_local_label(NULL,0,name,end-name);
+      return make_local_label(n,NULL,0,name,end-name);
     }
   }
   return NULL;
@@ -251,16 +251,15 @@ static void handle_68000(char *s)
 
 static void handle_globl(char *s)
 {
-  char *name;
+  strbuf *name;
   symbol *sym;
 
   for (;;) {
-    if (!(name = parse_identifier(&s))) {
+    if (!(name = parse_identifier(0,&s))) {
       syntax_error(10);  /* identifier expected */
       return;
     }
-    sym = new_import(name);
-    myfree(name);
+    sym = new_import(name->str);
 
     if (sym->flags & EXPORT)
       general_error(62,sym->name,get_bind_name(sym)); /* binding already set */
@@ -477,21 +476,21 @@ static void handle_qphrase(char *s)
 
 static void handle_include(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_name(&s)) {
+  if (name = parse_name(0,&s)) {
     eol(s);
-    include_source(name);
+    include_source(name->str);
   }
 }
 
 
 static void handle_incbin(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_name(&s))
-    include_binary_file(name,0,0);
+  if (name = parse_name(0,&s))
+    include_binary_file(name->str,0,0);
   eol(s);
 }
 
@@ -525,14 +524,13 @@ static void handle_nlist(char *s)
 
 static void handle_macro(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  if (name = parse_identifier(&s)) {
+  if (name = parse_identifier(0,&s)) {
     s = skip(s);
     if (ISEOL(s))
       s = NULL;  /* no named arguments */
-    new_macro(name,macro_dirlist,endm_dirlist,s);
-    myfree(name);
+    new_macro(name->str,macro_dirlist,endm_dirlist,s);
   }
   else
     syntax_error(10);  /* identifier expected */
@@ -541,11 +539,10 @@ static void handle_macro(char *s)
 
 static void handle_macundef(char *s)
 {
-  char *name;
+  strbuf *name;
 
-  while (name = parse_identifier(&s)) {
-    undef_macro(name);
-    myfree(name);
+  while (name = parse_identifier(0,&s)) {
+    undef_macro(name->str);
     s = skip(s);
     if (*s != ',')
       break;
@@ -580,7 +577,7 @@ static void handle_print(char *s)
         txt = mymalloc(len+1);
         s = read_string(txt,s,'\"',8);
         txt[len] = '\0';
-        add_atom(0,new_text_atom(txt));
+        add_or_save_atom(new_text_atom(txt));
       }
     }
     else {
@@ -621,14 +618,14 @@ static void handle_print(char *s)
         }
         s = skip(s);
       }
-      add_atom(0,new_expr_atom(parse_expr(&s),type,size));
+      add_or_save_atom(new_expr_atom(parse_expr(&s),type,size));
     }
     s = skip(s);
     if (*s != ',')
       break;
     s = skip(s+1);
   }
-  add_atom(0,new_text_atom(NULL));  /* new line */
+  add_or_save_atom(new_text_atom(NULL));  /* new line */
   eol(s);
 }
 
@@ -770,10 +767,9 @@ void parse(void)
       int idx = -1;
 
       s = skip(line);
-      if (labname = parse_labeldef(&s,1)) {
+      if (parse_labeldef(&s,1)) {
         if (*s == ':')
           s++;  /* skip double-colon */
-        myfree(labname);
         s = skip(s);
       }
       else {
@@ -810,7 +806,6 @@ again:
         s++;
       }
       add_atom(0,new_label_atom(sym));
-      myfree(labname);
       s = skip(s);
     }
     else {
@@ -827,19 +822,14 @@ again:
          and s pointing to the second. Find out where the directive is. */
       if (!ISEOL(s)) {
 #ifdef PARSE_CPU_LABEL
-        if (PARSE_CPU_LABEL(labname,&s)) {
-          myfree(labname);
+        if (PARSE_CPU_LABEL(labname,&s))
           continue;
-        }
 #endif
-        if (handle_directive(s)) {
-          myfree(labname);
+        if (handle_directive(s))
           continue;
-        }
       }
 
       /* directive or mnemonic must be in the first field */
-      myfree(labname);
       s = inst;
     }
 
@@ -1059,12 +1049,14 @@ int init_syntax()
   size_t i;
   hashdata data;
 
-  dirhash = new_hashtable(0x200);
+  dirhash = new_hashtable(0x800);
   for (i=0; i<dir_cnt; i++) {
     data.idx = i;
     add_hashentry(dirhash,directives[i].name,data);
   }
-  
+  if (debug && dirhash->collisions)
+    fprintf(stderr,"*** %d directive collisions!!\n",dirhash->collisions);
+
   cond_init();
   current_pc_char = '*';
   esc_sequences = 1;

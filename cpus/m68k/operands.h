@@ -20,7 +20,7 @@ struct addrmode addrmodes[] = {
 
 /* specregs.h */
 enum {
-  REG_CCR=0,REG_SR,REG_NC,REG_DC,REG_IC,REG_BC,
+  REG_CCR=0,REG_SR,REG_USP,REG_NC,REG_DC,REG_IC,REG_BC,
 
   REG_ACC,REG_ACC0,REG_ACC1,REG_ACC2,REG_ACC3,REG_ACCX01,REG_ACCX23,
   REG_MACSR,REG_MASK,REG_SFLEFT,REG_SFRIGHT,
@@ -44,7 +44,7 @@ enum {
   REG_ACR0,REG_ACR1,REG_ACR2,REG_ACR3,
   REG_BUSCR,REG_MMUBAR,
   REG_STR,REG_STC,REG_STH,REG_STB,REG_MWR,
-  REG_USP,REG_VBR,REG_CAAR,REG_MSP,
+  REG_USP_,REG_VBR,REG_CAAR,REG_MSP,
   REG_ISP,REG_MMUSR_,REG_URP,REG_SRP_,REG_PCR,
   REG_CCC,REG_IEP1,REG_IEP2,REG_BPC,REG_BPW,REG_DCH,REG_DCM,
   REG_ROMBAR,REG_ROMBAR0,REG_ROMBAR1,
@@ -53,6 +53,8 @@ enum {
   REG_PCR1U0,REG_PCR1L0,REG_PCR2U0,REG_PCR2L0,REG_PCR3U0,REG_PCR3L0,
   REG_PCR1U1,REG_PCR1L1,REG_PCR2U1,REG_PCR2L1,REG_PCR3U1,REG_PCR3L1
 };
+#define FIRST_CTRLREG REG_SFC
+#define LAST_CTRLREG REG_PCR3L1
 
 
 #define _(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) \
@@ -62,9 +64,9 @@ enum {
 
 enum {
   OP_D8=1,OP_D16,OP_D32,OP_D64,OP_F32,OP_F64,OP_F96,OP_FPD,
-  D_,A_,B_,AI,IB,R_,RM,DD,CS,VDR2,VDR4,PA,AP,DP,
-  F_,FF,FR,FPIAR,IM,QI,IR,BR,AB,VA,M6,RL,FL,FS,
-  AY,AM,MA,MI,FA,CF,MAQ,CFAM,CM,AL,DA,DN,CFDA,CT,AC,AD,CFAD,
+  D_,A_,B_,AI,IB,R_,RM,DD,CS,VR2,VB2,VDR2,VDR4,PA,AP,DP,
+  F_,FF,FR,FPIAR,IM,IQ,QI,IR,BR,DB,AB,VA,M6,RL,FL,FS,
+  AY,AM,MA,MI,FA,CF,MAQ,CFAM,CM,AL,DA,DN,DI,CFDA,CT,AC,AD,CFAD,
   BD,BS,AK,MS,MR,CFMM,CFMN,ND,NI,NJ,NK,BY,BI,BJ,OF_,
   _CCR,_SR,_USP,_CACHES,_ACC,_MACSR,_MASK,_CTRL,_ACCX,_AEXT,
   _VAL,_FC,_RP_030,_RP_851,_TC,_AC,_M1_B,_BAC,_BAD,_PSR,_PCSR,
@@ -125,8 +127,14 @@ struct optype optypes[] = {
 /* CS        any double data or address register indirect (cas2) */
   _(0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0),FL_DoubleReg,0,0,
 
+/* VR2       (Apollo) Rn:Rn+1 */
+  _(1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0),OTF_VXRNG2|FL_DoubleReg,0,0,
+
+/* VB2       (Apollo) Bn:Bn+1 */
+  _(0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0),OTF_VXRNG2|FL_BnReg|FL_DoubleReg,0,0,
+
 /* VDR2      (Apollo) Dn:Dn+1 */
-  _(1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),OTF_VXRNG2,0,0,
+  _(1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),OTF_VXRNG2|FL_DoubleReg,0,0,
 
 /* VDR4      (Apollo) Dn-Dn+3 */
   _(1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),OTF_VXRNG4,0,0,
@@ -155,6 +163,9 @@ struct optype optypes[] = {
 /* IM        immediate data */
   _(0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0),0,0,0,
 
+/* IQ        immediate quad data */
+  _(0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0),OTF_QUADIMM,0,0,
+
 /* QI        quick immediate data (moveq, addq, subq) */
   _(0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0),OTF_NOSIZE,0,0,
 
@@ -163,6 +174,9 @@ struct optype optypes[] = {
 
 /* BR        branch destination */
   _(0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0),OTF_BRANCH,0,0,
+
+/* DB        DBcc branch destination (always 16 bits) */
+  _(0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0),OTF_DBRA,0,0,
 
 /* AB        absolute long destination */
   _(0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0),0,0,0,
@@ -218,6 +232,9 @@ struct optype optypes[] = {
 
 /* DN        data, but not immediate 0,2-6,7.0-3 */
   _(1,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0),0,0,0,
+
+/* DI        data registers and immediate */
+  _(1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0),0,0,0,
 
 /* CFDA      (ColdFire) float data 0,2-6,7.0-4 (=CF + mode 0) */
   _(1,0,1,1,1,1,0,0,0,1,0,0,0,0,0,0),0,0,0,
@@ -295,8 +312,7 @@ struct optype optypes[] = {
 /* _MASK */
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_CHKREG,REG_MASK,REG_MASK,
 /* _CTRL */
-  _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_SRRANGE|OTF_CHKREG,
-    REG_SFC,REG_PCR3L1,
+  _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_MOVCREG,FIRST_CTRLREG,LAST_CTRLREG,
 /* _ACCX */
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_SRRANGE|OTF_CHKREG,
     REG_ACC0,REG_ACC3,
@@ -306,7 +322,8 @@ struct optype optypes[] = {
 /* _VAL */
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_CHKREG,REG_VAL,REG_VAL,
 /* _FC */
-  _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_CHKREG,REG_SFC,REG_DFC,
+  _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_MOVCREG|OTF_SRRANGE|OTF_CHKREG,
+    REG_SFC,REG_DFC,
 /* _RP_030 */
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_CHKREG,REG_SRP,REG_CRP,
 /* _RP_851 */
@@ -332,7 +349,7 @@ struct optype optypes[] = {
 /* VX (Apollo) */
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_SRRANGE|OTF_CHKREG,REG_VX00,REG_VX23,
 /* VXR2 (Apollo) En:En+1 */
-  _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_VXRNG2|OTF_SRRANGE|OTF_CHKREG,REG_VX00,REG_VX23,
+  _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_VXRNG2|OTF_SRRANGE|OTF_CHKREG|FL_DoubleReg,REG_VX00,REG_VX23,
 /* VXR4 (Apollo) En-En+3 */
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_VXRNG4|OTF_SRRANGE|OTF_CHKREG,REG_VX00,REG_VX23,
 /* OVX (Apollo) optional En register */

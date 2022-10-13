@@ -4,7 +4,7 @@
 #define LITTLEENDIAN 1
 #define BIGENDIAN 0
 #define VASM_CPU_X86 1
-#define MNEMOHTABSIZE 0x8000
+#define MNEMOHTABSIZE 0x10000
 
 /* maximum number of operands in one mnemonic */
 #define MAX_OPERANDS 3

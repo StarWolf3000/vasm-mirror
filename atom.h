@@ -1,5 +1,5 @@
 /* atom.h - atomic objects from source */
-/* (c) in 2010-2021 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2022 by Volker Barthelmann and Frank Wille */
 
 #ifndef ATOM_H
 #define ATOM_H
@@ -121,7 +121,7 @@ typedef struct atom {
 #define MAXSIZECHANGES 5  /* warning, when atom changed size so many times */
 
 enum {
-  PO_CORRUPT=-1,PO_NOMATCH=0,PO_MATCH,PO_SKIP,PO_AGAIN,PO_NEXT
+  PO_CORRUPT=-1,PO_NOMATCH=0,PO_MATCH,PO_SKIP,PO_COMB_OPT,PO_COMB_REQ,PO_NEXT
 };
 instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len);
 instruction *copy_inst(instruction *);
@@ -130,6 +130,7 @@ sblock *new_sblock(expr *,size_t,expr *);
 
 atom *new_atom(int,taddr);
 void add_atom(section *,atom *);
+void add_or_save_atom(atom *);
 size_t atom_size(atom *,section *,taddr);
 void print_atom(FILE *,atom *);
 void atom_printexpr(printexpr *,section *,taddr);

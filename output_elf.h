@@ -1,5 +1,5 @@
 /* output_elf.h header file for ELF objects */
-/* (c) in 2002-2016 by Frank Wille */
+/* (c) in 2002-2016,2022 by Frank Wille */
 
 /* e_indent indexes */
 #define EI_NIDENT  16
@@ -296,6 +296,7 @@ struct Rel64Node {
   struct Elf64_Rel r;
 };
 
+#define RTYPE_ILLEGAL (~0)
 
 #if defined(VASM_CPU_M68K)
 #define RELA 1

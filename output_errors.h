@@ -14,3 +14,5 @@
   "data definition following a databss space directive",WARNING,
   "file option %d max size exceeded: %lu",WARNING,
   "absolute file path exceeds maximum size of %d characters",FATAL|ERROR|NOLINE, /* 15 */
+  "converting NONE relocation <%s> to 8-bit ABS with zero addend",WARNING|NOLINE,
+  "no additional space in section to convert NONE relocation <%s> to ABS",ERROR|NOLINE,
