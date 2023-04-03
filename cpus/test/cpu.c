@@ -3,7 +3,7 @@
 
 #include "vasm.h"
 
-char *cpu_copyright="vasm test cpu backend (c) in 2002 Volker Barthelmann";
+const char *cpu_copyright="vasm test cpu backend (c) in 2002 Volker Barthelmann";
 
 /* example machine.
    valid Registers: R0-R3
@@ -38,7 +38,7 @@ mnemonic mnemonics[]={
   "bra",{OP_ABS,0},{CPU_ALL,0x7},
 };
 
-int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
+const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
 
 char *parse_instruction(char *s,int *inst_len,char **ext,int *ext_len,

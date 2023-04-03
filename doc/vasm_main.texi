@@ -29,7 +29,7 @@ or additional options.
         Issues a warning when a label matches a mnemonic or directive name
         in either upper or lower case.
 
-@item -D<name>[=expression]
+@item -D<name>[=<expression>]
         Defines a symbol with the name <name> and assigns the value of the
         expression when given. The assigned value defaults to 1 otherwise.
 
@@ -66,7 +66,7 @@ or additional options.
         include the appropriate code which can determine the current
         work directory. Otherwise the default would be to set the current
         work directory to an empty string. Currently supported are:
-        @code{AMIGA}, @code{ATARI}, @code{UNIX}, @code{MSDOS},
+        @code{AMIGA}, @code{ATARI}, @code{MSDOS},  @code{UNIX},
         @code{_WIN32}.
 
 @item -esc
@@ -83,9 +83,9 @@ or additional options.
         defined in the source.
 
 @item -ignore-mult-inc
-        When the same file is included multiple times using the same path
+        When the same file is included multiple times, using the same path,
         this is silently ignored, causing the file to be processed only
-        once. Note that you can still include the same file twice when
+        once. Note, that you can still include the same file twice when
         using different paths to access it.
 
 @item -L <listfile>
@@ -98,21 +98,21 @@ or additional options.
 
 @item -Lbpl=<n>
         Set the maximum number of bytes per line in a listing file to <n>.
-        Defaults to 8 (fmt=wide).
+        Defaults to 8 (fmt=@code{wide}).
 
 @item -Lfmt=<fmt>
         Set the listing file format to <fmt>. Defaults to wide.
-        Available are: wide, old.
+        Available are: @code{wide}, @code{old}.
 
 @item -Llo
         Show only program labels in the sorted symbol listing. Default
         is to list all symbols, including absolute expressions.
 
 @item -Lni
-        Do not show included source files in the listing file (fmt=wide).
+        Do not show included source files in the listing file (fmt=@code{wide}).
 
 @item -Lns
-        Do not include symbols in the listing file (fmt=wide).
+        Do not include symbols in the listing file (fmt=@code{wide}).
 
 @item -maxerrors=<n>
         Sets the maximum number of errors to display before assembly
@@ -143,7 +143,7 @@ or additional options.
 @item -noialign
         Perform no automatic alignment for instructions. Note that
         unaligned instructions make your code crash when executed!
-        Only set when you know what you do!
+        Only set when you know what you are doing!
 
 @item -nomsg=<n>
         Disable the informational message <n>. <n> has to be the number
@@ -169,7 +169,7 @@ or additional options.
         binary output module. Defaults to a zero-byte.
 
 @item -pic
-        Try to generate position independent code. Every relocation is
+        Try to generate position independent code. Every relocation entry is
         flagged by an error message.
 
 @item -quiet      
@@ -199,7 +199,7 @@ or additional options.
 
 @item -wfail
         The return code of vasm will no longer be 0 (success), when there
-        was a warning. Errors always make the return code fail.
+        was a warning. Errors always make the return code non-zero (failure).
 
 @item -v
         Print version and copyright messages from the assembler and all
@@ -212,7 +212,7 @@ or additional options.
 
 @end table
 
-Note that while most options allow an argument without any separating blank,
+Note, that while most options allow an argument without any separating blank,
 some others require it (e.g. @option{-o} and @option{-L}).
 
 @section Expressions
@@ -228,6 +228,7 @@ some backends up to 128 bits.
 Backends also have the option to support floating point constants directly
 and convert them to a backend-specific format which is described in the
 backend's documentation.
+
 @b{Warning:} Be aware that the quality and precision of the backend's
 floating point output depends on the combination of host- and
 backend-format! If you need absolute precision, encode the floating
@@ -255,7 +256,7 @@ Assembler like operators:
 
 Up to version 1.4b the operators had the same precedence and associativity as
 in the C language. Newer versions have changed the operator priorities to
-comply with the common assembler behaviour. The expression evaluation
+comply with common assembler behaviour. The expression evaluation
 priorities, from highest to lowest, are:
 
 @enumerate 1
@@ -579,5 +580,7 @@ The frontend has the following error messages:
 @item 80: %s backend does not support floating point
 @item 81: unknown listing file format "%s" ignored
 @item 82: cannot export equate based on imported symbol: <%s>
-
+@item 83: label definition not allowed here
+@item 84: label defined on the same line as a new section
+@item 85: no debug output possible with source from stdin
 @end itemize

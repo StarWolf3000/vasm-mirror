@@ -1,5 +1,5 @@
 /* vasm.h  main header file for vasm */
-/* (c) in 2002-2022 by Volker Barthelmann */
+/* (c) in 2002-2023 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -130,7 +130,7 @@ typedef struct mnemonic {
 
 extern int done,final_pass,nostdout,asciiout;
 extern int warn_unalloc_ini_dat;
-extern int mnemonic_cnt;
+extern const int mnemonic_cnt;
 extern int nocase,no_symbols,pic_check,exec_out,chklabels;
 extern int secname_attr,unnamed_sections;
 extern taddr inst_alignment;
@@ -201,7 +201,7 @@ void disable_warning(int);
 extern int bitsperbyte;
 extern int bytespertaddr;
 extern mnemonic mnemonics[];
-extern char *cpu_copyright;
+extern const char *cpu_copyright;
 extern char *cpuname;
 extern int debug;
 
@@ -227,7 +227,7 @@ void print_cpu_opts(FILE *,void *);
 #endif
 
 /* provided by syntax.c */
-extern char *syntax_copyright;
+extern const char *syntax_copyright;
 extern char commentchar;
 extern int dotdirs;
 extern hashtable *dirhash;
@@ -261,6 +261,8 @@ int init_output_vobj(char **,void (**)(FILE *,section *,symbol *),int (**)(char 
 int init_output_hunk(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_aout(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_tos(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
+int init_output_gst(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
+int init_output_dri(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_xfile(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_cdef(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_ihex(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));

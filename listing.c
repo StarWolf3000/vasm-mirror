@@ -513,7 +513,7 @@ static void write_listing_wide(char *listname,section *first_section)
     qsort(symlist,nsyms,sizeof(symbol *),namecmp);  /* sort by name */
     for (i=0; i<nsyms; i++) {
       sym = symlist[i];
-      fprintf(f,"%-31.31s ",sym->name);
+      fprintf(f,"%-31s ",sym->name);
       if (sym->flags & COMMON) {
         fprintf(f,"COM %lld bytes, alignment %lld",
                 (long long)get_sym_size(sym),(long long)sym->align);

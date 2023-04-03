@@ -709,9 +709,9 @@ mnemonic mnemonics[] = {
     "xthl",  { OP_NONE, },                                      { TYPE_NONE, 0xe3, CPU_80OS, 0 },
 };
 
-int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
+const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright="vasm 8080/gbz80/z80/z180/rcmX000 cpu backend 0.4b (c) 2007,2009 Dominic Morris";
+const char *cpu_copyright="vasm 8080/gbz80/z80/z180/rcmX000 cpu backend 0.4b (c) 2007,2009 Dominic Morris";
 char *cpuname = "z80";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -1268,7 +1268,7 @@ int parse_operand(char *p, int len, operand *op, int optype)
     /* @@@ This should be done for all - only OP_DATA for now... */
     if (BASIC_TYPE(optype) == OP_DATA) {
         p = skip(p);
-        if (p-start < len) {
+        if (*p && p-start<len) {
             cpu_error(0);  /* trailing garbage */
             return PO_CORRUPT;
         }

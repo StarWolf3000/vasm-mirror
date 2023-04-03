@@ -3,14 +3,14 @@ microprocessor family.
 
 @section Legal
 
-    This module is written in 2002-2022 by Frank Wille and
+    This module is written in 2002-2023 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 
 @section Additional options for this module
 
-Note, that the order on the command line may be important when
-specifying options. For example, if you specify -devpac compatibility
+Note, that the order on the command line may be important when specifying
+options. For example, if you specify @option{-devpac} compatibility
 mode behind enabling some optimization options, the Devpac-mode might
 disable these optimizations again.
 
@@ -41,7 +41,7 @@ This module provides the following additional options:
 
     @item -m68020up
         Generate code for the MC68020-68060 CPU. Be careful with
-        instructions like PFLUSHA, which exist on 68030 and 68040/060
+        instructions like @code{PFLUSHA}, which exist on 68030 and 68040/060
         with a different opcode (vasm will use the 040/060 version).
 
     @item -m68080
@@ -395,7 +395,7 @@ The following symbols are defined for compatibility with other assemblers,
 so their function is not described here.
 @table @asis
 @item Devpac
-      @code{__G2}, @code{_LK}
+      @code{__G2}, @code{__LK}
 @item PhxAss
       @code{__CPU}, @code{__FPU}, @code{__MMU}, @code{__OPTC}
 @item BAsm
@@ -414,7 +414,7 @@ directives:
 @item basereg <expression>,<An>
       Starts a block of base-relative addressing through register @code{An}
       (remember that @code{A7} is not allowed as a base register).
-      The programmer has to make sure that <expression> is placed
+      The developer has to make sure that <expression> is placed
       into @code{An} first, while the assembler automatically subtracts
       <expression>, which is usually a program label with an optional offset,
       from each displacement in a @code{(d,An)} addressing mode.
@@ -441,8 +441,8 @@ directives:
       68060. A <cpID> of zero will disable FPU code generation.
 
 @item initnear
-      Initializes the selected small data register. In contrast to PhxAss,
-      where this directive comes from, just a reference to
+      Initializes the selected small data base register. In contrast to
+      PhxAss, where this directive comes from, just a reference to
       @code{_LinkerDB} is generated, which has to be resolved by a linker.
 
 @item machine <cpu_type>
@@ -656,7 +656,7 @@ directives:
         Enable optimization for size, even if the code becomes slower
         (refer to @option{-opt-size}).
    @end table
-   The default state is 'off' for all those vasm specific options,
+   The default state is 'off' for all these vasm specific options,
    except for @code{of} and @code{og}, which are 'on'.
 @end table
 
@@ -780,7 +780,7 @@ This backend performs the following operand optimizations:
 @end itemize
 
 Note that an operand optimization will only take place when a displacement's
-size was not enforced by the programmer through an explicite size
+size was not enforced by the developer through an explicit size
 extension (e.g. @code{(4.l,a0)})!
 
 @subsection Instruction optimizations

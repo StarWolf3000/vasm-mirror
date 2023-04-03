@@ -1,5 +1,5 @@
 /* supp.c miscellaneous support routines */
-/* (c) in 2008-2022 by Frank Wille */
+/* (c) in 2008-2023 by Frank Wille */
 
 #include <math.h>
 #include "vasm.h"
@@ -383,6 +383,19 @@ void fw16(FILE *f,uint16_t x,int be)
   else {
     fw8(f,x & 0xff);
     fw8(f,(x>>8) & 0xff);
+  }
+}
+
+
+void fw24(FILE *f,uint32_t x,int be)
+{
+  if (be) {
+    fw8(f,(x>>16) & 0xff);
+    fw16(f,(uint16_t)x,1);
+  }
+  else {
+    fw16(f,(uint16_t)x,0);
+    fw8(f,(x>>16) & 0xff);
   }
 }
 

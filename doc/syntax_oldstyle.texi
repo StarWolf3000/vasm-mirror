@@ -4,7 +4,7 @@ which is available with the extension @code{oldstyle}.
 
 @section Legal
 
-    This module is written in 2002-2022 by Frank Wille and
+    This module is written in 2002-2023 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -171,17 +171,17 @@ CPU- and output-module allow it):
 @item bsz <exp>[,<fill>]
       Equivalent to @code{blk <exp>[,<fill>]}.
 
-@item byt
-      Increases the program counter by one.
-      Equivalent to @code{blk 1,0}.
-
-@item byte <exp1>[,<exp2>,"<string1>"...]
+@item byt <exp1>[,<exp2>,"<string1>"...]
       Assign the integer or string constant operands into successive
       bytes of memory in the current section. Any combination of integer
       and character string constant operands is permitted.
+      Without any operands the program counter is just icremented by one.
+
+@item byte <exp1>[,<exp2>,"<string1>"...]
+      Equivalent to @code{byt <exp1>[,<exp2>,"<string1>"...]}.
 
 @item data <exp1>[,<exp2>,"<string1>"...]
-      Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
+      Equivalent to @code{byt <exp1>[,<exp2>,"<string1>"...]}.
       (Not available with option @option{-sect}.)
 
 @item data
@@ -189,7 +189,7 @@ CPU- and output-module allow it):
       switches to a data section with attributes @code{"adrw"}.
 
 @item db <exp1>[,<exp2>,"<string1>"...]
-      Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
+      Equivalent to @code{byt <exp1>[,<exp2>,"<string1>"...]}.
 
 @item dc <exp>[,<fill>]
       Equivalent to @code{blk <exp>[,<fill>]}.
@@ -422,7 +422,7 @@ CPU- and output-module allow it):
       may also appear at the left side of the @code{macro} directive,
       starting on the first column. The macro definition is closed
       by an @code{endm} directive. When calling a macro you may pass
-      up to 9 arguments, separated by comma. Those arguments are
+      up to 9 arguments, separated by comma. These arguments are
       referenced within the macro context as @code{\1} to @code{\9},
       or optionally by named arguments, which you have to specify in
       the operand.
@@ -581,16 +581,16 @@ CPU- and output-module allow it):
       When a weak symbol remains undefined its value defaults to 0.
 
 @item wor <exp1>[,<exp2>...]
-      Equivalent to @code{word <exp1>[,<exp2>...]}.
-
-@item wrd
-      Increases the program counter by two.
-      Equivalent to @code{blkw 1,0}.
-
-@item word <exp1>[,<exp2>...]
       Assign the values of the operands into successive 16-bit words
       of memory in the current section, using the endianness of the target
       CPU.
+      Without any operand just the program counter is incremented by two.
+
+@item wrd <exp1>[,<exp2>...]
+      Equivalent to @code{wor <exp1>[,<exp2>...]}.
+
+@item word <exp1>[,<exp2>...]
+      Equivalent to @code{wor <exp1>[,<exp2>...]}.
 
 @item xdef  <symbol>[,<symbol>...]
         See @code{global}.
@@ -672,7 +672,7 @@ point3
 @itemize @minus
 
 @item Addresses assigned to @code{org} or to the current pc symbol @code{'*'}
-(on the z80 the pc symbol is @code{'$'}) must be constant.
+(on the Z80 the pc symbol is @code{'$'}) must be constant.
 
 @item Expressions in an @code{if} directive must be constant.
 

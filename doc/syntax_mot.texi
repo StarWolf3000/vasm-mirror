@@ -4,7 +4,7 @@ M68k and ColdFire families of CPUs, which is available with the extension
 
 @section Legal
 
-    This module is written in 2002-2022 by Frank Wille and
+    This module is written in 2002-2023 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -14,18 +14,18 @@ This syntax module provides the following additional options:
 @table @option
  
 @item -align
- Enables natural alignment for data (e.g. @code{dc.?}, @code{ds.?}) and
- offset directives (@code{rs.?}, @code{so.?}, @code{fo.?}).
+ Enables natural alignment for data (e.g. @code{dc}, @code{ds}) and
+ offset directives (@code{rs}, @code{so}, @code{fo}).
 
 @item -allmp
- Makes all 35 macro arguments available. Default is 9 arguments (@code{\1} to
- @code{\9}). More arguments can be accessed through @code{\a} to
+ Makes all 35 macro arguments available. Default are 9 arguments (@code{\1}
+ to @code{\9}). More arguments can be accessed through @code{\a} to
  @code{\z}), which may conflict with escape characters or named arguments,
  therefore they are not enabled by default.
 
 @item -cnop=<code>
- Sets a two-byte code used for alignment padding with CNOP.
- Defaults to 0x4e71 on M68k.
+ Sets a two-byte code used for alignment padding with @code{cnop} in
+ code sections. Defaults to @code{0x4e71} on M68k.
 
 @item -devpac
  Devpac-compatibility mode. Only directives known to Devpac are recognized.
@@ -37,7 +37,11 @@ This syntax module provides the following additional options:
   @item Disable escape codes handling in strings (see @option{-noesc}).
   @item Enable dots within identifiers (see @option{-ldots}).
   @item Up to 35 macro arguments.
-  @item Do not use @code{NOP} instructions when aligning code.
+  @item Do not use @code{NOP} instructions when aligning code
+        (see @option{-cnop=}).
+  @item Allow a label definition on the same line as a section directive.
+        Note, that in contrast to Devpac this label is not ignored but
+        set to the first address in the section!
 @end itemize
 
 @item -ldots
@@ -46,6 +50,11 @@ This syntax module provides the following additional options:
 @item -localu
  Local symbols are prefixed by @code{'_'} instead of @code{'.'}. For
  Devpac compatibility, which offers a similar option.
+
+@item -nolocpfx
+ Disables local symbols to be recognized by their prefix (usually
+ @code{'.'}). This allows global symbols to be defined with it.
+ The @code{'$'} suffix for local symbols still works.
 
 @item -phxass
  PhxAss-compatibility mode. Only directives known to PhxAss are recognized.
@@ -58,6 +67,7 @@ This syntax module provides the following additional options:
   @item Defines the symbol @code{_PHXASS_} with value 2 (to differentiate
         from the real PhxAss with value 1).
   @item When no output file name is given, construct it from the input name.
+  @item Allow a label definition on the same line as a section directive.
 @end itemize
 
 @item -spaces
@@ -216,7 +226,8 @@ CPU- and output-module support them):
       32 bits.
 
 @item comment
-      Everything in the operand field is ignored and seen as a comment.
+      Starting with the operand field everything is ignored and
+      seen as a comment.
       There is only one exception, when the operand contains @code{HEAD=}.
       Then the following expression is passed to the TOS output module
       via the symbol '@code{ TOSFLAGS}', to define the Atari specific TOS
@@ -386,6 +397,14 @@ CPU- and output-module support them):
       Assemble the following lines if the previous @code{if} condition
       was false.
 
+@item elseif
+      Same as @code{else}, for compatibility!
+
+@item elif <exp>
+      This is a real else-if directive! Not supported by Devpac.
+      It's the same as @code{else} followed by @code{if}, but without the
+      need for a matching @code{endif} directive. Avoids nesting.
+
 @item end
       Assembly will terminate behind this line.
 
@@ -522,7 +541,7 @@ CPU- and output-module support them):
       IIF stands for Immediate IF.
       If the value of <expression> is non-zero then <statement> is assembled.
       No @code{ENDC} must be used in conjunction with this directive.
-      The <statement> can not include a label, but a label may precede the
+      The <statement> cannot include a label, but a label may precede the
       @code{IIF} directive. For example:
 @example
 foo IIF bar equ 42
@@ -553,7 +572,7 @@ foo IIF bar equ 42
 @item include <file>
       Include source text of <file> at this position. When the file name
       specified has no absolute path, then search it in all defined
-      paths in the order of occurence, starting with the current work
+      paths in the order of occurrence, starting with the current work
       directory.
 
 @item inline
@@ -572,9 +591,9 @@ foo IIF bar equ 42
       Defines a macro which can be referenced by <name>. For compatibility,
       the <name> may alternatively appear on the left side of
       the @code{macro} directive, starting on the first column.
-      Then the operand field is ignored. The macro definition is closed
+      Then the operand field is ignored. The macro definition is terminated
       by an @code{endm} directive. When calling a macro you may pass
-      up to 9 arguments, separated by comma. Those arguments are
+      up to 9 arguments, separated by comma. These arguments are
       referenced within the macro context as @code{\1} to @code{\9}.
       Parameter @code{\0} is set to the macro's first qualifier
       (mnemonic extension), when given.
@@ -828,6 +847,8 @@ foo IIF bar equ 42
 @item Macro parameter replacement is also done when a line is
       commented out. This is a problem for special codes which modify the
       internal state, like \@@@@, \@@!, \@@?, \+, \-.
+@item @code{echo}, @code{printt} and @code{printv} do not work when the
+      source text doesn't contain any real code.
 
 @end itemize
 
@@ -859,5 +880,10 @@ This module has the following error messages:
 @item 1021: einline without inline
 @item 1022: missing %c
 @item 1023: maximum inline nesting depth exceeded (%d)
+@item 1024: skipping instruction in struct init
+@item 1025: last %d bytes of string constant have been cut
+@item 1026: conditional assembly for pass 1 is not really supported, assuming true
+@item 1027: conditional assembly for pass 2 is not really supported, assuming false
+@item 1028: modified memory attributes for section "%s"
 
 @end itemize

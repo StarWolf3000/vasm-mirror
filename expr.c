@@ -1,5 +1,5 @@
 /* expr.c expression handling for vasm */
-/* (c) in 2002-2021 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2023 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -985,7 +985,7 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
 {
   taddr val,lval,rval;
   symbol *lsym,*rsym;
-  int cnst=1;
+  int cnst=1,lbok,rbok;
 
   if(!tree)
     ierror(0);
@@ -999,31 +999,32 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     val=(lval+rval);
     break;
   case SUB:
-    find_base(tree->left,&lsym,sec,pc);
-    find_base(tree->right,&rsym,sec,pc);
-    if(cnst==0&&rsym!=NULL&&LOCREF(rsym)){
-      if(lsym!=NULL&&LOCREF(lsym)&&lsym->sec==rsym->sec){
+    lbok=find_base(tree->left,&lsym,sec,pc)==BASE_OK;
+    rbok=find_base(tree->right,&rsym,sec,pc)==BASE_OK;
+    if(cnst==0&&rbok&&LOCREF(rsym)){
+      if(lbok&&LOCREF(lsym)&&lsym->sec==rsym->sec){
         /* l2-l1 is constant when both have a valid symbol-base, and both
            symbols are LABSYMs from the same section, e.g. (sym1+x)-(sym2-y) */
         cnst=1;
-	add_dep(sec,lsym->sec);
-      }else if(lsym!=NULL&&(rsym->sec==sec&&(EXTREF(lsym)||LOCREF(lsym)))){
-        /* Difference between symbols from different section or between an
+        add_dep(sec,lsym->sec);
+      }else if(lbok&&(rsym->sec==sec&&(EXTREF(lsym)||LOCREF(lsym)))){
+        /* Difference between symbols from different sections or between an
            external symbol and a symbol from the current section can be
            represented by a REL_PC, so we calculate the addend. */
         if((rsym->flags&ABSLABEL)&&(lsym->flags&ABSLABEL)){
-	  add_dep(sec, lsym->sec);
-	  add_dep(sec, rsym->sec);
+          add_dep(sec, lsym->sec);
+          add_dep(sec, rsym->sec);
           cnst=1;  /* constant, when labels are from two ORG sections */
-	}else{
+        }else{
           /* prepare a value which works with REL_PC */
           val=(pc-rval+lval-(lsym->sec?lsym->sec->org:0));
           break;
         }
-      }else if(lsym==NULL&&(rsym->flags&ABSLABEL))
+      }else if(!lbok&&(rsym->flags&ABSLABEL)){
         /* const-label is valid and yields a const in absolute ORG sections */
-	  add_dep(sec, rsym->sec);
-	  cnst=1;
+        add_dep(sec, rsym->sec);
+        cnst=1;
+      }
     }
     val=(lval-rval);
     break;
@@ -1370,7 +1371,8 @@ void print_expr(FILE *f,expr *p)
   if(p->type==NUM)
     fprintf(f,"%lld=0x%llx",(long long)p->c.val,ULLTADDR(p->c.val));
   else if(p->type==HUG)
-    fprintf(f,"0x%016llx%016llx",(long long)p->c.huge.hi,(long long)p->c.huge.lo);
+    fprintf(f,"0x%016llx%016llx",
+            (unsigned long long)p->c.huge.hi,(unsigned long long)p->c.huge.lo);
 #if FLOAT_PARSER
   else if(p->type==FLT)
     fprintf(f,"%.8g",(double)p->c.flt);
@@ -1392,7 +1394,7 @@ static int _find_base(expr *p,symbol **base,section *sec,taddr pc)
       return _find_base(p->c.sym->expr,base,sec,pc);
     else{
       if(base)
-        *base=p->c.sym;
+        *base=p->c.sym;  /* set base to symbol, also when BASE_ILLEGAL later */
       return BASE_OK;
     }
   }

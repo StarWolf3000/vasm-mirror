@@ -1,5 +1,5 @@
 /* cond.h - conditional assembly support routines */
-/* (c) in 2015 by Frank Wille */
+/* (c) in 2015,2023 by Frank Wille */
 
 #ifndef COND_H
 #define COND_H
@@ -20,6 +20,7 @@ void cond_if(char);
 void cond_skipif(void);
 void cond_else(void);
 void cond_skipelse(void);
+void cond_elseif(char);
 void cond_endif(void);
 
 #endif /* COND_H */

@@ -130,7 +130,7 @@ This module provides the following additional options:
 This backend accepts ARM instructions as described in various ARM CPU
 data sheets. Additionally some architectures support a second, more
 dense, instruction set, called THUMB. There are special directives
-to switch between those two instruction sets.
+to switch between these two instruction sets.
 
 The target address type is 32bit.
 

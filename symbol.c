@@ -1,5 +1,5 @@
 /* symbol.c - manage all kinds of symbols */
-/* (c) in 2014-2022 by Volker Barthelmann and Frank Wille */
+/* (c) in 2014-2023 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -217,6 +217,7 @@ strbuf *make_local_label(int n,char *glob,int glen,char *loc,int llen)
   *p++ = ' ';
   memcpy(p,loc,llen);
   *(p + llen) = '\0';
+  buf[n].len = llen+glen+2;  /* new string length in buffer */
   return &buf[n];
 }
 

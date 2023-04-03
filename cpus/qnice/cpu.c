@@ -3,14 +3,14 @@
 
 #include "vasm.h"
 
-char *cpu_copyright="vasm qnice cpu backend 0.1 (c) in 2016 Volker Barthelmann";
+const char *cpu_copyright="vasm qnice cpu backend 0.1 (c) in 2016 Volker Barthelmann";
 char *cpuname="qnice";
 
 mnemonic mnemonics[]={
 #include "opcodes.h"
 };
 
-int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
+const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
 int bitsperbyte=8;
 int bytespertaddr=4;

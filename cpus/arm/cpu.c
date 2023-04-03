@@ -8,9 +8,9 @@
 mnemonic mnemonics[] = {
 #include "opcodes.h"
 };
-int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
+const int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm ARM cpu backend 0.5 (c) 2004,2006,2010,2011,2014-2020 Frank Wille";
+const char *cpu_copyright = "vasm ARM cpu backend 0.5 (c) 2004,2006,2010,2011,2014-2020 Frank Wille";
 char *cpuname = "ARM";
 int bitsperbyte = 8;
 int bytespertaddr = 4;

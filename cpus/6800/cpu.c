@@ -8,12 +8,11 @@
 mnemonic mnemonics[] = {
 #include "opcodes.h"
 };
-
-int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
+const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
 int		bitsperbyte = 8;
 int		bytespertaddr = 2;
-char *		cpu_copyright = "vasm 6800/6801/68hc11 cpu backend 0.5 (c) 2013-2016,2019,2021 Esben Norby";
+const char *	cpu_copyright = "vasm 6800/6801/68hc11 cpu backend 0.5 (c) 2013-2016,2019,2021 Esben Norby";
 char *		cpuname = "6800";
 
 static uint8_t	cpu_type = M6800;
@@ -139,7 +138,7 @@ parse_operand(char *p, int len, operand *op, int required)
 	}
 
 	p = skip(p);
-	if (p-start < len) {
+	if (*p && p-start<len) {
 		cpu_error(0);  /* trailing garbage */
 		return PO_CORRUPT;
 	}

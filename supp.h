@@ -1,5 +1,5 @@
 /* supp.h miscellaneous support routines */
-/* (c) in 2008-2022 by Frank Wille */
+/* (c) in 2008-2023 by Frank Wille */
 
 #ifndef SUPP_H
 #define SUPP_H
@@ -44,6 +44,7 @@ int flt_chkrange(tfloat,int);
 
 void fw8(FILE *,uint8_t);
 void fw16(FILE *,uint16_t,int);
+void fw24(FILE *,uint32_t,int);
 void fw32(FILE *,uint32_t,int);
 void fwdata(FILE *,const void *,size_t);
 void fwsblock(FILE *,sblock *);

@@ -1,5 +1,5 @@
 /* parse.h - global parser support functions */
-/* (c) in 2009-2022 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2023 by Volker Barthelmann and Frank Wille */
 
 #ifndef PARSE_H
 #define PARSE_H 
@@ -45,7 +45,6 @@ struct namelen {
 extern int esc_sequences,nocase_macros;
 extern int maxmacparams,maxmacrecurs;
 extern int msource_disable;
-extern int colon_at_label;
 
 /* functions */
 char *escape(char *,char *);

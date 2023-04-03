@@ -9,7 +9,7 @@
 #define INSTR_DEBUG (1)
 #endif
 
-char *cpu_copyright="vasm TR3200 cpu module v0.2 by Luis Panadero Guardeno";
+const char *cpu_copyright="vasm TR3200 cpu module v0.2 by Luis Panadero Guardeno";
 
 char *cpuname="tr3200";
 int bitsperbyte=8;
@@ -19,7 +19,7 @@ mnemonic mnemonics[]={
 #include "opcodes.h"
 };
 
-int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
+const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
 
 static taddr opsize(operand *p, unsigned char num_operands, section *sec, taddr pc);

@@ -1,11 +1,11 @@
 /* cond.c - conditional assembly support routines */
-/* (c) in 2015 by Frank Wille */
+/* (c) in 2015,2023 by Frank Wille */
 
 #include "vasm.h"
 
 int clev;  /* conditional level */
 
-static char cond[MAXCONDLEV+1];
+static signed char cond[MAXCONDLEV+1];
 static char *condsrc[MAXCONDLEV+1];
 static int condline[MAXCONDLEV+1];
 static int ifnesting;
@@ -22,7 +22,7 @@ void cond_init(void)
 /* return true, when current level allows assembling */
 int cond_state(void)
 {
-  return cond[clev];
+  return cond[clev] > 0;
 }
 
 
@@ -40,7 +40,7 @@ void cond_if(char flag)
   if (++clev >= MAXCONDLEV)
     general_error(65,clev);  /* nesting depth exceeded */
 
-  cond[clev] = flag;
+  cond[clev] = flag!=0;
   condsrc[clev] = cur_src->name;
   condline[clev] = cur_src->line;
 }
@@ -57,7 +57,7 @@ void cond_skipif(void)
 void cond_else(void)
 {
   if (ifnesting == 0)
-    cond[clev] = 1;
+    cond[clev] = cond[clev] ? -1 : 1;
 }
 
 
@@ -65,7 +65,21 @@ void cond_else(void)
 void cond_skipelse(void)
 {
   if (clev > 0)
-    cond[clev] = 0;
+    cond[clev] = -1;
+  else
+    general_error(63);  /* else without if */
+}
+
+
+/* handle else-if statement */
+void cond_elseif(char flag)
+{
+  if (clev > 0) {
+    if (!cond[clev])
+      cond[clev] = flag!=0;
+    else
+      cond[clev] = -1;
+  }
   else
     general_error(63);  /* else without if */
 }

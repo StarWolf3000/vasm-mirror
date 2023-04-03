@@ -16,3 +16,5 @@
   "absolute file path exceeds maximum size of %d characters",FATAL|ERROR|NOLINE, /* 15 */
   "converting NONE relocation <%s> to 8-bit ABS with zero addend",WARNING|NOLINE,
   "no additional space in section to convert NONE relocation <%s> to ABS",ERROR|NOLINE,
+  "section <%s>: kickstart 1.x cannot initialize bss sections >256k to zero",WARNING|NOLINE,
+  "too many symbols for selected output file format",ERROR|NOLINE,

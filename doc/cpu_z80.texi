@@ -75,7 +75,7 @@ This module provides the following additional options:
 
 This backend accepts z80 family instructions in standard
 Zilog syntax. Rabbit opcodes are accepted as defined in the 
-publically available reference material from Rabbit Semiconductor,
+publicly available reference material from Rabbit Semiconductor,
 with the exception that the @code{ljp} and @code{lcall} opcodes need
 to be supplied with a 24 bit number rather than an 8 bit @code{xpc} and a
 16 bit address.

@@ -1,16 +1,21 @@
-This chapter describes the TOS output module which can be
-selected with the @option{-Ftos} option.
+This chapter describes the TOS output module, which can be
+selected with option @option{-Ftos} to generate executable Atari TOS
+executable files, or with option{-Fdri} to generate DRI-format object
+files.
 
 @section Legal
 
-    This module is written in 2009-2016,2020,2021 by Frank Wille and
+    This module is written in 2009-2016,2020,2021,2023 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
- 
+
+All these options only have an effect in executable files.
 @table @option
     @item -monst
         Write Devpac "MonST"-compatible symbols.
+    @item -stdsymbols
+        Do not write HiSoft extended symbol names. Cut at 8 characters.
     @item -tos-flags=<flags>
         Sets the flags field in the TOS file header. Defaults to 0.
         Overwrites a TOS flags definition in the assembler source.
@@ -18,18 +23,35 @@ selected with the @option{-Ftos} option.
 
 @section General
 
-This module outputs the TOS executable file format, which is used
-on Atari 16/32-bit computers with 68000 up to 68060 CPU. The symbol
-table uses the DRI format.
+@table @option
+  @item -Ftos
+    The TOS executable file format is used on Atari 16/32-bit computers
+    with 68000 up to 68060 CPU running any TOS, MiNT or any compatible
+    operating system. The symbol table is in DRI format and may use
+    HiSoft extended symbol names.
+  @item -Fdri
+    The object file format defined by Digital Research for Atari M68k
+    systems.
+@end table
 
 @section Restrictions
 
 @itemize @minus
-@item All symbols must be defined, otherwise the generation of the executable
-  fails. Unknown symbols are listed by vasm.
-@item The only relocations allowed in this format are 32-bit absolute.
+@item These file formats only support a single Text (code), Data and BSS
+  section.
+@item For @code{tos} all symbols must be defined, otherwise the generation
+  of the executable fails. Unknown symbols are listed by vasm.
+@item The only relocations allowed in @code{tos} are 32-bit absolute. For
+  @code{dri} all 16- and 32-bit absolute and PC-relative relocations
+  are supported. 16-bit base-relative appears as a 16-bit absolute symbol
+  reference.
+@item The maximum symbol length is 8 characters only. The @code{tos}
+  format increases the maximum length to 22 by using an extension
+  created by HiSoft, unless forbidden by @option{-stdsymbols}.
+@item Symbol references in @code{dri} object files are limited to a
+  maximum of 8192 symbols.
 @end itemize
-Those are restrictions of the output format, not of vasm.
+All these restrictions are defined by the file format itself.
 
 @section Known Problems
 
@@ -51,4 +73,5 @@ This module has the following error messages:
 @item 3008: output module doesn't allow multiple sections of the same type
 @item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
 @item 3011: weak symbol <%s> not supported by output format, treating as global
+@item 3020: too many symbols for selected output file format
 @end itemize

@@ -1,5 +1,5 @@
 /* error.c - error output and modification routines */
-/* (c) in 2002-2021 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2023 by Volker Barthelmann and Frank Wille */
 
 #include <stdarg.h>
 #include "vasm.h"
@@ -141,6 +141,11 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
   if (!(flags & NOLINE) && cur_src!=NULL) {
     fprintf(f," in line %d of ",cur_src->line);
     print_source_file(f,cur_src);
+    if (cur_src->defsrc) {
+      fprintf(f," (line %d of ",cur_src->defline+cur_src->line);
+      print_source_file(f,cur_src->defsrc);
+      fputc(')',f);
+    }
   }
   fprintf(f,": ");
   vfprintf(f,errlist[n].text,vl);
@@ -153,12 +158,21 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
 
       child = cur_src;
       while (parent = child->parent) {
-        if (child->num_params >= 0)
-          fprintf(f,"\tcalled");    /* macro called from */
-        else
+        if (child->srcfile)
           fprintf(f,"\tincluded");  /* included from */
+        else if (child->macro)
+          fprintf(f,"\tcalled");    /* macro called from */
+        else {
+          child = parent;           /* skip parent for repetitions */
+          continue;
+        }
         fprintf(f," from line %d of ",child->parent_line);
         print_source_file(f,parent);
+        if (parent->defsrc) {
+          fprintf(f," (line %d of ",parent->defline+child->parent_line);
+          print_source_file(f,parent->defsrc);
+          fputc(')',f);
+        }
 
         recurs = 1;
         while (parent->parent!=NULL &&

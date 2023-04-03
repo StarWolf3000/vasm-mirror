@@ -1,5 +1,5 @@
 /* vasm.c  main module for vasm */
-/* (c) in 2002-2022 by Volker Barthelmann */
+/* (c) in 2002-2023 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,15 +10,15 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 1.9a"
-char *copyright = _VER " (c) in 2002-2022 Volker Barthelmann";
+#define _VER "vasm 1.9c"
+const char *copyright = _VER " (c) in 2002-2023 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 #endif
 
 /* The resolver will run another pass over the current section as long as any
-   label location or atom size has changed. It gives up at MAXPASSES, which
-   hopefully will never happen.
+   label location or atom size has changed. It fails on reaching MAXPASSES,
+   which hopefully will never happen.
    During the first FASTOPTPHASE passes all instructions of a section will be
    optimized at the same time. After that the resolver enters a safe mode,
    where only a single instruction per pass is changed. */
@@ -632,7 +632,7 @@ static void statistics(void)
   section *sec;
   unsigned long long size;
 
-  printf("\n");
+  putchar('\n');
   for(sec=first_section;sec;sec=sec->next){
     size=(utaddr)(sec->pc)-(utaddr)(sec->org);
     printf("%s(%s%lu):\t%12llu byte%c\n",sec->name,sec->attr,
@@ -640,43 +640,39 @@ static void statistics(void)
   }
 }
 
+static struct {
+  const char *name;
+  int executable;
+  int (*init)(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
+} out_formats[] = {
+  "aout",0,init_output_aout,
+  "bin",0,init_output_bin,
+  "cdef",0,init_output_cdef,
+  "dri",0,init_output_tos,
+  "elf",0,init_output_elf,
+  "gst",0,init_output_gst,
+  "hunk",0,init_output_hunk,
+  "hunkexe",1,init_output_hunk,
+  "ihex",0,init_output_ihex,
+  "o65",0,init_output_o65,
+  "o65exe",1,init_output_o65,
+  "srec",0,init_output_srec,
+  "test",0,init_output_test,
+  "tos",1,init_output_tos,
+  "vobj",0,init_output_vobj,
+  "xfile",1,init_output_xfile,
+
+};
+
 static int init_output(char *fmt)
 {
-  if(!strcmp(fmt,"test"))
-    return init_output_test(&output_copyright,&write_object,&output_args);
-  if(!strcmp(fmt,"elf"))
-    return init_output_elf(&output_copyright,&write_object,&output_args);
-  if(!strcmp(fmt,"bin"))
-    return init_output_bin(&output_copyright,&write_object,&output_args);
-  if(!strcmp(fmt,"srec"))
-    return init_output_srec(&output_copyright,&write_object,&output_args);
-  if(!strcmp(fmt,"vobj"))
-    return init_output_vobj(&output_copyright,&write_object,&output_args);
-  if(!strcmp(fmt,"hunk"))
-    return init_output_hunk(&output_copyright,&write_object,&output_args);
-  if(!strcmp(fmt,"aout"))
-    return init_output_aout(&output_copyright,&write_object,&output_args);
-  if(!strcmp(fmt,"hunkexe")){
-    exec_out=1;  /* executable format */
-    return init_output_hunk(&output_copyright,&write_object,&output_args);
-  }
-  if(!strcmp(fmt,"tos")){
-    exec_out=1;  /* executable format */
-    return init_output_tos(&output_copyright,&write_object,&output_args);
-  }
-  if(!strcmp(fmt,"xfile")){
-    exec_out=1;  /* executable format */
-    return init_output_xfile(&output_copyright,&write_object,&output_args);
-  }
-  if(!strcmp(fmt,"cdef"))
-    return init_output_cdef(&output_copyright,&write_object,&output_args);
-  if(!strcmp(fmt,"ihex"))
-    return init_output_ihex(&output_copyright,&write_object,&output_args);
-  if(!strcmp(fmt,"o65"))
-    return init_output_o65(&output_copyright,&write_object,&output_args);
-  if(!strcmp(fmt,"o65exe")) {
-    exec_out=1;  /* executable format */
-    return init_output_o65(&output_copyright,&write_object,&output_args);
+  static size_t num_out_formats=sizeof(out_formats)/sizeof(out_formats[0]);
+  size_t i;
+  for(i=0;i<num_out_formats;i++){
+    if(!strcmp(fmt,out_formats[i].name)){
+      exec_out=out_formats[i].executable;
+      return out_formats[i].init(&output_copyright,&write_object,&output_args);
+    }
   }
   return 0;
 }
@@ -960,8 +956,10 @@ int main(int argc,char **argv)
     }
     general_error(14,argv[i]);
   }
-  if(dwarf&&inname==NULL)
+  if(dwarf&&inname==NULL){
     dwarf=0;  /* no DWARF output when input source is from stdin */
+    general_error(84);
+  }
   nostdout=depend&&dep_filename==NULL; /* dependencies to stdout nothing else */
   include_main_source();
   internal_abs(vasmsym_name);
@@ -1051,9 +1049,87 @@ static char *name_from_attr(char *attr)
   return emptystr;
 }
 
+static int move_label_to_sec(atom *lab,section *ns)
+{
+  if (lab->type == LABEL) {
+    section *os = lab->content.label->sec;  /* old section of label */
+    int deletable;
+    atom *a,*prev;
+
+    if ((os->flags & (LABELS_ARE_LOCAL|ABSOLUTE)) !=
+        (ns->flags & (LABELS_ARE_LOCAL|ABSOLUTE))) {
+      /* cannot move label into a section with different local/abs. flags */
+      general_error(82);  /* label definition not allowed here */
+      return 0;
+    }
+
+    /* find previous atom, check if section becomes empty */
+    for (deletable=1,prev=NULL,a=os->first; a; a=a->next) {
+      if (a->next == lab)
+        prev = a;
+      if (a != lab) {
+        switch (a->type) {
+          case LABEL:
+          case DATA:
+          case INSTRUCTION:
+          case SPACE:
+          case DATADEF:
+            deletable = 0;
+            break;
+        }
+      }
+    }
+
+    /* unlink label-atom from its old section */
+    if (prev == NULL) {
+      if (os->first == lab)
+        os->first = os->last = NULL;
+      else
+        ierror(0);  /* label atom not in its original section */
+    }
+    else {
+      if (os->last == lab)
+        os->last = prev;
+      prev->next = lab->next;
+    }
+
+    /* add label to new section */
+    ns->flags |= HAS_SYMBOLS;
+    lab->content.label->sec = ns;
+    lab->content.label->pc = ns->pc;
+    add_atom(ns,lab);
+
+    if (deletable) {
+      /* remove old section */
+      section *s;
+
+      if (first_section != os) {
+        for (s=first_section; s; s=s->next) {
+          if (s->next == os) {
+            if (last_section == os)
+              last_section = s;
+            s->next = os->next;
+            break;
+          }
+        }
+      }
+      else
+        first_section = os->next;
+      if (s == NULL)
+        ierror(0);  /* section not found in list */
+      /* @@@ free section and atoms here */
+    }
+  }
+  else
+    ierror(0);
+  return 1;
+}
+
 /* set current section, remember last */
 void set_section(section *s)
 {
+  atom *a;
+
 #if NOT_NEEDED
   if (current_section!=NULL && !(current_section->flags & UNALLOCATED)) {
     if (current_section->flags & ABSOLUTE)
@@ -1066,6 +1142,15 @@ void set_section(section *s)
   if (s!=NULL && !(s->flags & UNALLOCATED))
     cpu_opts_init(s);  /* set initial cpu opts before the first atom */
 #endif
+
+  if (current_section!=NULL && (a=current_section->last) != NULL) {
+    if (a->type==LABEL && a->src==cur_src && a->line==cur_src->line) {
+      /* make sure a label on the same line as a section directive is
+         moved into this new section */
+      if (move_label_to_sec(a,s))
+        general_error(83);  /* label def. on the same line as a new section */
+    }
+  }
   current_section = s;
 }
 

@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm test syntax module (c) 2002 Volker Barthelmann";
+const char *syntax_copyright="vasm test syntax module (c) 2002 Volker Barthelmann";
 
 hashtable *dirhash;
 char commentchar=';';
@@ -91,8 +91,7 @@ static void handle_section(char *s)
     s=skip(s+1);
   }else
     attr="";
-  new_section(name,attr,1);
-  switch_section(name,attr);
+  set_section(new_section(name,attr,1));
   eol(s);
 }
 
