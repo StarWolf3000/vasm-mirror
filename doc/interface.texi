@@ -48,10 +48,11 @@ Directory the object modules will be stored in.
     All compiling is done from the main directory and
     the executables will be placed there as well.
     The main assembler for a combination of @code{<cpu>} and
-    @code{<syntax>} will
-    be called @command{vasm<cpu>_<syntax>}. All output modules are
-    usually integrated in every executable and can be selected at
-    runtime.
+    @code{<syntax>} will be called @command{vasm<cpu>_<syntax>}.
+    All output modules are usually integrated in every executable
+    and can be selected at runtime. Otherwise you have to adapt
+    the @code{OUTFMTS} definition in @file{make.rules} and select
+    those you want.
 
 @subsection Adapting the Makefile
 
@@ -70,7 +71,7 @@ Directory the object modules will be stored in.
     @item CC
        Here you have to insert a command that invokes an ANSI C
        compiler you want to use to build vasm. It must support
-       the @option{-I} option the same like e.g. @command{vc} or
+       the @option{-I} option in the same way like e.g. @command{vc} or
        @command{gcc}.
 
     @item COPTS
@@ -105,7 +106,7 @@ Directory the object modules will be stored in.
        @table @code
           @item -DLOWMEM
           Builds for a host-OS with a low amount of memory. This will
-          bascially reduce all hash tables to minimal size.
+          basically reduce all hash tables to minimal size.
        @end table
 
     @item CCOUT
@@ -264,7 +265,7 @@ was included or called.
 @item unsigned long repeat;
         Number of repetitions of this source text. Usually this is 1, but
         for text blocks between a @code{rept} and @code{endr} directive
-        it allows any number of repetitions, which is decremented everytime
+        it allows any number of repetitions, which is decremented every time
         the end of this source text block is reached.
 
 @item char *irpname;
@@ -391,7 +392,7 @@ the modules:
         Section is loaded at an absolute address in memory.
 @item PREVABS
         Remembers state of the @code{ABSOLUTE} flag before entering
-        relocated-org mode (@code{IN_RORG}). So it can be restored later.
+        relocated-@code{org} mode (@code{IN_RORG}). So it can be restored later.
 @item IN_RORG
         Section has entered relocated-org mode, which also sets the
         @code{ABSOLUTE} flag. In this mode code is written into the current
@@ -476,7 +477,7 @@ following members that can be accessed by the modules:.
         zero.
 
 @item #define LOCAL (1<<7)
-        Only informational. A symbol can be explicitely declared as local
+        Only informational. A symbol can be explicitly declared as local
         by a syntax-module directive.
 
 @item #define VASMINTERN (1<<8)
@@ -770,6 +771,9 @@ requirement. Zero means there is no restriction.
 
 @item uint32_t flags;
 @table @code
+@item SPC_UNINITIALIZED
+        This space is completely uninitialized. May be used as a hint by
+        output modules.
 @item SPC_DATABSS
         The output module should not allocate any file space for this
         atom, when possible (example: DataBss section, as supported by
@@ -895,8 +899,8 @@ via the pointer @code{reloc}. It will point to a structure that depends
 on the relocation type, so a module must only use it if it knows the
 relocation type.
 
-All standard relocations point to a type @code{nreloc} with the following
-members:
+All standard relocations point to a type @code{nreloc} structure
+with the following members:
 @table @code
 @item  size_t byteoffset;
 Offset in bytes, from the start of the current @code{DATA} atom, to the
@@ -1093,7 +1097,7 @@ should be @code{static} to prevent name clashes):
 
 @table @code
 
-@item char *syntax_copyright;
+@item const char *syntax_copyright;
 A string that will be emitted as part of the copyright message.
 
 @item hashtable *dirhash;
@@ -1346,7 +1350,7 @@ The mnemonic table keeps a list of mnemonic names and operand types the
 assembler will match against using @code{parse_operand()}. It may also
 include a target specific @code{mnemonic_extension}.
 
-@item char *cpu_copyright;
+@item const char *cpu_copyright;
 A string that will be emitted as part of the copyright message.
 
 @item char *cpuname;
@@ -1386,7 +1390,8 @@ as all the instruction's operands have been matched, the instruction
 is successfully recognized.
 @item PO_SKIP
 Works like @code{PO_MATCH}, but skips the next operand from the mnemonic
-table (because it was already handled together with the current operand).
+table. For example, because it was already handled together with the
+current operand.
 @item PO_COMB_OPT
 Works like @code{PO_MATCH}, but requests parsing of the next argument from
 the source text, if any, with a pointer to the same @code{operand} structure
@@ -1395,7 +1400,7 @@ single operand structure.
 @item PO_COMB_REQ
 Like @code{PO_COMB_OPT}, requests parsing of the next argument
 with a pointer to the same @code{operand} structure. But this time the
-argument is mandatory.
+additional argument is mandatory.
 @item PO_NEXT
 Source did not match the given operand type in @code{requires}. Request
 parsing the same chunk of source text again, but using the following
@@ -1404,8 +1409,9 @@ attempt and continue normally.
 @end table
 
 @item taddr instruction_size(instruction *ip, section *sec, taddr pc);
-Returns the size of the instruction @code{ip} in bytes, which must be
-identical to the number of bytes written by @code{eval_instruction()}
+Returns the size of the instruction @code{ip} in bytes, which, in the
+final pass, must be identical to the number of bytes written by
+@code{eval_instruction()}
 (see below).
 
 @item dblock *eval_instruction(instruction *ip, section *sec, taddr pc);
@@ -1432,7 +1438,7 @@ would be a single qualifier, called "w". Used by @code{execute_macro()}.
 @item cpu_opts_init(section *);
 (If @code{HAVE_CPU_OPTS} is set.)
 Gives the cpu module the chance to write out @code{OPTS} atoms with
-initial settings before the first atom is generated.
+initial settings before the first atom for a section is generated.
 
 @item cpu_opts(void *);
 (If @code{HAVE_CPU_OPTS} is set.)
@@ -1454,8 +1460,9 @@ structure differs somewhat from syntax and cpu modules.
 
 Usually, an output module for some object format @code{fmt} should be contained
 in a file @file{output_<fmt>.c} (it may use/include other files if necessary).
-To automatically include this format in the build process, the @file{make.rules}
-has to be extended. The module should be added to the @code{OBJS} variable
+To automatically include this format in the build process, the
+@code{OUTFMTS} definition in @file{make.rules} has to be extended.
+The module should be added to the @code{OBJS} variable
 at the start of @file{make.rules}. Also, a dependency line should be added
 (see the existing output modules).
 

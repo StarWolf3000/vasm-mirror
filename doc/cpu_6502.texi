@@ -4,7 +4,7 @@ the Hudson Soft HuC6280 and the WDC 65802/65816 instruction sets.
 
 @section Legal
 
-    This module is written in 2002,2006,2008-2012,2014-2022 by Frank Wille
+    This module is written in 2002,2006,2008-2012,2014-2023 by Frank Wille
     and is covered by the vasm copyright without modifications.
 
 
@@ -38,13 +38,14 @@ This module provides the following additional options:
     @item -mega65
         Enables the 45GS02 instruction set for the MEGA65 computer.
     @item -opt-branch
-        Enables translation of B<cc> branches into sequences of
-        "B<!cc> *+5 ; JMP label" when necessary. BRA (DTV, 65C02) is
-        directly translated into a JMP when out of range.
-        It also performs optimization of JMP to BRA, whenever possible.
+        Enables translation of @code{B<cc>} branches into sequences of
+        @code{B<!cc> *+5 ; JMP label} when necessary. @code{BRA} (DTV, 65C02)
+        is directly translated into a @code{JMP} when out of range.
+        It also performs optimization of @code{JMP} to @code{BRA},
+        whenever possible.
     @item -wdc02
         Recognize all 65C02 instructions and the WDC65C02 extensions
-        (RMB,SMB,BBR,BBS,STP,WAI).
+        (@code{RMB},@code{SMB},@code{BBR},@code{BBS},@code{STP},@code{WAI)}.
 @end table
 
 @section General

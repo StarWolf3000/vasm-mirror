@@ -1,6 +1,6 @@
 /*
 ** cpu.c Motorola M68k, CPU32 and ColdFire cpu-description file
-** (c) in 2002-2022 by Frank Wille
+** (c) in 2002-2023 by Frank Wille
 */
 
 #include <math.h>
@@ -9,23 +9,23 @@
 
 #include "operands.h"
 
-const struct specreg SpecRegs[] = {
+static const struct specreg SpecRegs[] = {
 #include "specregs.h"
 };
-static int specreg_cnt = sizeof(SpecRegs)/sizeof(SpecRegs[0]);
+static const int specreg_cnt = sizeof(SpecRegs)/sizeof(SpecRegs[0]);
 
 mnemonic mnemonics[] = {
 #include "opcodes.h"
 };
-int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
+const int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
 const struct cpu_models models[] = {
 #include "cpu_models.h"
 };
-int model_cnt = sizeof(models)/sizeof(models[0]);
+static const int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.5f (c) 2002-2022 Frank Wille";
+const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.6 (c) 2002-2023 Frank Wille";
 char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -87,6 +87,10 @@ static unsigned char kick1hunks = 0;  /* no optim. to 32-bit PC-displacem. */
 static unsigned char no_dpc = 0;      /* abs. PC-displacments not allowed */
 static unsigned char extsd = 0;       /* small-data with ext. addr. modes */
 static char current_ext;              /* extension of current parsed inst. */
+
+/* minimum and maximum distance+1 for B<cc>.B branches */
+static taddr bmin = -0x80;
+static taddr bmax = 0x80;
 
 static char b_str[] = "b";
 static char w_str[] = "w";
@@ -379,8 +383,15 @@ void cpu_opts(void *opts)
       if (devpac_compat)
         set_g2_symbol();
       set_internal_abs(vasmsym_name,cpu_type&CPUMASK);
-      if (cpu_type & apollo)
+      if (cpu_type & apollo) {
         check_apollo_conflicts();
+        bmin = -256;
+        bmax = 256;
+      }
+      else {
+        bmin = -128;
+        bmax = 128;
+      }
       break;
     case OCMD_FPU:
       fpu_id = arg;
@@ -845,7 +856,7 @@ static signed char getreg(char **start,int indexreg)
   signed char reg = -1;
   regsym *sym;
 
-  if (loc = get_local_label(0,&s)) {
+  if (loc = get_local_label(1,&s)) {
     p = loc->str;
     q = p + loc->len;
   }
@@ -965,7 +976,7 @@ static signed char getbreg(char **start)
   strbuf *loc;
   regsym *sym;
 
-  if (loc = get_local_label(0,&s)) {
+  if (loc = get_local_label(1,&s)) {
     p = loc->str;
     q = p + loc->len;
   }
@@ -1002,7 +1013,7 @@ static signed char getfreg(char **start)
   strbuf *loc;
   regsym *sym;
 
-  if (loc = get_local_label(0,&s)) {
+  if (loc = get_local_label(1,&s)) {
     p = loc->str;
     q = p + loc->len;
   }
@@ -1115,7 +1126,7 @@ static char *getspecreg(char *s,operand *op,int first,int last,int cpuchk)
     s += 2;
     q = s;
   }
-  else if (loc = get_local_label(0,&s)) {
+  else if (loc = get_local_label(1,&s)) {
     p = loc->str;
     q = p + loc->len;
   }
@@ -1167,7 +1178,7 @@ static char *getctrlreg(char *s,operand *op,int first,int last)
   char *q;
   strbuf *loc;
 
-  if (loc = get_local_label(0,&s)) {
+  if (loc = get_local_label(1,&s)) {
     p = loc->str;
     q = p + loc->len;
   }
@@ -1363,7 +1374,7 @@ static short getbasereg(char **start)
   short r = 0;
   regsym *sym;
 
-  if (loc = get_local_label(0,&s)) {
+  if (loc = get_local_label(1,&s)) {
     p = loc->str;
     q = p + loc->len;
     r = -1;
@@ -2448,6 +2459,31 @@ static void optimize_oper(operand *op,struct optype *ot,section *sec,
           op->format |= FW_BDSize(FW_Null);
           if (final && warn_opts>1)
             cpu_error(49,"(0,An,...)->(An,...)");
+        }
+        else if (extsd && sdreg>=0 && bdopt && opt_bdisp && op->base[0] &&
+                 ((opt_gen && (op->base[0]->flags&NEAR)) ||
+                  (opt_sd && LOCREF(op->base[0]) &&
+                  (op->base[0]->sec->flags&NEAR_ADDRESSING))) &&
+                 op->extval[0]>=0 && op->extval[0]<=0xffff) {
+          /* base relative addressing in 020 full format */
+
+          if ((op->format & FW_IndexSuppress) &&
+              (ot->modes & (1<<AM_An16Disp)) &&
+              !(op->flags & FL_ZIndex)) {
+            /* (label,An,ZRn) --> (label,An) small-data */
+            op->mode = MODE_An16Disp;
+            op->format = 0;
+            op->flags &= ~(FL_UsesFormat | FL_020up | FL_noCPU32);
+            if (final && warn_opts>1)
+              cpu_error(49,"(label,An,ZRn)->(label,An) baserel");
+          }
+          else {
+            /* (label,An,Rn) --> (label.w,An,Rn) small data*/
+            op->format &= ~FW_BDSize(FW_SizeMask);
+            op->format |= FW_BDSize(FW_Word);
+            if (final && warn_opts>1)
+              cpu_error(49,"(label,An,Rn)->(label.w,An,Rn) baserel");
+          }
         }
         else if (bdopt && (op->base[0] || (!op->base[0] && !size16[0])) &&
                  FW_getBDSize(op->format)==FW_Word) {
@@ -3976,7 +4012,7 @@ dontswap:
         case 2:
           if (diff==0 && oc!=0x6100 && !resolvewarn)
             ip->code = -1;
-          else if (diff<-0x80 || diff>0x7f || diff==0)
+          else if (diff<bmin || diff>=bmax || diff==0)
             ip->qualifiers[0] = w_str;
           else
             ip->qualifiers[0] = b_str;
@@ -3988,7 +4024,7 @@ dontswap:
             else
               ip->qualifiers[0] = w_str;
           }
-          else if (diff>=-0x80 && diff<=0x80 && !resolvewarn) {
+          else if (diff>=bmin && diff<=bmax && !resolvewarn) {
             ip->qualifiers[0] = b_str;
           }
           else if (diff<-0x8000 || diff>0x7fff) {
@@ -4278,9 +4314,22 @@ size_t instruction_size(instruction *realip,section *sec,taddr pc)
 
   extsize = mnemo->ext.size;
 
-  /* remember the instruction's original extension, before optimizations */
-  if (realip->ext.un.real.orig_ext < 0)
+  if (realip->ext.un.real.orig_ext < 0) {
+    /* remember the instruction's original extension, before optimizations */
     realip->ext.un.real.orig_ext = (signed char)ext;
+
+    /* Special MOVEQ handling:
+       moveq.l allows out of range values without warning,
+       and for Devpac-compat. a bad size extension will be ignored */
+    if (realip->code == OC_MOVEQ) {
+      if (ext == 'l')
+        realip->ext.un.real.flags |= IFL_NOTYPECHK;  /* allow any value */
+      if (devpac_compat) {
+        ext = '\0';
+        realip->qualifiers[0] = emptystr;
+      }
+    }
+  }
 
   if (opt_allbra && ign_unambig_ext && ext) {
     /* Strip the size extension from branch instructions, no matter if
@@ -4525,6 +4574,10 @@ static unsigned char *write_branch(dblock *db,unsigned char *d,operand *op,
       case 's':
         if (diff>=-0x80 && diff<=0x7f && diff!=0 && (diff!=-1 || !lbra))
           *(d-1) = diff & 0xff;
+        else if ((cpu_type&apollo) && diff>=128 && diff<=254)
+          *(d-1) = ((diff-128) & 0xff) | 1;
+        else if ((cpu_type&apollo) && diff>=-256 && diff<=-130)
+          *(d-1) = ((diff+128) & 0xff) | 1;
         else
           cpu_error(28);  /* branch destination out of range */
         break;
@@ -4986,7 +5039,11 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
   unsigned char ipflags = ip->ext.un.real.flags;
   signed char lastsize = ip->ext.un.real.last_size;
   instruction *realip = ip;
+  int oldtypechk = typechk;
   uint8_t *d;
+
+  if (ipflags & IFL_NOTYPECHK)
+    typechk = 0;
 
   /* really execute optimizations now */
   ipslot = 0;
@@ -5137,6 +5194,19 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
             case SIZE_WORD:     *(dbstart+2) |= 0x10; break;
             case SIZE_DOUBLE:   *(dbstart+2) |= 0x14; break;
             case SIZE_BYTE:     *(dbstart+2) |= 0x18; break;
+          }
+          break;
+        case S_TEX:
+          *(dbstart+4) |= 0x08;  /* make Au.L in 3rd word of TEX instruction */
+          switch (sz) {
+            case SIZE_WORD:
+              *(dbstart+4) |= 0x02;
+              *(dbstart+5) |= 0x01;
+              break;
+            case SIZE_LONG:
+              *(dbstart+4) |= 0x04;
+              *(dbstart+5) |= 0x02;
+              break;
           }
           break;
         default:
@@ -5293,6 +5363,7 @@ eval_done:
   /* restore flags and last_size of real ip to allow instruction_size() */
   realip->ext.un.real.flags = ipflags;
   realip->ext.un.real.last_size = lastsize;
+  typechk = oldtypechk;
 
   return db;
 }

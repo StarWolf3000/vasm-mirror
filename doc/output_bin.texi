@@ -3,21 +3,21 @@ selected with the @option{-Fbin} option.
 
 @section Legal
 
-    This module is written in 2002-2021 by Volker Barthelmann and
+    This module is written in 2002-2023 by Volker Barthelmann and
     Frank Wille and is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
  
 @table @option
+    @item -apple-bin
+        Writes an Apple DOS 3.3 binary file header preceding the output
+        file, which consists of a 16-bit start/load address and a 16-bit
+        file length in little-endian order.
     @item -atari-com
         Writes an Atari DOS COM header preceding the output file. It has
         a standard header (@code{0xFFFF}), which is followed by any
         number of sections. Each section starts with two little-endian
         words defining the address of the first and last byte in memory.
-    @item -apple-bin
-        Writes an Apple DOS 3.3 binary file header preceding the output
-        file, which consists of a 16-bit start/load address and a 16-bit
-        file length in little-endian order.
     @item -cbm-prg
         Writes a Commodore PRG header preceding the output file, which
         consists of two bytes in little-endian order, defining the load
@@ -38,10 +38,21 @@ selected with the @option{-Fbin} option.
         option will be silently ignored.
         Omitting this option will usually define the execution address
         to be the same as the load address.
+    @item -foenix-pgx
+        Writes a simple, single-segment format for the 65816-based Foenix
+        computers. The header defines the program's load address, which is
+        also the start address.
+    @item -foenix-pgz
+        Write a multi-segment format for the 65816-based Foenix computers.
+        The format is derived from binary format used by Western Design
+        Center's C compiler. Every segment is stored with load address and
+        size, and there is also a start address defined.
     @item -oric-mc
         Writes a machine code file header for Oric-1, Oric-Atmos and
         compatible systems. It includes the file type and name, as well as
-        the first and last address of the program to load.
+        the first and last address of the program to load. Note, that the
+        name defaults to the output file name, limited to 15 characters.
+        A ".tap" extension will be removed automatically.
     @item -oric-mcx
         Same as @option{-oric-mc}, but sets the auto-execute flag in
         the header.

@@ -3,7 +3,7 @@ with the extension @code{std}.
 
 @section Legal
 
-    This module is written in 2002-2022 by Volker Barthelmann and
+    This module is written in 2002-2023 by Volker Barthelmann and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -13,8 +13,8 @@ This syntax module provides the following additional options:
 @table @option
  
 @item -ac
- Immediately allocate common symbols in the .bss/.sbss section and
- define them as externally visible.
+ Immediately allocate common symbols in the @code{.bss}/@code{.sbss}
+ section and define them as externally visible.
 @item -align
  Enforces the backend's natural alignment for all data directives
  (@code{.word}, @code{.long}, @code{.float}, etc.).
@@ -39,7 +39,7 @@ Local labels may either be preceded by a '@code{.}' (unless option
 and consist out of digits only.
 These labels exist and keep their value between two global label definitions.
 
-A special form of reusable "local" labels, independant of global labels,
+A special form of reusable "local" labels, independent of global labels,
 may be defined by using a single digit from @code{0} to @code{9}.
 You can reference the nearest previous digit-label with @code{Nb} and the
 nearest following digit-label with @code{Nf}, where @code{N} is such a digit.
@@ -126,12 +126,13 @@ See @code{.string}.
 
 @item .comm <symbol>,<size>[,<align>]
       Defines a common symbol which has a size of <size> bytes. The
-      final size and alignment will be assigned by the linker, which
+      final size and alignment is assigned by the linker, which
       will use the highest size and alignment values of all common
-      symbols with the same name found. A common symbol is allocated
-      in the .bss section in the final executable. ".comm"-areas of
-      less than 8 bytes in size are aligned to word boundaries, other-
-      wise to doubleword boundaries.
+      symbols with the same name found. A common symbol is usually
+      allocated in the .bss section of the final executable.
+      In case the optional <align> argument is not given,
+      @code{.comm}-areas of less than 8 bytes in size are aligned
+      to word boundaries, otherwise to doubleword boundaries.
 
 @item .double <exp1>[,<exp2>...]
       Parse one of more IEEE double precision floating point expressions and
@@ -141,6 +142,10 @@ See @code{.string}.
 @item .else
       Assemble the following block only if the previous @code{.if}
       condition was false.
+
+@item .elseif <exp>
+      Same as @code{.else} followed by @code{.if}, but without the
+      need for an @code{.endif}. Avoids nesting.
 
 @item .endif
       Ends a block of conditional assembly.
@@ -279,10 +284,10 @@ See @code{.string}.
       memory in the current section using the backend's endianness.
 
 @item .macro <name> [<argname1>[=<default>][,<argname2>...]]
-      Defines a macro which can be referenced by <name>. The macro
-      definition is closed by an @code{.endm} directive. The names
-      of the arguments, which may be passed to this macro, must be
-      declared directly following the macro name. You can define an
+      Defines a macro, which can be referenced by <name>. The macro
+      definition is closed by an @code{.endm} directive. The argument
+      names, which may be passed to this macro, must be declared directly
+      following the macro name, separated by white-space. You can define an
       optional default value in the case an argument is left out.
       Note that macro names are case-insensitive while the argument
       names are case-sensitive.
@@ -361,7 +366,7 @@ See @code{.string}.
          section has uninitialized data
 
 @item i 
-         section has directives (info section)
+         section has directives (info or offsets section)
 
 @item n 
          section can be discarded
@@ -461,7 +466,7 @@ See @code{.string}.
       Just for compatibility. Do nothing.
 
 @item .type <symbol>,<type>
-      Set type of symbol called <symbol> to <type>, which must be one of:
+      Set type of symbol named <symbol> to <type>, which must be one of:
 @table @code
       @item 1: Object
       @item 2: Function

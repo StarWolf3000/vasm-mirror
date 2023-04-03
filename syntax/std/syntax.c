@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2022 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2023 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 #include "stabs.h"
@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm std syntax module 5.4 (c) 2002-2022 Volker Barthelmann";
+const char *syntax_copyright="vasm std syntax module 5.5 (c) 2002-2023 Volker Barthelmann";
 hashtable *dirhash;
 int dotdirs = 1;
 
@@ -161,7 +161,7 @@ static taddr comma_constexpr(char **s)
 
 static void handle_section(char *s)
 {
-  char *name,*attr,*new,*p;
+  char *name,*attr,*p;
   strbuf *namebuf;
   uint32_t mem=0;
   section *sec;
@@ -186,11 +186,10 @@ static void handle_section(char *s)
           s++;
           if(typebuf=parse_identifier(0,&s)){
             if(!strcmp(typebuf->str,"nobits")){
-              if(strchr(attr,'u')==NULL){
-                new=strbuf_alloc(typebuf,attrbuf->len+2);
-                new=mymalloc(attrbuf->len+2);
-                sprintf(new,"u%s",attr);
-                attr=new;
+              if(!strchr(attr,'u')){
+                attr=strbuf_alloc(attrbuf,attrbuf->len+2);
+                strcat(attr,"u");  /* append 'u' for "nobits" */
+                attrbuf->len++;
               }
             }else{
               if(strcmp(typebuf->str,"progbits"))
@@ -815,11 +814,11 @@ static void handle_ifnb(char *s)
   cond_if(!ISEOL(s));
 }
 
-static void ifexp(char *s,int c)
+static int eval_ifexp(char **s,int c)
 {
-  expr *condexp = parse_expr_tmplab(&s);
+  expr *condexp = parse_expr_tmplab(s);
   taddr val;
-  int b;
+  int b = 0;
 
   if (eval_expr(condexp,&val,NULL,0)) {
     switch (c) {
@@ -832,12 +831,15 @@ static void ifexp(char *s,int c)
       default: ierror(0); break;
     }
   }
-  else {
+  else
     general_error(30);  /* expression must be constant */
-    b = 0;
-  }
-  cond_if(b);
   free_expr(condexp);
+  return b;
+}
+
+static void ifexp(char *s,int c)
+{
+  cond_if(eval_ifexp(&s,c));
   eol(s);
 }
 
@@ -874,6 +876,11 @@ static void handle_ifle(char *s)
 static void handle_else(char *s)
 {
   eol(s);
+  cond_skipelse();
+}
+
+static void handle_elseif(char *s)
+{
   cond_skipelse();
 }
 
@@ -1086,6 +1093,7 @@ struct {
   "iflt",handle_iflt,
   "ifle",handle_ifle,
   "else",handle_else,
+  "elseif",handle_elseif,
   "endif",handle_endif,
   "abort",handle_abort,
   "err",handle_err,
@@ -1186,6 +1194,10 @@ void parse(void)
           cond_else();
         else if (directives[idx].func == handle_endif)
           cond_endif();
+        else if (directives[idx].func == handle_elseif) {
+          s = skip(s);
+          cond_elseif(eval_ifexp(&s,1));
+        }
       }
       continue;
     }
@@ -1267,9 +1279,12 @@ void parse(void)
     }
 #endif
     if(ip){
+#if MAX_OPERANDS>0
+      if (ip->op[0]==NULL&&op_cnt!=0)
+        syntax_error(6);  /* mnemonic without operands has tokens in op.field */
+#endif
       add_atom(0,new_inst_atom(ip));
-    }else
-      ;
+    }
   }
 
   cond_check();
@@ -1446,14 +1461,14 @@ strbuf *get_local_label(int n,char **start)
 
   if (!gas_compat && *s=='.') {
     s++;
-    while (isdigit((unsigned char)*s) || *s=='_')  /* '_' needed for ".\@" */
+    while (isdigit((unsigned char)*s))
       s++;
     if (s > (*start+1)) {
       name = make_local_label(n,NULL,0,*start,s-*start);
       *start = skip(s);
     }
   }
-  else if (isdigit((unsigned char)*s) || *s=='_') {  /* '_' needed for "\@$" */
+  else if (isdigit((unsigned char)*s)) {
     s++;
     if (*s=='b' || *s=='f') {
       unsigned serno = local_labno[*(s-1)-'0'];

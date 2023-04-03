@@ -451,11 +451,24 @@ void print_atom(FILE *f,atom *p)
 /* prints and formats an expression from a PRINTEXPR atom */
 void atom_printexpr(printexpr *pexp,section *sec,taddr pc)
 {
+  symbol *base=NULL;
   taddr t;
   long long v;
   int i;
 
-  eval_expr(pexp->print_exp,&t,sec,pc);
+  if (!eval_expr(pexp->print_exp,&t,sec,pc)) {
+    find_base(pexp->print_exp,&base,sec,pc);
+    if (base!=NULL &&
+        base->type==IMPORT && !(base->flags&(EXPORT|COMMON|WEAK))) {
+      printf("<undefined>");
+      if (t == 0)
+        return;
+      if (t > 0)
+        putchar('+');
+      pexp->type = PEXP_SDEC;
+    }
+  }
+
   if (pexp->type==PEXP_SDEC && (t&(1LL<<(pexp->size-1)))!=0) {
     /* signed decimal */
     v = -1;

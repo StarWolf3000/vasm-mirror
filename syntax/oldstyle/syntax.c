@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2022 by Frank Wille */
+/* (c) in 2002-2023 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm oldstyle syntax module 0.17 (c) 2002-2022 Frank Wille";
+const char *syntax_copyright="vasm oldstyle syntax module 0.18 (c) 2002-2023 Frank Wille";
 hashtable *dirhash;
 int dotdirs;
 
@@ -302,15 +302,73 @@ static void handle_secdata(char *s)
 }
 
 
+static atom *do_space(int size,expr *cnt,expr *fill)
+{
+  atom *a = new_space_atom(cnt,size>>3,fill);
+
+  add_atom(0,a);
+  return a;
+}
+
+
+static void handle_space(char *s,int size)
+{
+  expr *cnt,*fill=0;
+
+  cnt = parse_expr_tmplab(&s);
+  s = skip(s);
+  if (*s == ',') {
+    s = skip(s+1);
+    fill = parse_expr_tmplab(&s);
+  }
+  do_space(size,cnt,fill);
+  eol(s);
+}
+
+
+static void handle_uspace(char *s,int size)
+{
+  expr *cnt;
+  atom *a;
+
+  cnt = parse_expr_tmplab(&s);
+  a = do_space(size,cnt,0);
+  a->content.sb->flags |= SPC_UNINITIALIZED;
+  eol(s);
+}
+
+
+static void handle_fixedspc1(char *s)
+{
+  do_space(8,number_expr(1),0);
+  eol(s);
+}
+
+
+static void handle_fixedspc2(char *s)
+{
+  do_space(8,number_expr(2),0);
+  eol(s);
+}
+
+
 static void handle_d8(char *s)
 {
-  handle_data(s,8);
+  s = skip(s);
+  if (ISEOL(s))
+    handle_fixedspc1(s);
+  else
+    handle_data(s,8);
 }
 
 
 static void handle_d16(char *s)
 {
-  handle_data(s,16);
+  s = skip(s);
+  if (ISEOL(s))
+    handle_fixedspc2(s);
+  else
+    handle_data(s,16);
 }
 
 
@@ -423,56 +481,6 @@ static void handle_align(char *s)
 static void handle_even(char *s)
 {
   do_alignment(2,number_expr(0));
-  eol(s);
-}
-
-
-static atom *do_space(int size,expr *cnt,expr *fill)
-{
-  atom *a = new_space_atom(cnt,size>>3,fill);
-
-  add_atom(0,a);
-  return a;
-}
-
-
-static void handle_space(char *s,int size)
-{
-  expr *cnt,*fill=0;
-
-  cnt = parse_expr_tmplab(&s);
-  s = skip(s);
-  if (*s == ',') {
-    s = skip(s+1);
-    fill = parse_expr_tmplab(&s);
-  }
-  do_space(size,cnt,fill);
-  eol(s);
-}
-
-
-static void handle_uspace(char *s,int size)
-{
-  expr *cnt;
-  atom *a;
-
-  cnt = parse_expr_tmplab(&s);
-  a = do_space(size,cnt,0);
-  a->content.sb->flags |= SPC_UNINITIALIZED;
-  eol(s);
-}
-
-
-static void handle_fixedspc1(char *s)
-{
-  do_space(8,number_expr(1),0);
-  eol(s);
-}
-
-
-static void handle_fixedspc2(char *s)
-{
-  do_space(8,number_expr(2),0);
   eol(s);
 }
 
@@ -1083,6 +1091,7 @@ struct {
   "roffs",handle_roffs,
   "align",handle_align,
   "even",handle_even,
+  "byt",handle_d8,
   "byte",handle_d8,
   "db",handle_d8,
   "dfb",handle_d8,
@@ -1094,6 +1103,7 @@ struct {
   "bss",handle_secbss,
   "wor",handle_d16,
   "word",handle_d16,
+  "wrd",handle_d16,
   "addr",handle_taddr,
   "dw",handle_d16,
   "dfw",handle_d16,
@@ -1111,8 +1121,8 @@ struct {
   "blk",handle_spc8,
   "blkw",handle_spc16,
   "dc",handle_spc8,
-  "byt",handle_fixedspc1,
-  "wrd",handle_fixedspc2,
+  "byt",handle_d8,
+  "wrd",handle_d16,
   "assert",handle_assert,
 #if defined(VASM_CPU_TR3200) /* Clash with IFxx instructions of TR3200 cpu */
   "if_def",handle_ifd,
@@ -1371,8 +1381,24 @@ static char *parse_label_or_pc(char **start)
     s = skip(s+1);
   }
   else {
-    name = parse_labeldef(start,0);
-    s = skip(*start);
+    int lvalid;
+
+    if (isspace((unsigned char )*s)) {
+      s = skip(s);
+      lvalid = 0;  /* colon required, when label doesn't start at 1st column */
+    }
+    else lvalid = 1;
+
+    if (name = parse_symbol(&s)) {
+      s = skip(s);
+      if (*s == ':') {
+        s++;
+        if (*s=='+' || *s=='-')
+          return NULL;  /* likely an operand with anonymous label reference */
+      }
+      else if (!lvalid)
+        return NULL;
+    }
   }
 
   if (name==NULL && *s==current_pc_char && !ISIDCHAR(*(s+1))) {
@@ -1627,8 +1653,13 @@ void parse(void)
     }
 #endif
 
-    if (ip)
+    if (ip) {
+#if MAX_OPERANDS>0
+      if (!igntrail && ip->op[0]==NULL && op_cnt!=0)
+        syntax_error(6);  /* mnemonic without operands has tokens in op.field */
+#endif
       add_atom(0,new_inst_atom(ip));
+    }
   }
 
   cond_check();
@@ -1922,9 +1953,6 @@ int init_syntax()
   current_pc_char = '*';
   current_pc_str[0] = current_pc_char;
   current_pc_str[1] = 0;
-
-  /* colon must be attached to the label to make anonymous labels work */
-  colon_at_label = 1;
 
   if (orgmode != ~0)
     set_section(new_org(orgmode));

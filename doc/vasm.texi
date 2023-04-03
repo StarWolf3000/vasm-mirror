@@ -8,13 +8,13 @@
 @setfilename index.texi
 @settitle vasm manual
 @setchapternewpage odd
-@set UPDATED October 2022
+@set UPDATED March 2023
 
 @ifinfo
 
 This is the manual for the vasm assembler system.
 
-Copyright 2002-2022 Volker Barthelmann
+Copyright 2002-2023 Volker Barthelmann
 
 @end ifinfo
 
@@ -56,7 +56,7 @@ debugging or analyzing the output.
 
 @section Legal
 
-    vasm is copyright in 2002-2022 by Volker Barthelmann.
+    vasm is copyright in 2002-2023 by Volker Barthelmann.
 
     This archive may be redistributed without modifications and used
     for non-commercial purposes.
@@ -68,6 +68,17 @@ debugging or analyzing the output.
     In all other cases you need my written consent.
 
     Certain modules may fall under additional copyrights.
+
+
+@section Contact
+Responsible for the current version of vasm and contact address in
+case of bug reports or support requests:
+@itemize @minus
+  @item Volker Barthelmann (vb@@compilers.de)
+  @item Frank Wille (frank@@phoenix.owl.de)
+In case you have an issue with a specific cpu-, syntax- or output-module,
+please contact the module's author first, if possible.
+@end itemize
 
 
 @section Installation
@@ -121,6 +132,10 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @node TOS output module
 @chapter TOS output module
 @include output_tos.texi
+
+@node GST output module
+@chapter GST output module
+@include output_gst.texi
 
 @node Amiga output module
 @chapter Amiga output module

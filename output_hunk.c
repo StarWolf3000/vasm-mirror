@@ -5,7 +5,7 @@
 #include "osdep.h"
 #include "output_hunk.h"
 #if defined(OUTHUNK) && (defined(VASM_CPU_M68K) || defined(VASM_CPU_PPC))
-static char *copyright="vasm hunk format output module 2.14b (c) 2002-2022 Frank Wille";
+static char *copyright="vasm hunk format output module 2.14c (c) 2002-2022 Frank Wille";
 int hunk_onlyglobal;
 
 /* (currently two-byte only) padding value for not 32-bit aligned code hunks */
@@ -1010,8 +1010,14 @@ static void write_exec(FILE *f,section *sec,symbol *sym)
           else
             fwalign(f,pc,4);
         }
-        else /* HUNK_BSS */
-          fw32(f,(get_sec_size(sec)+3)>>2,1);
+        else {
+          /* HUNK_BSS */
+          uint32_t len = (get_sec_size(sec) + 3) >> 2;
+
+          if (kick1 && len > 0x10000)
+            output_error(18,sec->name);  /* warn about kickstart 1.x bug */
+          fw32(f,len,1);
+        }
 
         if (!kick1)
           reloc_hunk(f,HUNK_ABSRELOC32,1,&reloclist);

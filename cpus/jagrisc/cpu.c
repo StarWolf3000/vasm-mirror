@@ -8,9 +8,9 @@
 mnemonic mnemonics[] = {
 #include "opcodes.h"
 };
-int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
+const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.5 (c) 2014-2017,2020,2021 Frank Wille";
+const char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.5 (c) 2014-2017,2020,2021 Frank Wille";
 char *cpuname = "jagrisc";
 int bitsperbyte = 8;
 int bytespertaddr = 4;

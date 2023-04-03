@@ -80,3 +80,6 @@
   "%s backend does not support floating point",ERROR|FATAL,
   "unknown listing file format \"%s\" ignored",NOLINE|WARNING,  /* 80 */
   "cannot export equate based on imported symbol: <%s>",NOLINE|ERROR,
+  "label definition not allowed here",ERROR,
+  "label defined on the same line as a new section",WARNING,
+  "no debug output possible with source from stdin",WARNING,

@@ -1,6 +1,65 @@
 vasm history
 =============
 
+- 1.9c (29.03.23)
+o Reverted a last-minute change in V1.9b, which broke the O65 output module,
+  used with 6502 and 65816.
+
+- 1.9b (26.03.23)
+o Fixed a rare expression evalulation bug. Previous versions may erroneously
+  evaluate "label - equate" as constant, when the equate is something like
+  "currentPCsymbol - label".
+o Allow a label definition on the same line as a section directive and
+  warn about it.
+o Macro arguments were lost at the second repeat-level inside a macro.
+o Syntax modules warn about garbage characters in the operand field,
+  when the mnemonic doesn't take any operand.
+o No longer cut symbol names in a wide-format listing file after 31 chars.
+o Error messages on macros and repetitions now always include the
+  real source file name and line number in parentheses.
+o Directives for printing expressions into the console (printv, echo, etc.)
+  now print undefined symbols as "<undefined>+offset".
+o New output module "gst" for GST object files (Atari, GST-assembler, Devpac).
+o New output file format "dri" for Atari M68k DRI object files.
+o m68k: Experimental Apollo TEX instruction, using a simplified syntax
+  after a proposal of John H.
+o m68k: Apollo extended/compressed Bcc.B displacements in the range of
+  -256 to 254.
+o m68k: MOVEQ.L suppresses any warning about an out of range operand.
+o m68k: Allow any size-extension for MOVEQ in Devpac-compatibility mode.
+o m68k: Fixed a string-buffer conflict introduced in V1.9a, which occurs
+  when using local symbols in the label field and operand field
+  together with some cpu-specific directives, like EQUR, REG, etc.
+o m68k: Optimize small data label in 020 base displacement to a 16-bit
+  offset, or even to (d16,An) when the index is suppressed, provided
+  that options -sd and -extsd have been given.
+o 6502: Some mnemonics could be misdetected as implied addressing mode
+  when option -i was given: asl, asr, lsr, rol, ror. 45GS02: aslq, asrq,
+  deq, inq, lsrq, rolq, rorq. WDC02: dec, inc.
+o mot-syntax: Do not allow a section with the same name and same type,
+  but with different memory attributes.
+o mot-syntax: New option -nolocpfx to disable local symbols by label-
+  prefix (usually '.').
+o mot-syntax: ELIF directive implements a real else-if.
+o mot-syntax: Export equate symbols with double-colon in vasm-native mode.
+o std-syntax: Fixed an issue caused by the introduction of one-digit
+  temporary labels in V1.9a. Labels beginning with _f or _b were
+  misdetected as forward/backward references to such labels.
+o std-syntax: Added missing .elseif directive.
+o oldstyle-syntax: All byte-directives (byt, byte, dfb, etc.) increment
+  the pc by one without any operand. All word-directives (wor, wrd, word,
+  etc.) increment the pc by two without any operand. Similar to a
+  "declare storage" directive.
+o oldstyle-syntax: Whitespace between a label and its colon are allowed
+  again.
+o hunk-output: Warn about inability of Kickstart 1.x to initialize BSS
+  sections greater than 256k.
+o bin-output: ORIC file names in the tape header are limited to 15
+  characters and a ".tap" extension is removed automatically.
+o bin-output: Added support for the PGX and PGZ format, used by 65816-
+  based C256 Foenix computers.
+o tos-output: Support DRI-format object files. New option: -Fdri.
+
 - 1.9a (02.10.22)
 o Reads the input from stdin when no source file name is given.
 o Small performance improvements. Tuned hash table sizes. Reduced

@@ -1,19 +1,23 @@
 /* output_bin.c binary output driver for vasm */
-/* (c) in 2002-2009,2013-2021 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2009,2013-2023 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
 #ifdef OUTBIN
-static char *copyright="vasm binary output module 2.1 (c) 2002-2021 Volker Barthelmann and Frank Wille";
+static char *copyright="vasm binary output module 2.2 (c) 2002-2023 Volker Barthelmann and Frank Wille";
 
-#define BINFMT_RAW          0   /* no header */
-#define BINFMT_CBMPRG       1   /* Commodore VIC-20/C-64 PRG format */
-#define BINFMT_ATARICOM     2   /* Atari 800 DOS COM format */
-#define BINFMT_APPLEBIN     3   /* Apple DOS 3.3 binary file */
-#define BINFMT_DRAGONBIN    4   /* Dragon DOS binary format */
-#define BINFMT_COCOML       5   /* Tandy Color Computer machine lang. file */
-#define BINFMT_ORICMC       6   /* Oric machine code file */
-#define BINFMT_ORICMCX      7   /* Oric machine code file auto-exec */
+enum {
+  BINFMT_RAW,           /* no header */
+  BINFMT_CBMPRG,        /* Commodore VIC-20/C-64 PRG format */
+  BINFMT_ATARICOM,      /* Atari 800 DOS COM format */
+  BINFMT_APPLEBIN,      /* Apple DOS 3.3 binary file */
+  BINFMT_DRAGONBIN,     /* Dragon DOS binary format */
+  BINFMT_COCOML,        /* Tandy Color Computer machine lang. file */
+  BINFMT_ORICMC,        /* Oric machine code file */
+  BINFMT_ORICMCX,       /* Oric machine code file auto-exec */
+  BINFMT_FOENIXPGX,     /* C256 Foenix single-section format */
+  BINFMT_FOENIXPGZ      /* C256 Foenix multi-section format */
+};
 
 static int binfmt = BINFMT_RAW;
 static char *exec_symname;
@@ -33,10 +37,11 @@ static int orgcmp(const void *sec1,const void *sec2)
 static void write_output(FILE *f,section *sec,symbol *sym)
 {
   section *s,*s2,**seclist,**slp;
-  atom *p;
+  unsigned long long pc=0,npc;
   size_t nsecs;
   long hdroffs;
-  unsigned long long pc=0,npc;
+  char *nptr;
+  atom *p;
 
   if (!sec)
     return;
@@ -76,19 +81,6 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 
   /* write an optional header first */
   switch (binfmt) {
-    case BINFMT_CBMPRG:
-      /* Commodore 6502 PRG header:
-       * 00: LSB of load address
-       * 01: MSB of load address
-       */
-      fw16(f,sec->org,0);
-      break;
-
-    case BINFMT_ATARICOM:
-      /* ATARI COM header: $FFFF */
-      fw16(f,0xffff,0);
-      break;
-
     case BINFMT_APPLEBIN:
       /* Apple DOS binary file header:
        * 00-01: load address (little endian)
@@ -97,6 +89,19 @@ static void write_output(FILE *f,section *sec,symbol *sym)
       fw16(f,sec->org,0);
       hdroffs = ftell(f);  /* remember location of file length */
       fw16(f,0,0);         /* skip file length, will be patched later */
+      break;
+
+    case BINFMT_ATARICOM:
+      /* ATARI COM header: $FFFF */
+      fw16(f,0xffff,0);
+      break;
+
+    case BINFMT_CBMPRG:
+      /* Commodore 6502 PRG header:
+       * 00: LSB of load address
+       * 01: MSB of load address
+       */
+      fw16(f,sec->org,0);
       break;
 
     case BINFMT_DRAGONBIN:
@@ -116,6 +121,21 @@ static void write_output(FILE *f,section *sec,symbol *sym)
       fw8(f,0xaa);
       break;
 
+    case BINFMT_FOENIXPGX:
+      /* C256 Foenix single-segment header PGX
+       * 00:    "PGX"
+       * 03:    $01 for 65816 CPU
+       * 04-07: load/execute address (little endian)
+       */
+      fw32(f,0x50475801,1);
+      fw32(f,sec->org,0);
+      break;
+
+    case BINFMT_FOENIXPGZ:
+      /* C256 Foenix multi-segment header PGZ: "Z" followed by seg. headers */
+      fw8(f,'Z');
+      break;
+
     case BINFMT_ORICMC:
     case BINFMT_ORICMCX:
       /* Oric machine code file header:
@@ -127,7 +147,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
        * 09-10: last address of data stored (big-endian)
        * 11-12: first address of data stored (big-endian)
        * 13:    reserved
-       * 14-  : null-terminated file name, maximum of 16 characters
+       * 14-  : null-terminated file name, maximum of 15 characters in name
        */
       fw32(f,0x16161616,1);
       fw8(f,0x24);
@@ -138,7 +158,12 @@ static void write_output(FILE *f,section *sec,symbol *sym)
       fw16(f,0,1);         /* skip last address, will be patched later */
       fw16(f,sec->org,1);
       fw8(f,0);
-      fprintf(f,"%s",outname);
+      nptr = outname;
+      while (*nptr) {
+        if (!stricmp(nptr,".tap") || (nptr-outname)>=15)
+          break;  /* remove .tap extension, no more than 15 characters */
+        fw8(f,toupper((unsigned char)*nptr++));
+      }
       fw8(f,0);
       break;
   }
@@ -172,6 +197,14 @@ static void write_output(FILE *f,section *sec,symbol *sym)
         fw8(f,0);
         fw16(f,s->pc-s->org,1);
         fw16(f,s->org,1);
+        break;
+
+      case BINFMT_FOENIXPGZ:
+        /* 00-02: load-address of segment (little endian)
+         * 03-05: size of segment (little endian)
+         */
+        fw24(f,s->org,0);
+        fw24(f,s->pc-s->org,0);
         break;
 
       default:
@@ -216,6 +249,13 @@ static void write_output(FILE *f,section *sec,symbol *sym)
       fw16(f,exec_addr?exec_addr:sec->org,1);
       break;
 
+    case BINFMT_FOENIXPGZ:
+      /* trailer with execute-address and a zero-size to indicte that
+         no more segments follow */
+      fw24(f,exec_addr?exec_addr:sec->org,0);
+      fw24(f,0,0);
+      break;
+
     case BINFMT_ORICMC:
     case BINFMT_ORICMCX:
       fseek(f,hdroffs,SEEK_SET);
@@ -233,24 +273,32 @@ static int output_args(char *p)
     exec_symname = p + 6;
     return 1;
   }
-  else if (!strcmp(p,"-cbm-prg")) {
-    binfmt = BINFMT_CBMPRG;
+  else if (!strcmp(p,"-apple-bin")) {
+    binfmt = BINFMT_APPLEBIN;
     return 1;
   }
   else if (!strcmp(p,"-atari-com")) {
     binfmt = BINFMT_ATARICOM;
     return 1;
   }
-  else if (!strcmp(p,"-apple-bin")) {
-    binfmt = BINFMT_APPLEBIN;
+  else if (!strcmp(p,"-cbm-prg")) {
+    binfmt = BINFMT_CBMPRG;
+    return 1;
+  }
+  else if (!strcmp(p,"-coco-ml")) {
+    binfmt = BINFMT_COCOML;
     return 1;
   }
   else if (!strcmp(p,"-dragon-bin")) {
     binfmt = BINFMT_DRAGONBIN;
     return 1;
   }
-  else if (!strcmp(p,"-coco-ml")) {
-    binfmt = BINFMT_COCOML;
+  else if (!strcmp(p,"-foenix-pgx")) {
+    binfmt = BINFMT_FOENIXPGX;
+    return 1;
+  }
+  else if (!strcmp(p,"-foenix-pgz")) {
+    binfmt = BINFMT_FOENIXPGZ;
     return 1;
   }
   else if (!strcmp(p,"-oric-mc")) {

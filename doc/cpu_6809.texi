@@ -53,11 +53,11 @@ select the size of an addressing mode or the LSB/MSB of a 16-bit word.
 
 @itemize @minus
 @item When direct or extended addressing modes are applicable,
- @code{<} forces direct mode and @code{>} forces extended mode.
-@item For indexed, PC-relative addressing modes @code{<} forces an
- 8-bit offset, while @code{>} forces a 16-bit offset.
+ @code{<} enforces direct mode and @code{>} enforces extended mode.
+@item For indexed, PC-relative addressing modes @code{<} enforces an
+ 8-bit offset, while @code{>} enforces a 16-bit offset.
 @item For all other indexed addressing modes with a constant offset
- @code{<} forces an 8-bit offset and @code{>} forces a 16-bit offset.
+ @code{<} enforces an 8-bit offset and @code{>} enforces a 16-bit offset.
 @item For immediate addressing modes or data constants @code{<} selects
  the LSB of a word and @code{>} selects the MSB.
 @item When applying the operation @code{/256}, @code{%256} or @code{&256}

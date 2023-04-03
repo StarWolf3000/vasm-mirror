@@ -27,3 +27,4 @@
     "assuming true",WARNING,
   "conditional assembly for pass 2 is not really supported, assuming false",
     WARNING,
+  "modified memory attributes for section \"%s\"",ERROR,

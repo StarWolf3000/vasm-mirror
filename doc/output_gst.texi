@@ -1,0 +1,46 @@
+This chapter describes the gst output module which can be
+selected with the @option{-Fgst} option.
+
+@section Legal
+
+    This module is written in 2023 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+
+None.
+
+@section General
+
+This module outputs the GST object file format by GST Software, which
+was used by several development tools on the Atari M68k computers.
+For example by the GST assembler and Devpac.
+
+@section Restrictions
+
+@itemize @minus
+@item Although there can be multiple sections, they don't have a type.
+@item Maximum size of section and symbol names is 255 characters.
+@item Only absolute, pc-relative and common-symbol relocations are
+      supported at the moment.
+@item Possible relocation sizes are 8, 16 and 32 bits.
+@end itemize
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+@item Needs testing.
+@item Missing support for base-relative relocations.
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3002: output module doesn't support cpu %s
+@item 3011: weak symbol <%s> not supported by output format, treating as global
+@item 3013: reloc type %d, mask 0x%lx to symbol %s + 0x%lx does not fit into %u bits
+@end itemize

@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2022 by Frank Wille */
+/* (c) in 2002-2023 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm motorola syntax module 3.16 (c) 2002-2022 Frank Wille";
+const char *syntax_copyright="vasm motorola syntax module 3.17 (c) 2002-2023 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -408,7 +408,7 @@ static char *read_sec_attr(char *attr,char *s,uint32_t *mem)
 }
 
 
-static void motsection(section *sec,uint32_t mem)
+static section *motsection(section *sec,uint32_t mem)
 /* mot-syntax specific section initializations on a new section */
 {
   if (!devpac_compat)
@@ -424,11 +424,16 @@ static void motsection(section *sec,uint32_t mem)
 #endif
 
   /* set optional memory attributes (e.g. AmigaOS hunk format Chip/Fast) */
-  sec->memattr = mem;
+  if (sec->memattr!=0 && sec->memattr!=mem)
+    syntax_error(27,sec->name);  /* modified memory attributes for section */
+  else
+    sec->memattr = mem;
 
   /* a section named __MERGED allows base-relative addressing optimizations */
   if (!strcmp(sec->name,"__MERGED"))
     sec->flags |= NEAR_ADDRESSING;
+
+  return sec;
 }
 
 
@@ -472,11 +477,8 @@ static void handle_section(char *s)
     /* otherwise a missing section type defaults to CODE */
     strcpy(attr,code_type);
   }
-
-  if (s) {
-    motsection(new_section(name,attr,1),mem);
-    switch_section(name,attr);
-  }
+  if (s)
+    set_section(motsection(new_section(name,attr,1),mem));
 }
 
 
@@ -498,8 +500,7 @@ static void handle_offset(char *s)
 static void nameattrsection(char *secname,char *sectype,uint32_t mem)
 /* switch to a section called secname, with attributes sectype+addattr */
 {
-  motsection(new_section(secname,sectype,1),mem);
-  switch_section(secname,sectype);
+  set_section(motsection(new_section(secname,sectype,1),mem));
 }
 
 static void handle_csec(char *s)
@@ -1316,7 +1317,7 @@ static void handle_ifmacrond(char *s)
   ifmacro(s,0);
 }
 
-static int eval_ifexp_advance(char **s,int c)
+static int eval_ifexp(char **s,int c)
 {
   expr *condexp = parse_expr_tmplab(s);
   taddr val;
@@ -1341,14 +1342,9 @@ static int eval_ifexp_advance(char **s,int c)
   return b;
 }
 
-static int eval_ifexp(char *s,int c)
-{
-  return eval_ifexp_advance(&s,c);
-}
-
 static void ifexp(char *s,int c)
 {
-  cond_if(eval_ifexp(s,c));
+  cond_if(eval_ifexp(&s,c));
 }
 
 /* Move line_ptr to the end of the string if the parsing should stop,
@@ -1368,11 +1364,11 @@ static char *handle_iif(char *line_ptr)
     /* Move the line ptr to the beginning of the iif expression. */
     line_ptr = skip(line_ptr);
 
-    /* As eval_ifexp_advance() may modify the input string, duplicate
+    /* As eval_ifexp() may modify the input string, duplicate
        it for the case when the parsing should continue. */
     expr_copy = mystrdup(line_ptr);
     expr_end = expr_copy;
-    condition = eval_ifexp_advance(&expr_end,1);
+    condition = eval_ifexp(&expr_end,1);
     expr_len = expr_end - expr_copy;
     myfree(expr_copy);
 
@@ -1431,6 +1427,11 @@ static void handle_ifp2(char *s)
 }
 
 static void handle_else(char *s)
+{
+  cond_skipelse();
+}
+
+static void handle_elseif(char *s)
 {
   cond_skipelse();
 }
@@ -1874,6 +1875,7 @@ struct {
   "if2",0,handle_ifp2,
   "else",P|D,handle_else,
   "elseif",P|D,handle_else,
+  "elif",0,handle_elseif,
   "endif",P|D,handle_endif,
   "endc",P|D,handle_endif,
   "rsreset",P|D,handle_rsreset,
@@ -2139,6 +2141,10 @@ void parse(void)
           cond_else();
         else if (directives[idx].func == handle_endif)
           cond_endif();
+        else if (directives[idx].func == handle_elseif) {
+          s = skip(s);
+          cond_elseif(eval_ifexp(&s,1));
+        }
       }
       continue;
     }
@@ -2161,6 +2167,8 @@ void parse(void)
       if (!strnicmp(s,"equ",3) && isspace((unsigned char)*(s+3))) {
         s = skip(s+3);
         label = new_equate(labname,parse_expr_tmplab(&s));
+        if (!devpac_compat && !phxass_compat)
+          label->flags |= symflags;
       }
 #if FLOAT_PARSER
       else if (!strnicmp(s,"fequ.",5) && isspace((unsigned char)*(s+6))) {
@@ -2186,6 +2194,8 @@ void parse(void)
         else {
           s = skip(s);
           label = new_equate(labname,parse_expr_tmplab(&s));
+          if (!devpac_compat && !phxass_compat)
+            label->flags |= symflags;
         }
       }
       else if (!strnicmp(s,"set",3) && isspace((unsigned char)*(s+3))) {
@@ -2307,8 +2317,13 @@ void parse(void)
     }
 #endif
 
-    if (ip)
+    if (ip) {
+#if MAX_OPERANDS>0
+      if (allow_spaces && ip->op[0]==NULL && op_cnt!=0)
+        syntax_error(6);  /* mnemonic without operands has tokens in op.field */
+#endif
       add_atom(0,new_inst_atom(ip));
+    }
   }
 
   cond_check();  /* check for open conditional blocks */
@@ -2498,7 +2513,7 @@ int expand_macro(source *src,char **line,char *d,int dlen)
               nc = -1;
           }
         }
-        if (*s++ != '>') {
+        if (*s++!='>' || nc<=0) {
           syntax_error(19);  /* invalid numeric expansion */
           return 0;
         }
@@ -2718,6 +2733,7 @@ int syntax_args(char *p)
     dot_idchar = 1;
     allmp = 1;
     warn_unalloc_ini_dat = 1;
+    disable_warning(84);  /* allow labels with section directives */
     return 1;
   }
   else if (!strcmp(p,"-phxass")) {
@@ -2728,6 +2744,7 @@ int syntax_args(char *p)
     allow_spaces = 1;
     dot_idchar = 1;
     allmp = 1;
+    disable_warning(84);  /* allow labels with section directives */
     return 1;
   }
   else if (!strcmp(p,"-spaces")) {
@@ -2740,6 +2757,10 @@ int syntax_args(char *p)
   }
   else if (!strcmp(p,"-localu")) {
     local_char = '_';
+    return 1;
+  }
+  else if (!strcmp(p,"-nolocpfx")) {
+    local_char = 0;
     return 1;
   }
   else if (!strcmp(p,"-warncomm")) {

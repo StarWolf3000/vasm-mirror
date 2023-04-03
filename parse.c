@@ -1,5 +1,5 @@
 /* parse.c - global parser support functions */
-/* (c) in 2009-2022 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2023 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -8,7 +8,6 @@ int nocase_macros;      /* macro names are case-insensitive */
 int maxmacparams = MAXMACPARAMS;
 int maxmacrecurs = MAXMACRECURS;
 int msource_disable;    /* true: disable source level debugging within macro */
-int colon_at_label;     /* colon must be attached to label definition */
 
 #ifndef MACROHTABSIZE
 #define MACROHTABSIZE 0x800
@@ -357,8 +356,7 @@ char *parse_labeldef(char **line,int needcolon)
   }
 
   if (labname = parse_symbol(&s)) {
-    if (!colon_at_label)
-      s = skip(s);  /* blanks between label and colon allowed */
+    s = skip(s);
     if (*s == ':') {
       s++;
       needcolon = 0;
@@ -844,7 +842,7 @@ static void start_repeat(char *rept_end)
     ierror(0);
 
   if (rept_cnt != 0) {
-    sprintf(buf,"REPEAT:%s:line %d",cur_src->name,cur_src->line);
+    sprintf(buf,"REPEAT:%s:line %d",rept_defsrc->name,rept_defline);
     src = new_source(buf,NULL,rept_start,rept_end-rept_start);
     src->irpname = rept_name;
     src->irpvals = NULL;
@@ -903,7 +901,7 @@ static void start_repeat(char *rept_end)
         break;
     }
 
-    if (cur_src->macro != NULL) {
+    if (cur_src->num_params >= 0) {
       /* repetition in a macro: get parameters */
       src->num_params = cur_src->num_params;
       for (i=0; i<src->num_params; i++) {

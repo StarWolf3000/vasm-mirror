@@ -1,6 +1,6 @@
 /*
 ** cpu.c 650x/65C02/6280/45gs02/65816 cpu-description file
-** (c) in 2002,2006,2008-2012,2014-2022 by Frank Wille
+** (c) in 2002,2006,2008-2012,2014-2023 by Frank Wille
 */
 
 #include "vasm.h"
@@ -8,10 +8,9 @@
 mnemonic mnemonics[] = {
 #include "opcodes.h"
 };
+const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
-
-char *cpu_copyright="vasm 6502 cpu backend 0.11a (c) 2002,2006,2008-2012,2014-2022 Frank Wille";
+const char *cpu_copyright="vasm 6502 cpu backend 0.12 (c) 2002,2006,2008-2012,2014-2023 Frank Wille";
 char *cpuname = "6502";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -320,7 +319,7 @@ int parse_operand(char *p,int len,operand *op,int required)
   }
 
   p = skip(p);
-  if (p-start < len)
+  if (*p && p-start<len)
     cpu_error(1);  /* trailing garbage in operand */
   return ret;
 }

@@ -3,14 +3,14 @@
 
 #include "vasm.h"
 
-char *cpu_copyright="VideoCore IV cpu backend 0.1 (c) in 2013 Volker Barthelmann";
+const char *cpu_copyright="VideoCore IV cpu backend 0.1 (c) in 2013 Volker Barthelmann";
 char *cpuname="vidcore";
 
 mnemonic mnemonics[]={
 #include "opcodes.h"
 };
 
-int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
+const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
 int bitsperbyte=8;
 int bytespertaddr=4;

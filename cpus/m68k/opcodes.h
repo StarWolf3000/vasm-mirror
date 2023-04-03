@@ -2635,6 +2635,7 @@
   "tblu",     {DD,D_},      {{TBL,R2H},        {0xf800,0x0000},2|BWL|S_EXT,cpu32},
   "tblun",    {CT,D_},      {{SEA,R2H},        {0xf800,0x0500},2|BWL|S_EXT,cpu32},
   "tblun",    {DD,D_},      {{TBL,R2H},        {0xf800,0x0400},2|BWL|S_EXT,cpu32},
+  "tex",      {A_,A_,A_,QI,D_},{{RLO,R3H,R2H,NOP,A2M},{0xfe30,0x003e},3|BWL|S_TEX,apollo},
   "tpf",      {IM},         {{NEA},            {0x51f8,0},1|WL|S_TRAP,mcf},
   "tpf",      {0},          {{0},              {0x51fc,0},1|UNS|S_NONE,mcf},
   "transhi",  {VDR4,VDR2},  {{RLO,A2M},        {0xfe00,0x0002},2|Q|S_NONE,apollo},

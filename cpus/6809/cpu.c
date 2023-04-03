@@ -7,9 +7,9 @@
 mnemonic mnemonics[] = {
 #include "opcodes.h"
 };
-int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
+const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5 (c)2020-2022 by Frank Wille";
+const char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5 (c)2020-2022 by Frank Wille";
 char *cpuname = "6809";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
@@ -337,7 +337,7 @@ int parse_operand(char *p,int len,operand *op,int required)
       return PO_NOMATCH;  /* nothing read */
 
     p = skip(p);
-    if (p-start < len) {
+    if (*p && p-start<len) {
       cpu_error(0);  /* trailing garbage */
       return PO_CORRUPT;
     }

@@ -116,5 +116,6 @@ This module has the following error messages:
 @item 3016: absolute file path exceeds maximum size of %d characters
 @item 3017: converting NONE relocation <%s> to 8-bit ABS with zero addend
 @item 3018: no additional space in section to convert NONE relocation <%s> to ABS
+@item 3019: section <%s>: kickstart 1.x cannot initialize bss sections >256k to zero
 
 @end itemize

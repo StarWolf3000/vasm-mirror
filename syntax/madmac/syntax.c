@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2015-2022 by Frank Wille */
+/* (c) in 2015-2023 by Frank Wille */
 
 #include "vasm.h"
 #include "error.h"
@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm madmac syntax module 0.5a (c) 2015-2022 Frank Wille";
+const char *syntax_copyright="vasm madmac syntax module 0.6 (c) 2015-2023 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -910,8 +910,13 @@ again:
     }
 #endif
 
-    if (ip)
+    if (ip) {
+#if MAX_OPERANDS>0
+      if (ip->op[0]==NULL && op_cnt!=0)
+        syntax_error(6);  /* mnemonic without operands has tokens in op.field */
+#endif
       add_atom(0,new_inst_atom(ip));
+    }
   }
 
   cond_check();  /* check for open conditional blocks */
