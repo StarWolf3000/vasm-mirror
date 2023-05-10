@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm motorola syntax module 3.17 (c) 2002-2023 Frank Wille";
+const char *syntax_copyright="vasm motorola syntax module 3.17a (c) 2002-2023 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -56,7 +56,7 @@ static int check_comm;
 static int dot_idchar;
 static char local_char = '.';
 
-/* (currenty two-byte only) padding value for CNOPs */
+/* (currently two-byte only) padding value for CNOPs */
 #ifdef VASM_CPU_M68K
 static taddr cnop_pad = 0x4e71;
 #else
@@ -584,7 +584,7 @@ static void handle_rorg(char *s)
 }
 
 
-static void do_bind(char *s,int bind)
+static void do_bind(char *s,unsigned bind)
 {
   symbol *sym;
   strbuf *name;
@@ -597,13 +597,29 @@ static void do_bind(char *s,int bind)
     }
     sym = new_import(name->str);
     if ((sym->flags & (EXPORT|WEAK|NEAR)) != 0 &&
-        (sym->flags & (EXPORT|WEAK|NEAR)) != bind)
+        (sym->flags & (EXPORT|WEAK|NEAR)) != (bind & (EXPORT|WEAK|NEAR))) {
       general_error(62,sym->name,get_bind_name(sym)); /* binding already set */
-    else
+    }
+    else {
       sym->flags |= bind;
+      if ((bind & XREF)!=0 && sym->type!=IMPORT)
+        general_error(85,sym->name);  /* xref must not be defined already */
+    }
     s = skip(s);
   }
   while (*s++ == ',');
+}
+
+
+static void handle_xref(char *s)
+{
+  do_bind(s,EXPORT|XREF);
+}
+
+
+static void handle_xdef(char *s)
+{
+  do_bind(s,EXPORT|XDEF);
 }
 
 
@@ -621,7 +637,7 @@ static void handle_weak(char *s)
 
 static void handle_nref(char *s)
 {
-  do_bind(s,EXPORT|NEAR);
+  do_bind(s,EXPORT|XREF|NEAR);
 }
 
 
@@ -1749,15 +1765,15 @@ struct {
   "bss_c",P|D,handle_bssc,
   "bss_f",P|D,handle_bssf,
   "public",P,handle_global,
-  "xdef",P|D,handle_global,
-  "xref",P|D,handle_global,
-  "xref.l",P|D,handle_global,
+  "xdef",P|D,handle_xdef,
+  "xref",P|D,handle_xref,
+  "xref.l",P|D,handle_xref,
   "nref",P,handle_nref,
   "entry",0,handle_global,
   "extrn",0,handle_global,
   "global",0,handle_global,
-  "import",0,handle_global, /* modifictation: pink-rg: handle purec syntax */
-  "export",0,handle_global, /* modifictation: pink-rg: handle purec syntax */
+  "import",0,handle_xref,   /* modifictation: pink-rg: handle purec syntax */
+  "export",0,handle_xdef,   /* modifictation: pink-rg: handle purec syntax */
   "weak",0,handle_weak,
   "comm",0,handle_comm,
 #ifndef VASM_CPU_JAGRISC    /* conflicts with Jaguar load instruction */

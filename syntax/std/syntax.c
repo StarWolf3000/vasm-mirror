@@ -177,7 +177,7 @@ static void handle_section(char *s)
     s=skip(s+1);
     if (attrbuf=get_raw_string(&s,'\"')){
       attr=attrbuf->str;
-      s=skip(s+1);
+      s=skip(s);
       if(*s==','){
         p=s=skip(s+1);
         if(*s=='@'||*s=='%'){
@@ -193,7 +193,7 @@ static void handle_section(char *s)
               }
             }else{
               if(strcmp(typebuf->str,"progbits"))
-                syntax_error(14);  /* invalid sectiont type ignored */
+                syntax_error(14);  /* invalid section type ignored */
             }
           }
         }else{

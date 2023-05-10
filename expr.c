@@ -5,6 +5,7 @@
 
 char current_pc_char='$';
 int unsigned_shift;
+
 static char *s;
 static symbol *cpc;
 static int make_tmp_lab;

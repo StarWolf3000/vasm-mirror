@@ -1373,7 +1373,7 @@ char *parse_cpu_special(char *start)
             /* Not a rabbit one, lets check z80asm versions */
             start = parse_z80asm_pseudo(s);
         } else {
-            /* Check for upto 2 rabbit identifiers */
+            /* Check for up to 2 rabbit identifiers */
             for ( i = 0; i < 2; i++ ) {
                 s = skip(s);
                 if ( parse_rcm_identifier(&s) == -1 ) {

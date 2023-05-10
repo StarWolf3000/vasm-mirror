@@ -4,9 +4,9 @@
 #include "vasm.h"
 
 
-symbol *first_symbol=NULL;
-static symbol *saved_symbol=NULL;
+symbol *first_symbol;
 
+static symbol *saved_symbol;
 static char *last_global_label=emptystr;
 
 #ifndef SYMHTABSIZE
@@ -59,6 +59,10 @@ void print_symbol(FILE *f,symbol *p)
     fprintf(f,"WEAK ");
   if (p->flags&LOCAL)
     fprintf(f,"LOCAL ");
+  if (p->flags&XREF)
+    fprintf(f,"XREF ");
+  if (p->flags&XDEF)
+    fprintf(f,"XDEF ");
   if (p->flags&PROTECTED)
     fprintf(f,"PROT ");
   if (p->flags&REFERENCED)
@@ -83,7 +87,7 @@ void print_symbol(FILE *f,symbol *p)
 }
 
 
-char *get_bind_name(symbol *p)
+const char *get_bind_name(symbol *p)
 {
   if (p->flags&EXPORT)
     return "global";
@@ -316,7 +320,11 @@ symbol *new_labsym(section *sec,char *name)
   }
 
   if (new = find_symbol(name)) {
-    if (new->type!=IMPORT) {
+    if (new->type == IMPORT) {
+      if (new->flags & XREF)
+        general_error(85,name);  /* must not be defined */
+    }
+    else {
       symbol *old = new;
 
       new = mymalloc(sizeof(*new));

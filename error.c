@@ -5,27 +5,29 @@
 #include "vasm.h"
 #include "error.h"
 
-struct err_out general_err_out[]={
+static struct err_out general_err_out[]={
 #include "general_errors.h"
 };
-int general_errors=sizeof(general_err_out)/sizeof(general_err_out[0]);
+static const int general_errors=sizeof(general_err_out)/sizeof(general_err_out[0]);
 
-struct err_out syntax_err_out[]={
+static struct err_out syntax_err_out[]={
 #include "syntax_errors.h"
 };
-int syntax_errors=sizeof(syntax_err_out)/sizeof(syntax_err_out[0]);
+static const int syntax_errors=sizeof(syntax_err_out)/sizeof(syntax_err_out[0]);
 
-struct err_out cpu_err_out[]={
+static struct err_out cpu_err_out[]={
 #include "cpu_errors.h"
 };
-int cpu_errors=sizeof(cpu_err_out)/sizeof(cpu_err_out[0]);
+static const int cpu_errors=sizeof(cpu_err_out)/sizeof(cpu_err_out[0]);
 
-struct err_out output_err_out[]={
+static struct err_out output_err_out[]={
 #include "output_errors.h"
 };
-int output_errors=sizeof(output_err_out)/sizeof(output_err_out[0]);
+static const int output_errors=sizeof(output_err_out)/sizeof(output_err_out[0]);
 
-int errors,warnings;
+int errors,warnings;  /* count */
+
+/* options */
 int max_errors=5;
 int no_warn;
 

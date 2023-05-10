@@ -7,9 +7,9 @@
 #define filenamecmp(a,b) strcmp(a,b)
 #endif
 
-char *convert_path(char *);
-char *append_path_delimiter(char *);
-char *remove_path_delimiter(char *);
+char *convert_path(const char *);
+char *append_path_delimiter(const char *);
+char *remove_path_delimiter(const char *);
 char *get_filepart(char *);
 char *get_workdir(void);
 int init_osdep(void);

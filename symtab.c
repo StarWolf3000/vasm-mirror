@@ -18,7 +18,7 @@ hashtable *new_hashtable(size_t size)
   return new;
 }
 
-size_t hashcode(char *name)
+size_t hashcode(const char *name)
 {
   size_t h = 5381;
   int c;
@@ -28,7 +28,7 @@ size_t hashcode(char *name)
   return h;
 }
 
-size_t hashcodelen(char *name,int len)
+size_t hashcodelen(const char *name,int len)
 {
   size_t h = 5381;
 
@@ -37,7 +37,7 @@ size_t hashcodelen(char *name,int len)
   return h;
 }
 
-size_t hashcode_nc(char *name)
+size_t hashcode_nc(const char *name)
 {
   size_t h = 5381;
   int c;
@@ -47,7 +47,7 @@ size_t hashcode_nc(char *name)
   return h;
 }
 
-size_t hashcodelen_nc(char *name,int len)
+size_t hashcodelen_nc(const char *name,int len)
 {
   size_t h = 5381;
 
@@ -57,7 +57,7 @@ size_t hashcodelen_nc(char *name,int len)
 }
 
 /* add to hashtable; name must be unique */
-void add_hashentry(hashtable *ht,char *name,hashdata data)
+void add_hashentry(hashtable *ht,const char *name,hashdata data)
 {
   size_t i=nocase?(hashcode_nc(name)%ht->size):(hashcode(name)%ht->size);
   hashentry *new=mymalloc(sizeof(*new));
@@ -72,7 +72,7 @@ void add_hashentry(hashtable *ht,char *name,hashdata data)
 }
 
 /* remove from hashtable; name must be unique */
-void rem_hashentry(hashtable *ht,char *name,int no_case)
+void rem_hashentry(hashtable *ht,const char *name,int no_case)
 {
   size_t i=no_case?(hashcode_nc(name)%ht->size):(hashcode(name)%ht->size);
   hashentry *p,*last;
@@ -92,7 +92,7 @@ void rem_hashentry(hashtable *ht,char *name,int no_case)
 }
 
 /* finds unique entry in hashtable */
-int find_name(hashtable *ht,char *name,hashdata *result)
+int find_name(hashtable *ht,const char *name,hashdata *result)
 {
   if(nocase)
     return find_name_nc(ht,name,result);
@@ -111,7 +111,7 @@ int find_name(hashtable *ht,char *name,hashdata *result)
 }
 
 /* same as above, but uses len instead of zero-terminated string */
-int find_namelen(hashtable *ht,char *name,int len,hashdata *result)
+int find_namelen(hashtable *ht,const char *name,int len,hashdata *result)
 {
   if(nocase)
     return find_namelen_nc(ht,name,len,result);
@@ -130,7 +130,7 @@ int find_namelen(hashtable *ht,char *name,int len,hashdata *result)
 }
 
 /* finds unique entry in hashtable - case insensitive */
-int find_name_nc(hashtable *ht,char *name,hashdata *result)
+int find_name_nc(hashtable *ht,const char *name,hashdata *result)
 {
   size_t i=hashcode_nc(name)%ht->size;
   hashentry *p;
@@ -145,7 +145,7 @@ int find_name_nc(hashtable *ht,char *name,hashdata *result)
 }
 
 /* same as above, but uses len instead of zero-terminated string */
-int find_namelen_nc(hashtable *ht,char *name,int len,hashdata *result)
+int find_namelen_nc(hashtable *ht,const char *name,int len,hashdata *result)
 {
   size_t i=hashcodelen_nc(name,len)%ht->size;
   hashentry *p;

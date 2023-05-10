@@ -9,7 +9,7 @@ typedef union hashdata {
 } hashdata;
 
 typedef struct hashentry {
-  char *name;
+  const char *name;
   hashdata data;
   struct hashentry *next;
 } hashentry;
@@ -21,13 +21,13 @@ typedef struct hashtable {
 } hashtable;
 
 hashtable *new_hashtable(size_t);
-size_t hashcode(char *);
-size_t hashcodelen(char *,int);
-size_t hashcode_nc(char *);
-size_t hashcodelen_nc(char *,int);
-void add_hashentry(hashtable *,char *,hashdata);
-void rem_hashentry(hashtable *,char *,int);
-int find_name(hashtable *,char *,hashdata *);
-int find_namelen(hashtable *,char *,int,hashdata *);
-int find_name_nc(hashtable *,char *,hashdata *);
-int find_namelen_nc(hashtable *,char *,int,hashdata *);
+size_t hashcode(const char *);
+size_t hashcodelen(const char *,int);
+size_t hashcode_nc(const char *);
+size_t hashcodelen_nc(const char *,int);
+void add_hashentry(hashtable *,const char *,hashdata);
+void rem_hashentry(hashtable *,const char *,int);
+int find_name(hashtable *,const char *,hashdata *);
+int find_namelen(hashtable *,const char *,int,hashdata *);
+int find_name_nc(hashtable *,const char *,hashdata *);
+int find_namelen_nc(hashtable *,const char *,int,hashdata *);

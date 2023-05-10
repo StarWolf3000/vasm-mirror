@@ -554,7 +554,7 @@ int strnicmp(const char *str1,const char *str2,size_t n)
 }
 
 
-char *mystrdup(char *name)
+char *mystrdup(const char *name)
 {
   char *p=mymalloc(strlen(name)+1);
   strcpy(p,name);

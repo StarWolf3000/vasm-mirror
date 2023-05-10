@@ -59,7 +59,7 @@
   "register symbol <%s> redefined",ERROR,
   "cannot evaluate constant huge integer expression",ERROR,
   "cannot evaluate floating point expression",ERROR,            /* 60 */
-  "imported symbol <%s> was not referenced",WARNING,
+  "imported symbol <%s> was not referenced",NOLINE|WARNING,
   "symbol <%s> already defined with %s scope",WARNING,
   "unexpected \"else\" without \"if\"",ERROR,
   "unexpected \"endif\" without \"if\"",ERROR,
@@ -83,3 +83,5 @@
   "label definition not allowed here",ERROR,
   "label defined on the same line as a new section",WARNING,
   "no debug output possible with source from stdin",WARNING,
+  "external symbol <%s> must not be defined",ERROR,             /* 85 */
+  "missing definition for symbol <%s>",NOLINE|WARNING,

@@ -270,7 +270,7 @@ static void stream_section(FILE *f,section *sec)
     }
     stream_data(f,sec,a,offs,(npc-pc)-offs);
   }
-  gst_dobss(f);  /* write last unitialized block with GST_OFFSET */
+  gst_dobss(f);  /* write last uninitialized block with GST_OFFSET */
 }
 
 

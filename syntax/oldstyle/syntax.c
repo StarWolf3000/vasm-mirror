@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm oldstyle syntax module 0.18 (c) 2002-2023 Frank Wille";
+const char *syntax_copyright="vasm oldstyle syntax module 0.18a (c) 2002-2023 Frank Wille";
 hashtable *dirhash;
 int dotdirs;
 
@@ -601,7 +601,7 @@ static void handle_section(char *s)
     s = skip(s+1);
     if (attrbuf = get_raw_string(&s,'\"')) {
       attr = attrbuf->str;
-      s = skip(s+1);
+      s = skip(s);
     }
   }
   if (attr == NULL) {

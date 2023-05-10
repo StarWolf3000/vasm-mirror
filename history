@@ -1,6 +1,17 @@
 vasm history
 =============
 
+- 1.9d (23.04.23)
+o m68k: Using MOVEQ.L instead of MOVEQ must only disable the warning for
+  values between 128 and 255, but not allow any value without error.
+o mot-syntax: XREF allows no definition and XDEF requires a definition.
+o std-syntax: Fixed potential problem with "scratch at end of line"
+  warnings after a section attribute string.
+o oldstyle-syntax: Fixed potential problem with "scratch at end of line"
+  warnings after a section attribute string.
+o tos-output: Reloc-output in executables was broken since V1.9b! Restrict
+  to 32-bit absolute relocations again.
+
 - 1.9c (29.03.23)
 o Reverted a last-minute change in V1.9b, which broke the O65 output module,
   used with 6502 and 65816.
