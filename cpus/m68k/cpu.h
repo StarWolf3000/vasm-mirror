@@ -41,6 +41,7 @@ typedef struct {
 #define IFL_RETAINLASTSIZE    1   /* retain current last_size value */
 #define IFL_UNSIZED           2   /* instruction had no size extension */
 #define IFL_NOTYPECHK         4   /* do not check limits of oper. value */
+#define IFL_ANYSIGN           8   /* allow M_val0 signed and unsigned */
 
 /* we use OPTS atoms for cpu-specific options */
 #define HAVE_CPU_OPTS 1

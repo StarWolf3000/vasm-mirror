@@ -25,7 +25,7 @@ const struct cpu_models models[] = {
 static const int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.6 (c) 2002-2023 Frank Wille";
+const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.6a (c) 2002-2023 Frank Wille";
 char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -1517,7 +1517,7 @@ static void check_basereg(operand *op)
 /* Check if the operand's address register matches one of the currently
    active BASEREG registers and automatically subtract its base-expression
    from the operand's displacement value.
-   op->reg ist guaranteed to be between 0 and 7 and op->mode has an
+   op->reg is guaranteed to be between 0 and 7 and op->mode has an
    appropriate addressing mode! */
 {
   if (op->reg<=6 && baseexp[op->reg] && op->value[0]) {
@@ -3999,12 +3999,7 @@ dontswap:
 
       switch (lastsize) {
         case 0:
-#if 0
-          /* keep branch deleted until no more optimizations took place */
-          if (diff!=-2 && done)
-#else
           if (diff != -2)
-#endif
             ip->qualifiers[0] = b_str;
           else
             ip->code = -1;
@@ -4323,7 +4318,7 @@ size_t instruction_size(instruction *realip,section *sec,taddr pc)
        and for Devpac-compat. a bad size extension will be ignored */
     if (realip->code == OC_MOVEQ) {
       if (ext == 'l')
-        realip->ext.un.real.flags |= IFL_NOTYPECHK;  /* allow any value */
+        realip->ext.un.real.flags |= IFL_ANYSIGN;  /* allow signed/unsigned */
       if (devpac_compat) {
         ext = '\0';
         realip->qualifiers[0] = emptystr;
@@ -4472,18 +4467,22 @@ size_t instruction_size(instruction *realip,section *sec,taddr pc)
 
 
 static void write_val(unsigned char *d,int pos,int size,taddr val,int sign)
-/* insert value 'val' with 'size' bits at bit-position 'pos' */
+/* Insert value 'val' with 'size' bits at bit-position 'pos'.
+   sign==0 allows unsigned values with 'size' bits. Otherwise signed.
+   sign<0 indicates that any value in signed and unsigned range is allowed. */
 {
   if (typechk) {
     if (sign) {
       if ((val > (1L << (size-1)) - 1) || (val < -(1L << (size-1)))) {
-        if (val > 0 && val < (1L << size))
-          cpu_error(27,val,-(1L<<(size-1)),
-                    (1L<<(size-1))-1,
-                    val-(1L<<size));    /* using signed operand as unsigned */
-        else
+        if (val > 0 && val < (1L << size)) {
+          if (sign > 0)
+            cpu_error(27,val,-(1L<<(size-1)),
+                      (1L<<(size-1))-1,
+                      val-(1L<<size));   /* using signed operand as unsigned */
+        }
+        else                             /* operand value out of range */
           cpu_error(25,val,-(1L<<(size-1)),
-                    (1L<<(size-1))-1);  /* operand value out of range */
+                    (sign>0) ? (1L<<(size-1))-1 : (1L<<size)-1);
       }
     }
     else {
@@ -5314,6 +5313,10 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
           case M_val0:
             if (op->base[0] == NULL) {
               taddr v = op->extval[0];
+              int sign = (oii->flags&IIF_SIGNED) != 0;
+
+              if (ipflags & IFL_ANYSIGN)
+                sign = -sign;
 
               if (oii->flags & IIF_MASK) {
                 if (v == 0)
@@ -5329,8 +5332,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
               }
               if (oii->flags & IIF_REVERSE)
                 v = reverse(v,oii->size);
-              write_val(dbstart,oii->pos,oii->size,v,
-                        (oii->flags&IIF_SIGNED)!=0);
+              write_val(dbstart,oii->pos,oii->size,v,sign);
             }
             else
               cpu_error(24);  /* absolute value expected */

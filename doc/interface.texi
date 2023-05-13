@@ -513,6 +513,16 @@ following members that can be accessed by the modules:.
         base register relative. Used as an optimization hint in the cpu
         backend.
 
+@item #define XDEF (1<<16)
+        This symbol must become defined in the source. Which means
+        its @code{type} must not remain @code{IMPORT}. Otherwise a
+        warning is displayed.
+
+@item #define XREF (1<<17)
+        Symbol is externally defined and its @code{type} must never
+        become something else than @code{IMPORT}. Otherwise an error
+        is displayed.
+
 @item #define RSRVD_S (1L<<24)
         The range from bit 24 to 27 (counted from the LSB) is reserved for
         use by the syntax module.

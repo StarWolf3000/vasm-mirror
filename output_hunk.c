@@ -8,21 +8,22 @@
 static char *copyright="vasm hunk format output module 2.14c (c) 2002-2022 Frank Wille";
 int hunk_onlyglobal;
 
-/* (currently two-byte only) padding value for not 32-bit aligned code hunks */
-#ifdef VASM_CPU_M68K
-static uint16_t hunk_pad = 0x4e71;
-#else
-static uint16_t hunk_pad = 0;
-#endif
+static uint32_t sec_cnt;
+static symbol **secsyms;
 
+/* options */
 static int databss;
 static int kick1;
 static int exthunk;
 static int genlinedebug;
 static int keep_empty_sects;
 
-static uint32_t sec_cnt;
-static symbol **secsyms;
+/* (currently two-byte only) padding value for not 32-bit aligned code hunks */
+#ifdef VASM_CPU_M68K
+static uint16_t hunk_pad = 0x4e71;
+#else
+static uint16_t hunk_pad = 0;
+#endif
 
 
 static uint32_t strlen32(char *s)

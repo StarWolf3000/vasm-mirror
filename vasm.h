@@ -128,23 +128,19 @@ typedef struct mnemonic {
 #define OPSZ_SWAP	0x200  /* operand stored with swapped bytes */
 
 
-extern int done,final_pass,nostdout,asciiout;
-extern int warn_unalloc_ini_dat;
-extern const int mnemonic_cnt;
-extern int nocase,no_symbols,pic_check,exec_out,chklabels;
-extern int secname_attr,unnamed_sections;
+extern char *inname,*outname,*output_format;
+extern int chklabels,nocase,no_symbols,pic_check,unnamed_sections;
+extern unsigned space_init;
 extern taddr inst_alignment;
+extern int asciiout,secname_attr,warn_unalloc_ini_dat;
 extern hashtable *mnemohash;
+extern char *filename,*debug_filename;
 extern source *cur_src;
 extern section *current_section,container_section;
-extern char *filename;
-extern char *debug_filename;  /* usually an absolute C source file name */
-extern char *inname,*outname;
-extern char *output_format;
+extern int num_secs,final_pass,exec_out,nostdout;
+extern struct stabdef *first_nlist,*last_nlist;
 extern char emptystr[];
 extern char vasmsym_name[];
-extern int num_secs;
-extern unsigned space_init;
 
 extern unsigned long long taddrmask;
 #define ULLTADDR(x) (((unsigned long long)x)&taddrmask)
@@ -198,12 +194,11 @@ void disable_warning(int);
 #define ierror(x) general_error(4,(x),__LINE__,__FILE__)
 
 /* provided by cpu.c */
-extern int bitsperbyte;
-extern int bytespertaddr;
+extern int bitsperbyte,bytespertaddr;
+extern const int mnemonic_cnt;
 extern mnemonic mnemonics[];
 extern const char *cpu_copyright;
 extern char *cpuname;
-extern int debug;
 
 int init_cpu();
 int cpu_args(char *);

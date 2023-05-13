@@ -4,7 +4,7 @@
 #include "vasm.h"
 #include "output_tos.h"
 #if defined(OUTTOS) && defined(VASM_CPU_M68K)
-static char *copyright="vasm tos output module 2.0 (c) 2009-2016,2020,2021,2023 Frank Wille";
+static char *copyright="vasm tos output module 2.1a (c) 2009-2016,2020,2021,2023 Frank Wille";
 int tos_hisoft_dri = 1;
 
 static int tosflags,textbasedsyms;
@@ -22,6 +22,9 @@ static int tos_initwrite(section *sec,symbol *sym)
 {
   int nsyms = 0;
   int i;
+
+  if (!exec_out)
+    tos_hisoft_dri = 0;  /* 8 character symbols only, in object files */
 
   /* find exactly one text, data and bss section for DRI */
   sections[S_TEXT] = sections[S_DATA] = sections[S_BSS] = NULL;
@@ -325,28 +328,33 @@ static int tos_writerelocs(FILE *f,section *sec)
       pc = pcalign(a,pc);
 
       if (nrel = get_sorted_rlist(a)) {
+        utaddr newoffs;
         int i;
 
         /* write differences between reloc offsets */
-        n += nrel;
         for (i=0; i<nrel; i++) {
-          utaddr newoffs = pc + ((nreloc *)sorted_rlist[i]->reloc)->byteoffset;
+          /* make sure to process 32-bit absolute relocations only! */
+          if (sorted_rlist[i]->type==REL_ABS
+              && ((nreloc *)sorted_rlist[i]->reloc)->size==32) {
+            newoffs = pc + ((nreloc *)sorted_rlist[i]->reloc)->byteoffset;
+            n++;
 
-          if (lastoffs) {
-            /* determine 8bit difference to next relocation */
-            taddr diff = newoffs - lastoffs;
+            if (lastoffs) {
+              /* determine 8bit difference to next relocation */
+              taddr diff = newoffs - lastoffs;
 
-            if (diff < 0)
-              ierror(0);
-            while (diff > 254) {
-              fw8(f,1);
-              diff -= 254;
+              if (diff < 0)
+                ierror(0);
+              while (diff > 254) {
+                fw8(f,1);
+                diff -= 254;
+              }
+              fw8(f,(uint8_t)diff);
             }
-            fw8(f,(uint8_t)diff);
+            else  /* first entry is a 32 bits offset */
+              fw32(f,newoffs,1);
+            lastoffs = newoffs;
           }
-          else  /* first entry is a 32 bits offset */
-            fw32(f,newoffs,1);
-          lastoffs = newoffs;
         }
       }
       pc += atom_size(a,sec,pc);
@@ -500,8 +508,6 @@ int init_output_tos(char **cp,void (**wo)(FILE *,section *,symbol *),
   *oa = output_args;
   unnamed_sections = 1;  /* output format doesn't support named sections */
   secname_attr = 1;
-  if (!exec_out)
-    tos_hisoft_dri = 0;  /* 8 character symbols only, in object files */
   return 1;
 }
 

@@ -2,7 +2,7 @@
 /* (c) in 2018,2020 by Frank Wille */
 
 #include <string.h>
-char *mystrdup(char *);
+char *mystrdup(const char *);
 void *mymalloc(size_t);
 struct symbol *internal_abs(char *);
 
@@ -28,7 +28,7 @@ struct symbol *internal_abs(char *);
 #endif
 
 
-char *convert_path(char *path)
+char *convert_path(const char *path)
 {
   char *newpath;
 
@@ -81,7 +81,7 @@ char *convert_path(char *path)
 }
 
 
-char *append_path_delimiter(char *old)
+char *append_path_delimiter(const char *old)
 {
   int len = strlen(old);
   char *new;
@@ -115,7 +115,7 @@ char *append_path_delimiter(char *old)
 }
 
 
-char *remove_path_delimiter(char *old)
+char *remove_path_delimiter(const char *old)
 {
   int len = strlen(old);
   char *new;

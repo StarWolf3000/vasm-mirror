@@ -250,7 +250,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
       break;
 
     case BINFMT_FOENIXPGZ:
-      /* trailer with execute-address and a zero-size to indicte that
+      /* trailer with execute-address and a zero-size to indicate that
          no more segments follow */
       fw24(f,exec_addr?exec_addr:sec->org,0);
       fw24(f,0,0);

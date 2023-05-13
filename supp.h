@@ -57,7 +57,7 @@ int abs_path(char *);
 
 int stricmp(const char *,const char *);
 int strnicmp(const char *,const char *,size_t);
-char *mystrdup(char *);
+char *mystrdup(const char *);
 char *cnvstr(const char *,int);
 char *cutstr(strbuf *,const char *,size_t);
 char *strbuf_alloc(strbuf *,size_t);

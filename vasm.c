@@ -10,7 +10,7 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 1.9c"
+#define _VER "vasm 1.9d"
 const char *copyright = _VER " (c) in 2002-2023 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
@@ -18,34 +18,45 @@ static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 
 /* The resolver will run another pass over the current section as long as any
    label location or atom size has changed. It fails on reaching MAXPASSES,
-   which hopefully will never happen.
-   During the first FASTOPTPHASE passes all instructions of a section will be
-   optimized at the same time. After that the resolver enters a safe mode,
-   where only a single instruction per pass is changed. */
+   which will hopefully never happen.
+   During the first FASTOPTPHASE passes all instructions of a section are
+   optimized at the same time. Thereafter the resolver enters a safe mode,
+   where only a single instruction is changed in every pass. */
 #define MAXPASSES 1500
 #define FASTOPTPHASE 200
 
-source *cur_src;
-char *filename,*debug_filename;
-section *current_section,container_section;
-char *inname,*outname;
-taddr inst_alignment;
-int done,secname_attr,unnamed_sections,nocase,no_symbols,asciiout;
-int pic_check,final_pass,debug,exec_out,chklabels,warn_unalloc_ini_dat;
-int nostdout;
-struct stabdef *first_nlist,*last_nlist;
+/* global options */
 char *output_format="test";
+char *inname,*outname;
+int chklabels,nocase,no_symbols,pic_check,unnamed_sections;
+unsigned space_init;
+taddr inst_alignment;
+
+/* global module options */
+int asciiout,secname_attr,warn_unalloc_ini_dat;
+
+/* MNEMOHTABSIZE should be defined by cpu module */
+#ifndef MNEMOHTABSIZE
+#define MNEMOHTABSIZE 0x1000
+#endif
+hashtable *mnemohash;
+
+char *filename,*debug_filename;
+source *cur_src;
+section *current_section,container_section;
+int num_secs;
+int debug,final_pass,exec_out,nostdout;
+
 unsigned long long taddrmask;
 taddr taddrmin,taddrmax;
-unsigned space_init;
+
+/* for output modules supporting stabs */
+struct stabdef *first_nlist,*last_nlist;
+
 char emptystr[]="";
 char vasmsym_name[]="__VASM";
-int num_secs;
 
-static char *listname;
 static FILE *outfile;
-static char *dep_filename;
-
 static int maxpasses=MAXPASSES;
 static section *first_section,*last_section;
 #if NOT_NEEDED
@@ -57,17 +68,13 @@ static section *prev_sec,*prev_org;
 static section *secstack[SECSTACKSIZE];
 static int secstack_index;
 
-/* MNEMOHTABSIZE should be defined by cpu module */
-#ifndef MNEMOHTABSIZE
-#define MNEMOHTABSIZE 0x1000
-#endif
-hashtable *mnemohash;
-
-static int dwarf;
+/* options */
+static char *listname,*dep_filename;
+static int dwarf,fail_on_warning;
 static int verbose=1,auto_import=1;
-static int fail_on_warning;
 static taddr sec_padding;
 
+/* output */
 static char *output_copyright;
 static void (*write_object)(FILE *,section *,symbol *);
 static int (*output_args)(char *);
@@ -252,7 +259,7 @@ static int resolve_section(section *sec)
   taddr rorg_pc,org_pc;
   int fastphase=FASTOPTPHASE;
   int pass=0;
-  int extrapass,rorg;
+  int done,extrapass,rorg;
   size_t size;
   atom *p;
 
@@ -560,10 +567,14 @@ static void undef_syms(void)
   symbol *sym;
 
   for(sym=first_symbol;sym;sym=sym->next){
-    if (!auto_import&&sym->type==IMPORT&&!(sym->flags&(EXPORT|COMMON|WEAK)))
-      general_error(22,sym->name);
-    else if (sym->type==IMPORT&&!(sym->flags&REFERENCED))
-      general_error(61,sym->name);
+    if(sym->type==IMPORT){
+      if (!auto_import&&!(sym->flags&(EXPORT|COMMON|WEAK)))
+        general_error(22,sym->name);  /* undefined */
+      else if (sym->flags&XDEF)
+        general_error(86,sym->name);  /* missing definition */
+      else if (!(sym->flags&REFERENCED))
+        general_error(61,sym->name);  /* not referenced */
+    }
   }
 }
 
