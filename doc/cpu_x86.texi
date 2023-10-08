@@ -68,7 +68,7 @@ instructions and data are supported and encoded in IEEE format.
 Instructions do not need any alignment. Data is aligned to its natural
 alignment by default.
 
-The backend uses MIT-syntax! This means the left operands are always the
+The backend uses AT&T-syntax! This means the left operands are always the
 source and the right operand is the destination. Register names have to
 be prefixed by a '%'.
 

@@ -247,8 +247,8 @@ void output_atom_error(int n,atom *a,...)
 
   va_start(vl,a);
   /* temporarily set the source text and line from the given atom */
-  cur_src = a->src;
-  cur_src->line = a->line;
+  if ((cur_src = a->src) != NULL)
+    cur_src->line = a->line;
   error(n,vl,output_err_out,FIRST_OUTPUT_ERROR);
   cur_src = old;
   va_end(vl);

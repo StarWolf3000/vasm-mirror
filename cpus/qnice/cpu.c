@@ -4,7 +4,7 @@
 #include "vasm.h"
 
 const char *cpu_copyright="vasm qnice cpu backend 0.1 (c) in 2016 Volker Barthelmann";
-char *cpuname="qnice";
+const char *cpuname="qnice";
 
 mnemonic mnemonics[]={
 #include "opcodes.h"

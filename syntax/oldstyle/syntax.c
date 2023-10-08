@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm oldstyle syntax module 0.18a (c) 2002-2023 Frank Wille";
+const char *syntax_copyright="vasm oldstyle syntax module 0.19a (c) 2002-2023 Frank Wille";
 hashtable *dirhash;
 int dotdirs;
 
@@ -23,8 +23,6 @@ static char bssname[]=".bss",bssattr[]="aurw";
 static char zeroname[]=".zero",zeroattr[]="aurw";
 
 char commentchar=';';
-char *defsectname = textname;
-char *defsecttype = textattr;
 
 static char macname[] = ".mac";
 static char macroname[] = ".macro";
@@ -77,7 +75,7 @@ static unsigned anon_labno;
 #define INLLABFMT "=%06d"
 static int inline_stack[INLSTACKSIZE];
 static int inline_stack_index;
-static char *saved_last_global_label;
+static const char *saved_last_global_label;
 static char inl_lab_name[8];
 
 int igntrail;  /* ignore everything after a blank in the operand field */
@@ -1030,16 +1028,18 @@ static void handle_struct(char *s)
 
 static void handle_endstruct(char *s)
 {
+  section *structsec = current_section;
   section *prevsec;
   symbol *szlabel;
 
   if (end_structure(&prevsec)) {
     /* create the structure name as label defining the structure size */
-    current_section->flags &= ~LABELS_ARE_LOCAL;
-    szlabel = new_labsym(0,current_section->name);
-    add_atom(0,new_label_atom(szlabel));
+    structsec->flags &= ~LABELS_ARE_LOCAL;
+    szlabel = new_labsym(0,structsec->name);
     /* end structure declaration by switching to previous section */
     set_section(prevsec);
+    /* avoid that this label is moved into prevsec in set_section() */
+    add_atom(structsec,new_label_atom(szlabel));
   }
   eol(s);
 }
@@ -1048,7 +1048,7 @@ static void handle_endstruct(char *s)
 static void handle_inline(char *s)
 {
   static int id;
-  char *last;
+  const char *last;
 
   if (inline_stack_index < INLSTACKSIZE) {
     sprintf(inl_lab_name,INLLABFMT,id);
@@ -1080,7 +1080,7 @@ static void handle_einline(char *s)
 
 
 struct {
-  char *name;
+  const char *name;
   void (*func)(char *);
 } directives[] = {
   "org",handle_org,
@@ -1104,7 +1104,9 @@ struct {
   "wor",handle_d16,
   "word",handle_d16,
   "wrd",handle_d16,
+#if !defined(VASM_CPU_6809)  /* clash with 6309 ADDR instruction */
   "addr",handle_taddr,
+#endif
   "dw",handle_d16,
   "dfw",handle_d16,
   "defw",handle_d16,
@@ -1957,6 +1959,12 @@ int init_syntax()
   if (orgmode != ~0)
     set_section(new_org(orgmode));
   return 1;
+}
+
+
+int syntax_defsect(void)
+{
+  return 0;  /* defaults to .text */
 }
 
 

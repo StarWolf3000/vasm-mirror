@@ -9,10 +9,11 @@
 #include <string.h>
 #include <limits.h>
 
-typedef struct symbol symbol;
-typedef struct section section;
+typedef struct atom atom;
 typedef struct dblock dblock;
 typedef struct sblock sblock;
+typedef struct symbol symbol;
+typedef struct section section;
 typedef struct expr expr;
 typedef struct macro macro;
 typedef struct source source;
@@ -115,7 +116,7 @@ struct section {
 
 /* mnemonic description */
 typedef struct mnemonic {
-  char *name;
+  const char *name;
 #if MAX_OPERANDS!=0
   int operand_type[MAX_OPERANDS];
 #endif
@@ -128,10 +129,10 @@ typedef struct mnemonic {
 #define OPSZ_SWAP	0x200  /* operand stored with swapped bytes */
 
 
-extern char *inname,*outname,*output_format;
+extern char *inname,*outname,*output_format,*defsectname,*defsecttype;
+extern taddr defsectorg,inst_alignment;
 extern int chklabels,nocase,no_symbols,pic_check,unnamed_sections;
 extern unsigned space_init;
-extern taddr inst_alignment;
 extern int asciiout,secname_attr,warn_unalloc_ini_dat;
 extern hashtable *mnemohash;
 extern char *filename,*debug_filename;
@@ -150,11 +151,10 @@ extern taddr taddrmin,taddrmax;
 extern int debug;
 
 void leave(void);
-void set_default_output_format(char *);
 void set_section(section *);
 section *new_section(char *,char *,int);
 section *new_org(taddr);
-section *find_section(char *,char *);
+section *find_section(const char *,const char *);
 void switch_section(char *,char *);
 void switch_offset_section(char *,taddr);
 void add_align(section *,taddr,expr *,int,unsigned char *);
@@ -198,13 +198,13 @@ extern int bitsperbyte,bytespertaddr;
 extern const int mnemonic_cnt;
 extern mnemonic mnemonics[];
 extern const char *cpu_copyright;
-extern char *cpuname;
+extern const char *cpuname;
 
-int init_cpu();
+int init_cpu(void);
 int cpu_args(char *);
 char *parse_cpu_special(char *);
-operand *new_operand();
-int parse_operand(char *text,int len,operand *out,int requires);
+operand *new_operand(void);
+int parse_operand(char *,int,operand *,int);
 size_t instruction_size(instruction *,section *,taddr);
 dblock *eval_instruction(instruction *,section *,taddr);
 dblock *eval_data(operand *,size_t,section *,taddr);
@@ -226,11 +226,10 @@ extern const char *syntax_copyright;
 extern char commentchar;
 extern int dotdirs;
 extern hashtable *dirhash;
-extern char *defsectname;
-extern char *defsecttype;
 
-int init_syntax();
+int init_syntax(void);
 int syntax_args(char *);
+int syntax_defsect(void);
 void parse(void);
 char *parse_macro_arg(struct macro *,char *,struct namelen *,struct namelen *);
 int expand_macro(source *,char **,char *,int);
@@ -262,3 +261,4 @@ int init_output_xfile(char **,void (**)(FILE *,section *,symbol *),int (**)(char
 int init_output_cdef(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_ihex(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
 int init_output_o65(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));
+int init_output_woz(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));

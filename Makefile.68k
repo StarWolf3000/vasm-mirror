@@ -5,7 +5,7 @@ TARGETEXTENSION =
 
 CC = vc +aos68k
 CCOUT = -o=
-COPTS = -c -cpu=68020 -merge-strings -DAMIGA $(OUTFMTS) -O1
+CFLAGS = -c -cpu=68020 -merge-strings -DAMIGA $(OUTFMTS) -O1
 
 LD = $(CC)
 LDOUT = $(CCOUT)

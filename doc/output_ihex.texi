@@ -43,7 +43,7 @@ format, which is a simple ASCII output of hexadecimal digits.
 This module has the following error messages:
 
 @itemize @minus
-@item 3001: sections must not overlap
+@item 3001: sections <%s>:%llx-%llx and <%s>:%llx-%llx must not overlap
 @item 3002: output module doesn't support cpu %s
 @item 3007: undefined symbol <%s>
 @item 3012: address 0x%llx out of range for selected format

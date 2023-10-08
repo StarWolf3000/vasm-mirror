@@ -8,7 +8,7 @@
 struct stabdef {
   struct stabdef *next;
   union {
-    char *ptr;
+    const char *ptr;
     int32_t idx;
   } name;
   int type;

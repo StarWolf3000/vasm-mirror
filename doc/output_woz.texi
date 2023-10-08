@@ -1,0 +1,56 @@
+This chapter describes the wozmon output module which can be
+selected with the @option{-Fwoz} option.
+
+@section Legal
+
+    This module is written in 2023 by anomie-p and
+    is covered by the vasm copyright without modifications.
+
+@section Contact
+
+    The author of this module may be contacted for bug
+    reports:
+@itemize @minus
+  @item anomie-p (anomie-p@@protonmail.com)
+@end itemize
+
+@section Additional options for this module
+
+    There are no additonal options for this module. 
+ 
+@section General
+
+    This output module outputs the contents of all sections as
+    wozmon monitor commands, which is a simple ASCII output of
+    hexidecimal digits.
+
+    The output is suitable for an ascii transfer via serial
+    connection to a system running wozmon. Character and/or
+    line delays are likely to be necessary for a successful
+    transfer.
+
+    The wozmon command parser converts up to sixteen bit
+    hexidecimal values. An error containing the maximum
+    out of range address is reported if a sixteen bit address
+    space is exceeded.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item None.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3001: sections <%s>:%llx-%llx and <%s>:%llx-%llx must not overlap
+@item 3002: output module doesn't support cpu %s
+@item 3007: undefined symbol <%s>
+@item 3012: address 0x%llx out of range for selected format
+@end itemize

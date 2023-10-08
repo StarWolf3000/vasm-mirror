@@ -4,7 +4,7 @@
 #include "vasm.h"
 
 const char *cpu_copyright="VideoCore IV cpu backend 0.1 (c) in 2013 Volker Barthelmann";
-char *cpuname="vidcore";
+const char *cpuname="vidcore";
 
 mnemonic mnemonics[]={
 #include "opcodes.h"

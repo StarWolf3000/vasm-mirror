@@ -10,7 +10,7 @@
 #define FIRST_OUTPUT_ERROR 3001
 
 struct err_out {
-  char *text;
+  const char *text;
   int flags;
 };
 /*  Flags for err_out.flags    */

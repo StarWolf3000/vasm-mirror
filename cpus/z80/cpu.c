@@ -712,7 +712,7 @@ mnemonic mnemonics[] = {
 const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
 const char *cpu_copyright="vasm 8080/gbz80/z80/z180/rcmX000 cpu backend 0.4b (c) 2007,2009 Dominic Morris";
-char *cpuname = "z80";
+const char *cpuname = "z80";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
 

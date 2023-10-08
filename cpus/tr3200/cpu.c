@@ -11,7 +11,7 @@
 
 const char *cpu_copyright="vasm TR3200 cpu module v0.2 by Luis Panadero Guardeno";
 
-char *cpuname="tr3200";
+const char *cpuname="tr3200";
 int bitsperbyte=8;
 int bytespertaddr=4;
 
@@ -107,7 +107,7 @@ static int parse_reg(char **p, int len, operand *op)
 
   rp++;
   /* Get number */
-  if (len < 2 || sscanf(rp, "%u", &reg) != 1) {
+  if (len < 2 || sscanf(rp, "%d", &reg) != 1) {
     return 0;
   }
 

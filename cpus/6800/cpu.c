@@ -13,7 +13,7 @@ const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 int		bitsperbyte = 8;
 int		bytespertaddr = 2;
 const char *	cpu_copyright = "vasm 6800/6801/68hc11 cpu backend 0.5 (c) 2013-2016,2019,2021 Esben Norby";
-char *		cpuname = "6800";
+const char *	cpuname = "6800";
 
 static uint8_t	cpu_type = M6800;
 static int 	modifier;	/* set by find_base() */

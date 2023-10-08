@@ -7,7 +7,7 @@
 symbol *first_symbol;
 
 static symbol *saved_symbol;
-static char *last_global_label=emptystr;
+static const char *last_global_label=emptystr;
 
 #ifndef SYMHTABSIZE
 #define SYMHTABSIZE 0x10000
@@ -110,7 +110,7 @@ void add_symbol(symbol *p)
 }
 
 
-symbol *find_symbol(char *name)
+symbol *find_symbol(const char *name)
 {
   hashdata data;
   if (!find_name(symhash,name,&data))
@@ -119,7 +119,7 @@ symbol *find_symbol(char *name)
 }
 
 
-void refer_symbol(symbol *sym,char *refname)
+void refer_symbol(symbol *sym,const char *refname)
 /* refer to an existing symbol with an additional name */
 {
   hashdata data;
@@ -154,7 +154,7 @@ void restore_symbols(void)
       }
       else {
         rem_hashentry(symhash,symp->name,nocase);
-        myfree(symp->name);
+        myfree((void *)symp->name);
         myfree(symp);
       }
     }
@@ -168,7 +168,7 @@ void restore_symbols(void)
 }
 
 
-int check_symbol(char *name)
+int check_symbol(const char *name)
 /* issue an error when symbol is already defined in the current source */
 {
   symbol *sym;
@@ -183,23 +183,24 @@ int check_symbol(char *name)
 }
 
 
-char *set_last_global_label(char *name)
+const char *set_last_global_label(const char *name)
 {
-  char *prevlgl = last_global_label;
+  const char *prevlgl = last_global_label;
 
   last_global_label = name;
   return prevlgl;
 }
 
 
-int is_local_label(char *name)
+int is_local_label(const char *name)
 /* returns true when name belongs to a label with local scope */
 {
   return *name == ' ';
 }
 
 
-strbuf *make_local_label(int n,char *glob,int glen,char *loc,int llen)
+strbuf *make_local_label(int n,
+                         const char *glob,int glen,const char *loc,int llen)
 /* construct a local label of the form:
    " " + global_label_name + " " + local_label_name
    return pointer a one of two static string buffers */
@@ -226,7 +227,7 @@ strbuf *make_local_label(int n,char *glob,int glen,char *loc,int llen)
 }
 
 
-symbol *new_abs(char *name,expr *tree)
+symbol *new_abs(const char *name,expr *tree)
 {
   symbol *new = find_symbol(name);
   int add;
@@ -258,7 +259,7 @@ symbol *new_abs(char *name,expr *tree)
 }
 
 
-symbol *new_equate(char *name,expr *tree)
+symbol *new_equate(const char *name,expr *tree)
 {
   symbol *sym;
 
@@ -269,7 +270,7 @@ symbol *new_equate(char *name,expr *tree)
 }
 
 
-symbol *new_import(char *name)
+symbol *new_import(const char *name)
 {
   symbol *new = find_symbol(name);
 
@@ -289,7 +290,7 @@ symbol *new_import(char *name)
 }
 
 
-symbol *new_labsym(section *sec,char *name)
+symbol *new_labsym(section *sec,const char *name)
 {
   symbol *new;
   int add;
@@ -372,7 +373,7 @@ symbol *new_tmplabel(section *sec)
 }
 
 
-symbol *internal_abs(char *name)
+symbol *internal_abs(const char *name)
 {
   symbol *new = find_symbol(name);
 
@@ -388,7 +389,7 @@ symbol *internal_abs(char *name)
 }
 
 
-expr *set_internal_abs(char *name,taddr newval)
+expr *set_internal_abs(const char *name,taddr newval)
 {
   symbol *sym = internal_abs(name);
   expr *oldexpr = sym->expr;
@@ -413,7 +414,7 @@ void add_regsym(regsym *rsym)
 }
 
 
-regsym *find_regsym(char *name,int len)
+regsym *find_regsym(const char *name,int len)
 {
   hashdata data;
 
@@ -423,7 +424,7 @@ regsym *find_regsym(char *name,int len)
 }
 
 
-regsym *find_regsym_nc(char *name,int len)
+regsym *find_regsym_nc(const char *name,int len)
 {
   hashdata data;
 
@@ -433,7 +434,7 @@ regsym *find_regsym_nc(char *name,int len)
 }
 
 
-regsym *new_regsym(int redef,int no_case,char *name,int type,
+regsym *new_regsym(int redef,int no_case,const char *name,int type,
                    unsigned int flags,unsigned int num)
 {
   int len = strlen(name);
@@ -466,7 +467,7 @@ regsym *new_regsym(int redef,int no_case,char *name,int type,
 
 
 /* remove an already defined register symbol from the hash table */
-int undef_regsym(char *name,int no_case,int type)
+int undef_regsym(const char *name,int no_case,int type)
 {
   regsym *rsym = no_case!=0 ?
                  find_regsym_nc(name,strlen(name)) :

@@ -5,7 +5,7 @@ TARGETEXTENSION = .ttp
 
 CC = vc +tos
 CCOUT = -o=
-COPTS = -c -merge-strings -O1 -size -DATARI -DLOWMEM -DOUTBIN -DOUTAOUT -DOUTTOS -DOUTVOBJ
+CFLAGS = -c -merge-strings -O1 -size -DATARI -DLOWMEM -DOUTBIN -DOUTAOUT -DOUTTOS -DOUTVOBJ
 
 LD = $(CC)
 LDOUT = $(CCOUT)

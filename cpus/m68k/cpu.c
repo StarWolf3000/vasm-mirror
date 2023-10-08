@@ -25,8 +25,8 @@ const struct cpu_models models[] = {
 static const int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.6a (c) 2002-2023 Frank Wille";
-char *cpuname = "M68k";
+const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.6b (c) 2002-2023 Frank Wille";
+const char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
 
@@ -119,6 +119,7 @@ static int OC_NOT,OC_NOOP,OC_FNOP,OC_MOVEA,OC_EXT,OC_MVZ,OC_MOVE;
 static int OC_ASRI,OC_LSRI,OC_ASLI,OC_LSLI,OC_NEG;
 static int OC_FMOVEMTOLIST,OC_FMOVEMTOSPEC,OC_FMOVEMFROMSPEC;
 static int OC_FMUL,OC_FSMUL,OC_FDMUL,OC_FSGLMUL,OC_LOAD,OC_SWAP;
+static int OC_ADDQVX,OC_SUBQVX;
 
 static struct {
   int *var;
@@ -129,6 +130,7 @@ static struct {
   &OC_ADD,              "add",    DA,0,
   &OC_ADDA,             "adda",   0,0,
   &OC_ADDQ,             "addq",   0,AD,
+  &OC_ADDQVX,           "addq",   0,VX,
   &OC_ASLI,             "asl",    QI,0,
   &OC_ASRI,             "asr",    QI,0,
   &OC_BRA,              "bra",    0,0,
@@ -160,6 +162,7 @@ static struct {
   &OC_ST,               "st",     AD,0,
   &OC_SUBA,             "suba",   0,0,
   &OC_SUBQ,             "subq",   0,AD,
+  &OC_SUBQVX,           "subq",   0,VX,
   &OC_SWAP,             "swap",   D_,0,
   &OC_TST,              "tst",    0,0,
   &OC_NOOP,             " no-op", 0,0
@@ -3374,30 +3377,28 @@ dontswap:
         if (final && warn_opts>1)
           cpu_error(51,"movem deleted");
       }
-      else if (regs == 1) {
+      else if (regs==1 && (opt_movem || (!(list&0xff) && o==1)) &&
+               !aindir_in_list(ip->op[o^1],list)) {
         /* a single register - MOVEM <ea>,Rn --> MOVE <ea>,Rn */
-        if ((opt_movem || (!(list&0xff) && o==1)) &&
-            !aindir_in_list(ip->op[o^1],list)) {
-          signed char r = lsbit(list,0,16);
+        signed char r = lsbit(list,0,16);
 
-          ip->code = OC_MOVE;
-          ip->op[o]->mode = REGisAn(r) ? MODE_An : MODE_Dn;
-          ip->op[o]->reg = REGget(r);
-          if (final && (warn_opts>1 || (warn_opts && ((list&0xff) || o==0))))
-            cpu_error(51,"movem ea,Rn -> move ea,Rn");
-        }
+        ip->code = OC_MOVE;
+        ip->op[o]->mode = REGisAn(r) ? MODE_An : MODE_Dn;
+        ip->op[o]->reg = REGget(r);
+        if (final && (warn_opts>1 || (warn_opts && ((list&0xff) || o==0))))
+          cpu_error(51,"movem ea,Rn -> move ea,Rn");
       }
-      else if (regs==2 && opt_speed &&
-               ((cpu_type & m68040) || (!(cpu_type & (m68000|m68010)) &&
-                ip->op[o^1]->mode<=MODE_AnPreDec))) {
+      else if (regs==2 && (opt_movem || (!(list&0xff) && o==1)) &&
+               ((opt_speed && (cpu_type & m68040)) ||
+               (ip->op[o^1]->mode<=MODE_AnPreDec &&
+                ((cpu_type & m68020up) || o==1))) &&
+               !aindir_in_list(ip->op[o^1],list)) {
         /* MOVEM with two registers is faster with two separate MOVEs,
-           when not using 68000 or 68010. Addressing modes with displacement
-           or extended addressing modes for 68040 only. */
+           unless having Rn/Rm,<ea> on a 68000/68010. Addressing modes with
+           displacemen or extended addressing for 68040 and opt_speed only. */
         taddr offs = ext=='l' ? 4 : 2;
 
-        if ((opt_movem || (!(list&0xff) && o==1)) &&
-            test_incr_ea(ip->op[o^1],offs) &&
-            !aindir_in_list(ip->op[o^1],list)) {
+        if (!(cpu_type & m68040) || test_incr_ea(ip->op[o^1],offs)) {
           signed char r = lsbit(list,0,16);
           instruction *ip2;
 
@@ -3534,7 +3535,10 @@ dontswap:
         ip->op[0]->reg==REG_Immediate && abs) {
       /* ADD/ADDI/ADDA/SUB/SUBI/SUBA Immediate --> ADDQ/SUBQ */
       if (opt_quick && val>=1 && val<=8) {
-        ip->code = (oc&0x4200) ? OC_ADDQ : OC_SUBQ;
+        if ((cpu_type&apollo) && ip->op[1]->mode==MODE_SpecReg)
+          ip->code = (oc&0x4200) ? OC_ADDQVX : OC_SUBQVX;
+        else
+          ip->code = (oc&0x4200) ? OC_ADDQ : OC_SUBQ;
         if (final && warn_opts>1)
           cpu_error(51,"add/sub #x -> addq/subq #x");
       }
@@ -5088,9 +5092,10 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
           operand *op = ip->op[i];
 
           if (op->mode == MODE_SpecReg) {
-            op->mode = (mnemo->ext.place[i] == SEA || mnemo->ext.place[i] == MEA) ? MODE_Dn : MODE_FPn;
+            op->mode = (mnemo->operand_type[i] == F_) ? MODE_FPn : MODE_Dn;
             op->reg = (op->reg - REG_VX00) % 8;
-            op->flags = 0;
+            /* @@@ need any other flags be preserved? */
+            op->flags &= FL_BFoffsetDyn|FL_BFwidthDyn;
           }
         }
       }
@@ -5556,10 +5561,14 @@ int init_cpu()
        Set it to 99 when creating an object file of unknown format. */
     if (!strcmp(output_format,"tos"))
       f = 0;
-    else if (!strcmp(output_format,"hunkexe"))
-      f = 4;
+    if (!strcmp(output_format,"dri"))
+      f = 1;
+    if (!strcmp(output_format,"gst"))
+      f = 2;
     else if (!strcmp(output_format,"hunk"))
       f = 3;
+    else if (!strcmp(output_format,"hunkexe"))
+      f = 4;
     set_internal_abs(lk_name,f);
   }
 

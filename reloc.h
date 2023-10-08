@@ -1,5 +1,5 @@
 /* reloc.h  reloc header file for vasm */
-/* (c) in 2002,2005-8,2010,2011,2016 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002,2005-11,2016,2023 by Volker Barthelmann and Frank Wille */
 
 #ifndef RELOC_H
 #define RELOC_H
@@ -53,16 +53,18 @@ nreloc *new_nreloc(void);
 rlist *add_extnreloc(rlist **,symbol *,taddr,int,size_t,size_t,size_t);
 rlist *add_extnreloc_masked(rlist **,symbol *,taddr,int,size_t,size_t,
                             size_t,utaddr);
-int is_pc_reloc(symbol *,section *);
-void do_pic_check(rlist *);
-taddr nreloc_real_addend(nreloc *);
-void unsupp_reloc_error(rlist *);
-void print_reloc(FILE *,int,nreloc *);
-
 /* old interface: byteoffset and bitoffset are calculated from offset 'o' */
 #define add_nreloc(r,y,a,t,s,o) \
   add_extnreloc(r,y,a,t,(o)%bitsperbyte,s,(o)/bitsperbyte)
 #define add_nreloc_masked(r,y,a,t,s,o,m) \
   add_extnreloc_masked(r,y,a,t,(o)%bitsperbyte,s,(o)/bitsperbyte,m)
+
+int is_pc_reloc(symbol *,section *);
+void do_pic_check(rlist *);
+taddr nreloc_real_addend(nreloc *);
+void unsupp_reloc_error(rlist *);
+void print_reloc(FILE *,int,nreloc *);
+rlist *get_relocs(atom *);
+int patch_nreloc(atom *,rlist *,int,taddr,int);
 
 #endif

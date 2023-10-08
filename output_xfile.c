@@ -1,4 +1,4 @@
-/* output_xfile.c Sharp X68000 Xfile output driver for vasm */
+/* xfile.c Sharp X68000 Xfile output driver for vasm */
 /* (c) in 2018,2020,2021 by Frank Wille */
 
 #include "vasm.h"
@@ -24,9 +24,7 @@ static void xfile_initwrite(section *sec,symbol *sym)
   secsize[S_TEXT] = secsize[S_DATA] = secsize[S_BSS] = 0;
 
   for (; sec; sec=sec->next) {
-    /* section size is assumed to be in in (sec->pc - sec->org), otherwise
-       we would have to calculate it from the atoms and store it there */
-    if ((sec->pc - sec->org) > 0 || (sec->flags & HAS_SYMBOLS)) {
+    if (get_sec_size(sec) > 0 || (sec->flags & HAS_SYMBOLS)) {
       i = get_sec_type(sec);
       if (i<S_TEXT || i>S_BSS) {
         output_error(3,sec->attr);  /* section attributes not supported */
@@ -97,16 +95,9 @@ static void do_relocs(section *asec,taddr pc,atom *a)
 /* Try to resolve all relocations in a DATA or SPACE atom.
    Very simple implementation which can only handle basic 68k relocs. */
 {
+  rlist *rl = get_relocs(a);
   int rcnt = 0;
   section *sec;
-  rlist *rl;
-
-  if (a->type == DATA)
-    rl = a->content.db->relocs;
-  else if (a->type == SPACE)
-    rl = a->content.sb->relocs;
-  else
-    rl = NULL;
 
   while (rl) {
     switch (rl->type) {
@@ -174,7 +165,7 @@ static size_t xfile_symboltable(FILE *f,symbol *sym)
 {
   static const int labtype[] = { XSYM_TEXT,XSYM_DATA,XSYM_BSS };
   size_t len = 0;
-  char *p;
+  const char *p;
 
   for (; sym; sym=sym->next) {
     if (!(sym->flags & VASMINTERN)
@@ -231,13 +222,7 @@ static size_t xfile_writerelocs(FILE *f,section *sec)
 
       npc = pcalign(a,pc);
 
-      if (a->type == DATA)
-        rl = a->content.db->relocs;
-      else if (a->type == SPACE)
-        rl = a->content.sb->relocs;
-      else
-        rl = NULL;
-
+      rl = get_relocs(a);
       while (rl) {
         if (rl->type==REL_ABS && ((nreloc *)rl->reloc)->size==32)
           sortoffs[nrel++] = ((nreloc *)rl->reloc)->byteoffset;

@@ -32,8 +32,6 @@ char commentchar=';';
 #else
 char commentchar='#';
 #endif
-char *defsectname = textname;
-char *defsecttype = textattr;
 
 static char macroname[] = ".macro";
 static char endmname[] = ".endm";
@@ -1007,7 +1005,7 @@ static void handle_swbeg(char *s)
 }
 
 struct {
-  char *name;
+  const char *name;
   void (*func)(char *);
 } directives[]={
   "org",handle_org,
@@ -1511,6 +1509,11 @@ int init_syntax()
   esc_sequences = !noesc;
   nocase_macros = 1;
   return 1;
+}
+
+int syntax_defsect(void)
+{
+  return 0;  /* defaults to .text */
 }
 
 int syntax_args(char *p)

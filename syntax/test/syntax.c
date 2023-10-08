@@ -17,8 +17,6 @@ const char *syntax_copyright="vasm test syntax module (c) 2002 Volker Barthelman
 hashtable *dirhash;
 char commentchar=';';
 int dotdirs;
-char *defsectname = NULL;
-char *defsecttype = NULL;
 
 
 char *skip(char *s)
@@ -220,7 +218,7 @@ static void handle_bsss(char *s){ handle_section(".bss,\"aurw4\"");eol(s);}
 static void handle_sbsss(char *s){ handle_section(".bss,\"aurw4\"");eol(s);}
 
 struct {
-  char *name;
+  const char *name;
   void (*func)(char *);
 } directives[]={
   "section",handle_section,
@@ -417,6 +415,11 @@ int init_syntax()
   }
   
   return 1;
+}
+
+int syntax_defsect(void)
+{
+  return 0;
 }
 
 int syntax_args(char *p)

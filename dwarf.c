@@ -7,12 +7,12 @@
 
 struct DWinclude {
   struct DWinclude *next;
-  char *name;
+  const char *name;
 };
 
 struct DWfile {
   struct DWfile *next;
-  char *name;
+  const char *name;
   int incidx;
 };
 
@@ -50,7 +50,7 @@ static struct DWinclude *first_dwinc;
 static struct DWfile *first_dwfil;
 
 
-static struct DWinclude *new_dwinc(char *name)
+static struct DWinclude *new_dwinc(const char *name)
 {
   struct DWinclude *new = mymalloc(sizeof(struct DWinclude));
 
@@ -69,7 +69,7 @@ static void make_file_lists(struct source_file *first_source)
   struct DWfile *newfil,*dwfil;
   struct DWinclude *dwinc;
   char pathbuf[MAXPATHLEN];
-  char *filepart;
+  const char *filepart;
   int include_idx = 0;
   int file_idx = 0;
   int i;

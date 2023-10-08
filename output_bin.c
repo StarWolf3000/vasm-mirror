@@ -1,10 +1,10 @@
-/* output_bin.c binary output driver for vasm */
+/* bin.c binary output driver for vasm */
 /* (c) in 2002-2009,2013-2023 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
 #ifdef OUTBIN
-static char *copyright="vasm binary output module 2.2 (c) 2002-2023 Volker Barthelmann and Frank Wille";
+static char *copyright="vasm binary output module 2.3 (c) 2002-2023 Volker Barthelmann and Frank Wille";
 
 enum {
   BINFMT_RAW,           /* no header */
@@ -36,18 +36,18 @@ static int orgcmp(const void *sec1,const void *sec2)
 
 static void write_output(FILE *f,section *sec,symbol *sym)
 {
-  section *s,*s2,**seclist,**slp;
+  section *s,**seclist,**slp;
   unsigned long long pc=0,npc;
   size_t nsecs;
   long hdroffs;
   char *nptr;
   atom *p;
 
-  if (!sec)
+  if (sec == NULL)
     return;
 
   for (; sym; sym=sym->next) {
-    if (sym->type == IMPORT)
+    if (sym->type==IMPORT)
       output_error(6,sym->name);  /* undefined symbol */
 
     if (exec_symname!=NULL && !strcmp(exec_symname,sym->name)) {
@@ -58,17 +58,8 @@ static void write_output(FILE *f,section *sec,symbol *sym)
   if (exec_symname != NULL)
     output_error(6,exec_symname);  /* start-symbol not found */
 
-  /* we don't support overlapping sections */
-  for (s=sec,nsecs=0; s!=NULL; s=s->next) {
-    for (s2=s->next; s2; s2=s2->next) {
-      if (((ULLTADDR(s2->org) >= ULLTADDR(s->org) &&
-            ULLTADDR(s2->org) < ULLTADDR(s->pc)) ||
-           (ULLTADDR(s2->pc) > ULLTADDR(s->org) &&
-            ULLTADDR(s2->pc) <= ULLTADDR(s->pc))))
-        output_error(0);
-    }
-    nsecs++;
-  }
+  /* we don't support overlapping sections, count sections */
+  nsecs = chk_sec_overlap(sec);
 
   /* make an array of section pointers, sorted by their start address */
   seclist = (section **)mymalloc(nsecs * sizeof(section *));
@@ -269,8 +260,15 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 
 static int output_args(char *p)
 {
+  long long val;
+
   if (!strncmp(p,"-exec=",6)) {
     exec_symname = p + 6;
+    return 1;
+  }
+  else if (!strncmp(p,"-start=",7)) {
+    sscanf(p+7,"%lli",&val);
+    defsectorg = val;  /* set start of default section */
     return 1;
   }
   else if (!strcmp(p,"-apple-bin")) {
@@ -318,6 +316,7 @@ int init_output_bin(char **cp,void (**wo)(FILE *,section *,symbol *),int (**oa)(
   *cp = copyright;
   *wo = write_output;
   *oa = output_args;
+  defsecttype = emptystr;  /* default section is "org 0" */
   return 1;
 }
 

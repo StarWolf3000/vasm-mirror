@@ -1,4 +1,4 @@
-/* output_aout.h header file for a.out objects */
+/* aout.h header file for a.out objects */
 /* (c) in 2008,2020 by Frank Wille */
 
 #include "stabs.h"
@@ -90,7 +90,7 @@ struct relocation_info {
 struct StrTabNode {
   struct node n;
   struct StrTabNode *hashchain;
-  char *str;
+  const char *str;
   uint32_t offset;
 };
 
@@ -103,7 +103,7 @@ struct StrTabList {
 struct SymbolNode {
   struct node n;
   struct SymbolNode *hashchain;
-  char *name;
+  const char *name;
   struct nlist32 s;
   uint32_t index;
 };

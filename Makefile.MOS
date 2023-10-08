@@ -5,7 +5,7 @@ TARGETEXTENSION =
 
 CC = vc +morphos
 CCOUT = -o=
-COPTS = -c -merge-strings -DAMIGA -O1 $(OUTFMTS)
+CFLAGS = -c -merge-strings -DAMIGA -O1 $(OUTFMTS)
 
 LD = $(CC)
 LDOUT = $(CCOUT)

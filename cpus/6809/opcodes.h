@@ -158,7 +158,7 @@
   "ldd",   {AL2            }, {  0xcc,  0xdc,  0xec,  0xfc, M6809|TURBO9|HD6309|HC12},
   "lde",   {AL1            }, {0x1186,0x1196,0x11a6,0x11b6, HD6309},
   "ldf",   {AL1            }, {0x11c6,0x11d6,0x11e6,0x11f6, HD6309},
-  "ldmd",  {IM1            }, {0x013d,    NA,    NA,    NA, HD6309},
+  "ldmd",  {IM1            }, {0x113d,    NA,    NA,    NA, HD6309},
   "ldq",   {AL4            }, {  0xcd,0x10dc,0x10ec,0x10fc, HD6309},
   "lds",   {AL2            }, {0x10ce,0x10de,0x10ee,0x10fe, M6809|TURBO9|HD6309},
   "lds",   {AL2            }, {  0xcf,  0xdf,  0xef,  0xff, HC12},

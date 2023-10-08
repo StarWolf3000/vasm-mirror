@@ -297,8 +297,7 @@ source *include_source(char *inc_name)
     return NULL;  /* ignore multiple inclusion of this source completely */
   /* otherwise reuse existing source file instance */
 
-  cur_src = new_source(srcfile->name,srcfile,srcfile->text,srcfile->size);
-  return cur_src;
+  return cur_src = new_source(srcfile->name,srcfile,srcfile->text,srcfile->size);
 }
 
 
@@ -321,7 +320,7 @@ void include_binary_file(char *inname,long nbskip,unsigned long nbkeep)
         else
           db->size = nbkeep;
 
-        db->data = mymalloc(size);
+        db->data = mymalloc(db->size);
         if (nbskip > 0)
           fseek(f,nbskip,SEEK_SET);
 

@@ -155,9 +155,11 @@ This module provides the following additional options:
 
     @item -opt-movem
         Enables optimization from @code{MOVEM <ea>,Rn} into
-        @code{MOVE <ea>,Rn} (or the other way around). This optimization
-        will modify the flags, when the destination is no address
-        register.
+        @code{MOVE <ea>,Rn} (or the other way around). May also optimize
+        @code{MOVEM} with two registers into two separate @code{MOVE}
+        insructions, when advantageous for the currently selected CPU.
+        This optimization will modify the flags when the destination is
+        no address register.
 
     @item -opt-mul
         Immediate multplication factors, which are a power of two (from 2
@@ -252,9 +254,9 @@ vasm performs the following optimizations:
         The symbol @code{__G2} is defined, which contains information
         about the selected cpu type.
         The symbol @code{__LK} reflects the type of output file generated.
-        Which is 0 for TOS executables, 4 for Amiga executables and 3 for
-        Amiga object files. All other formats are represented by 99, as
-        they are unknown to Devpac.
+        Which is 0 for TOS executables, 1 for DRI objects, 2 for GST objects,
+        3 for AmigaDOS objects and 4 for AmigaDOS executables.
+        All other formats are represented by 99, as they are unknown to Devpac.
         It will also automatically enable @option{-guess-ext} and
         @option{-nodpc}.
 
@@ -968,10 +970,12 @@ the options @option{-opt-speed} and @option{-opt-lsl} are given.
  by the option @option{-opt-movem} or when just loading an address register.
 
 @item @code{MOVEM.? <ea>,Rm/Rn} and @code{MOVEM.? Rm/Rn,<ea>} are optimized
- into a sequence of two @code{MOVE} for all cpus except 68000 and 68010.
- Complex addressing modes with displacements or addresses are optimized
- for 68040 only. Has to be enabled by the options @option{-opt-movem} and
- @option{-opt-speed}.
+ into a sequence of two @code{MOVE} instructions when advantageous for
+ the currently selected CPU.
+ For example, for 68000 and 68010 it is no advantage to optimize
+ @code{MOVEM Rm/Rn,-(An)}, and addressing modes with displacements
+ or absolute addresses are optimized for 68040 only (may additionally
+ require @option{opt-speed}).
 
 @item @code{MULS.?/MULU.? #0,Dn} optimized to @code{MOVEQ #0,Dn}
 (@option{-opt-mul}).

@@ -5,7 +5,7 @@ TARGETEXTENSION =
 
 CC = vc +aos68k
 CCOUT = -o=
-COPTS = -c -merge-strings -size -DLOWMEM -DAMIGA -DOUTBIN -DOUTHUNK -DOUTVOBJ -O1
+CFLAGS = -c -merge-strings -size -DLOWMEM -DAMIGA -DOUTBIN -DOUTHUNK -DOUTVOBJ -O1
 
 LD = $(CC)
 LDOUT = $(CCOUT)

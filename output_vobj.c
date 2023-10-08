@@ -1,4 +1,4 @@
-/* output_vasm.c vobj format output driver for vasm */
+/* vobj format output driver for vasm */
 /* (c) in 2002-2020 by Volker Barthelmann */
 
 #include "vasm.h"
@@ -72,7 +72,7 @@ static void write_number(FILE *f,taddr val)
   }
 }
 
-static void write_string(FILE *f,char *p)
+static void write_string(FILE *f,const char *p)
 {
   while(p&&*p){
     fw8(f,*p);

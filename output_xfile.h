@@ -1,4 +1,4 @@
-/* output_xfile.h header file for the Sharp X68000 Xfile format */
+/* xfile.h header file for the Sharp X68000 Xfile format */
 /* (c) in 2018,2020 by Frank Wille */
 
 

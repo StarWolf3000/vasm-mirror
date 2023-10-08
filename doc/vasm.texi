@@ -8,7 +8,7 @@
 @setfilename index.texi
 @settitle vasm manual
 @setchapternewpage odd
-@set UPDATED March 2023
+@set UPDATED September 2023
 
 @ifinfo
 
@@ -168,6 +168,10 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @node C #define output module
 @chapter C #define output module
 @include output_cdef.texi
+
+@node Wozmon output module
+@chapter Wozmon output module
+@include output_woz.texi
 
 @node m68k cpu module
 @chapter m68k cpu module

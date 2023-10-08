@@ -1,4 +1,4 @@
-/* output_gst.h header file for Atari GST format */
+/* gst.h header file for Atari GST format */
 /* (c) in 2023 by Frank Wille */
 
 #define GSTESC 0xfb      /* Escape code for GST directives in the stream */

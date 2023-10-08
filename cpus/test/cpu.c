@@ -23,7 +23,7 @@ const char *cpu_copyright="vasm test cpu backend (c) in 2002 Volker Barthelmann"
         Special case for bra: 11112222: 0-255 relative offset
 */
 
-char *cpuname="test";
+const char *cpuname="test";
 int bitsperbyte=8;
 int bytespertaddr=4;
 

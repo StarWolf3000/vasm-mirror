@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
 const char *cpu_copyright = "vasm pdp-11 cpu backend 0.2 (c)2020 by Frank Wille";
-char *cpuname = "pdp11";
+const char *cpuname = "pdp11";
 int bitsperbyte = 8;
 int bytespertaddr = 2;
 

@@ -491,6 +491,7 @@ Has to be provided completely by the syntax module.
     @item Matthias Bock
     @item Simone Bevilacqua
     @item Karoly Balogh
+    @item Anomie-p
 @end itemize
 
 @section Error Messages
@@ -583,4 +584,6 @@ The frontend has the following error messages:
 @item 83: label definition not allowed here
 @item 84: label defined on the same line as a new section
 @item 85: no debug output possible with source from stdin
+@item 86: external symbol <%s> must not be defined
+@item 87: missing definition for symbol <%s>
 @end itemize

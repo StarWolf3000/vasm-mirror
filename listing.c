@@ -156,7 +156,7 @@ static void print_list_header(FILE *f,int cnt)
 static void write_listing_old(char *listname,section *first_section)
 {
   FILE *f;
-  int nsecs,i,cnt=0,nl;
+  int nsecs,i,cnt=0;
   section *secp;
   listing *p;
   atom *a;
@@ -184,7 +184,7 @@ static void write_listing_old(char *listname,section *first_section)
       a=a->next;
     if(a&&a->type==DATA){
       int size=a->content.db->size;
-      char *dp=a->content.db->data;
+      unsigned char *dp=a->content.db->data;
       pc=p->pc;
       fprintf(f,"%05lX %d ",(unsigned long)pc,(int)(p->sec?p->sec->idx:0));
       for(i=0;i<8;i++){
@@ -228,7 +228,7 @@ static void write_listing_old(char *listname,section *first_section)
     while(a){
       if(a->type==DATA){
         int size=a->content.db->size;
-        char *dp=a->content.db->data+i;
+        unsigned char *dp=a->content.db->data+i;
 
         if(i<size){
           for(;i<size;i++){

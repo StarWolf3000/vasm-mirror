@@ -79,12 +79,12 @@ typedef struct printexpr {
 
 typedef struct assertion {
   expr *assert_exp;
-  char *expstr;
-  char *msgstr;
+  const char *expstr;
+  const char *msgstr;
 } assertion;
 
 typedef struct aoutnlist {
-  char *name;
+  const char *name;
   int type;
   int other;
   int desc;
@@ -92,7 +92,7 @@ typedef struct aoutnlist {
 } aoutnlist;
 
 /* an atomic element of data */
-typedef struct atom {
+struct atom {
   struct atom *next;
   int type;
   taddr align;
@@ -109,21 +109,21 @@ typedef struct atom {
     defblock *defb;
     void *opts;
     int srcline;
-    char *ptext;
+    const char *ptext;
     printexpr *pexpr;
     reloffs *roffs;
     taddr *rorg;
     assertion *assert;
     aoutnlist *nlist;
   } content;
-} atom;
+};
 
 #define MAXSIZECHANGES 5  /* warning, when atom changed size so many times */
 
 enum {
   PO_CORRUPT=-1,PO_NOMATCH=0,PO_MATCH,PO_SKIP,PO_COMB_OPT,PO_COMB_REQ,PO_NEXT
 };
-instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len);
+instruction *new_inst(const char *,int,int,char **,int *);
 instruction *copy_inst(instruction *);
 dblock *new_dblock();
 sblock *new_sblock(expr *,size_t,expr *);
@@ -139,7 +139,7 @@ atom *clone_atom(atom *);
 atom *add_data_atom(section *,size_t,taddr,taddr);
 void add_leb128_atom(section *,taddr);
 void add_sleb128_atom(section *,taddr);
-atom *add_bytes_atom(section *,void *,size_t);
+atom *add_bytes_atom(section *,const void *,size_t);
 #define add_string_atom(s,p) add_bytes_atom(s,p,strlen(p)+1)
 
 atom *new_inst_atom(instruction *);
@@ -149,12 +149,12 @@ atom *new_space_atom(expr *,size_t,expr *);
 atom *new_datadef_atom(size_t,operand *);
 atom *new_srcline_atom(int);
 atom *new_opts_atom(void *);
-atom *new_text_atom(char *);
+atom *new_text_atom(const char *);
 atom *new_expr_atom(expr *,int,int);
 atom *new_roffs_atom(expr *,expr *);
 atom *new_rorg_atom(taddr);
 atom *new_rorgend_atom(void);
-atom *new_assert_atom(expr *,char *,char *);
-atom *new_nlist_atom(char *,int,int,int,expr *);
+atom *new_assert_atom(expr *,const char *,const char *);
+atom *new_nlist_atom(const char *,int,int,int,expr *);
 
 #endif

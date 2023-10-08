@@ -1,5 +1,5 @@
-/* output_tos.h header file for Atari TOS format */
-/* (c) in 2009,2012,2020 by Frank Wille */
+/* tos.h header file for Atari TOS format */
+/* (c) in 2009,2012,2020,2023 by Frank Wille */
 
 
 /* TOS program header */
@@ -35,6 +35,10 @@ struct DRIsym
 #define STYP_GLOBAL 0x2000
 #define STYP_EQUATED 0x4000
 #define STYP_DEFINED 0x8000
-#define STYP_LONGNAME 0x0048
 #define STYP_TFILE 0x0280
 #define STYP_TFARC 0x02c0
+#define STYP_LONGNAME 0x0048    /* HiSoft long name */
+#define STYP_XFLAGS 0x4200      /* SozobonX extended name flag */
+
+#define XVALUE 0x87654321       /* SozobonX symbol value for extended name */
+#define XNAME "SozobonX"        /* Name of first symbol for SozobonX */
