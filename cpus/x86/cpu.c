@@ -11,7 +11,7 @@ mnemonic mnemonics[] = {
 const int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
 const char *cpu_copyright = "vasm x86 cpu backend 0.7a (c) 2005-2006,2011,2015-2019 Frank Wille";
-char *cpuname = "x86";
+const char *cpuname = "x86";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
 
@@ -518,7 +518,7 @@ static int find_next_mnemonic(instruction *ip)
 /* finds a mnemonic with the same name, which fits the given
    operand types and suffix */
 {
-  char *inst_name = mnemonics[ip->code].name;
+  const char *inst_name = mnemonics[ip->code].name;
   int code = ip->code + 1;
   mnemonic *mnemo = &mnemonics[code];
   uint32_t chksuffix = suffix_flag(ip);

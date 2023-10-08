@@ -1,4 +1,4 @@
-/* output_gst.c Atari GST output driver for vasm */
+/* gst.c Atari GST output driver for vasm */
 /* (c) in 2023 by Frank Wille */
 
 #include "vasm.h"
@@ -155,15 +155,8 @@ static int offscmp(const void *left,const void *right)
 static int get_sorted_rlist(atom *a)
 {
   static int max_relocs_per_atom = 0;
+  rlist *rl = get_relocs(a);
   int nrel = 0;
-  rlist *rl;
-
-  if (a->type == DATA)
-    rl = a->content.db->relocs;
-  else if (a->type == SPACE)
-    rl = a->content.sb->relocs;
-  else
-    rl = NULL;
 
   while (rl) {
     if (nrel >= max_relocs_per_atom) {

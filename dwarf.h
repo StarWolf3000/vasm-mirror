@@ -4,7 +4,7 @@
 
 struct dwarf_info {
   int version;
-  char *producer;
+  const char *producer;
   section *asec;
   void *range_length;
   section *lsec;

@@ -1,5 +1,5 @@
 /* reloc.c - relocation support functions */
-/* (c) in 2010-2016,2020,2022 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2016,2020,2022,2023 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -151,4 +151,50 @@ void print_reloc(FILE *f,int type,nreloc *p)
 
   print_symbol(f,p->sym);
   fprintf(f,") ");
+}
+
+
+rlist *get_relocs(atom *a)
+{
+  if (a->type == DATA)
+    return a->content.db->relocs;
+  else if (a->type == SPACE)
+    return a->content.sb->relocs;
+  return NULL;
+}
+
+
+static void *get_nreloc_ptr(atom *a,nreloc *nrel)
+{
+  if (a->type == DATA)
+    return (char *)a->content.db->data + nrel->byteoffset;
+  else if (a->type == SPACE)
+    return (char *)a->content.sb->fill;  /* @@@ ignore offset completely? */
+  return NULL;
+}
+
+
+int patch_nreloc(atom *a,rlist *rl,int signedflag,taddr val,int be)
+/* patch relocated value into the atom, when rlist contains an nreloc */
+{
+  nreloc *nrel;
+  char *p;
+
+  if (rl->type > LAST_STANDARD_RELOC) {
+    unsupp_reloc_error(rl);
+    return 0;
+  }
+  nrel = (nreloc *)rl->reloc;
+
+  if (field_overflow(signedflag,nrel->size,val)) {
+    output_atom_error(12,a,rl->type,(unsigned long)nrel->mask,nrel->sym->name,
+                      (unsigned long)nrel->addend,nrel->size);
+    return 0;
+  }
+
+  if (p = get_nreloc_ptr(a,nrel)) {
+    setbits(be,p,(nrel->bitoffset+nrel->size+7)&~7,
+            nrel->bitoffset,nrel->size,val);
+  }
+  return 1;
 }

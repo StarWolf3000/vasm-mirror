@@ -1,4 +1,4 @@
-/* output_aout.c a.out output driver for vasm */
+/* aout.c a.out output driver for vasm */
 /* (c) in 2008-2016,2020,2021 by Frank Wille */
 
 #include "vasm.h"
@@ -62,7 +62,7 @@ static int aout_getbind(symbol *sym)
 }
 
 
-static uint32_t aoutstd_getrinfo(rlist **rl,int xtern,char *sname,int be)
+static uint32_t aoutstd_getrinfo(rlist **rl,int xtern,const char *sname,int be)
 /* Convert vasm relocation type into standard a.out relocations, */
 /* as used by M68k and x86 targets. */
 /* For xtern=-1, return true when this relocation requires a base symbol. */
@@ -148,8 +148,6 @@ static void aout_initwrite(section *firstsec)
   for (sec=firstsec; sec; sec=sec->next) {
     int i;
 
-    /* section size is assumed to be in in (sec->pc - sec->org), otherwise
-       we would have to calculate it from the atoms and store it there */
     if (get_sec_size(sec) > 0 || (sec->flags & HAS_SYMBOLS)) {
       i = get_sec_type(sec);
       if (i == S_MISS) {
@@ -181,7 +179,7 @@ static void aout_initwrite(section *firstsec)
 }
 
 
-static uint32_t aout_addstr(char *s)
+static uint32_t aout_addstr(const char *s)
 /* add a new symbol name to the string table and return its offset */
 {
   struct StrTabNode **chain;
@@ -211,7 +209,7 @@ static uint32_t aout_addstr(char *s)
 }
 
 
-static struct SymbolNode *aout_addsym(char *name,uint8_t type,int8_t other,
+static struct SymbolNode *aout_addsym(const char *name,uint8_t type,int8_t other,
                                       int16_t desc,uint32_t value,int be)
 /* append a new symbol to the symbol list */
 {
@@ -229,7 +227,7 @@ static struct SymbolNode *aout_addsym(char *name,uint8_t type,int8_t other,
 }
 
 
-static uint32_t aout_addsymhash(char *name,taddr value,int bind,
+static uint32_t aout_addsymhash(const char *name,taddr value,int bind,
                                 int info,int type,int desc,int be)
 /* add a new symbol, return its symbol table index */
 {
@@ -246,7 +244,7 @@ static uint32_t aout_addsymhash(char *name,taddr value,int bind,
 }
 
 
-static int aout_findsym(char *name,int be)
+static int aout_findsym(const char *name,int be)
 /* find a symbol by its name, return symbol table index or -1 */
 {
   struct SymbolNode **chain = &aoutsymlist.hashtab[hashcode(name)%ASYMTABSIZE];
@@ -393,20 +391,13 @@ static void aout_addreloclist(struct list *rlst,uint32_t raddr,
 static uint32_t aout_convert_rlist(int be,atom *a,int secid,
                                    struct list *rlst,taddr pc,
                                    uint32_t (*getrinfo)
-                                            (rlist **,int,char *,int))
+                                            (rlist **,int,const char *,int))
 /* convert all of an atom's relocs into a.out relocations */
 {
   uint32_t rsize = 0;
   rlist *rl;
 
-  if (a->type == DATA)
-    rl = a->content.db->relocs;
-  else if (a->type == SPACE)
-    rl = a->content.sb->relocs;
-  else
-    rl = NULL;
-
-  if (rl == NULL)
+  if ((rl = get_relocs(a)) == NULL)
     return 0;  /* no relocs or not the right atom type */
 
   do {
@@ -460,7 +451,7 @@ static uint32_t aout_convert_rlist(int be,atom *a,int secid,
 
 
 static uint32_t aout_addrelocs(int be,int secid,struct list *rlst,
-                               uint32_t (*getrinfo)(rlist **,int,char *,int))
+                               uint32_t (*getrinfo)(rlist **,int,const char *,int))
 /* creates a.out relocations for a single section (.text or .data) */
 {
   uint32_t rtabsize=0;

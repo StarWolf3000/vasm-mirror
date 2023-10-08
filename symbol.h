@@ -42,7 +42,7 @@ struct symbol {
   struct symbol *next;
   int type;
   uint32_t flags;
-  char *name;
+  const char *name;
   expr *expr;
   expr *size;
   section *sec;
@@ -59,7 +59,7 @@ struct symbol {
 #ifdef HAVE_REGSYMS
 /* register symbols */
 struct regsym {
-  char *reg_name;
+  const char *reg_name;
   int reg_type;
   unsigned int reg_flags;
   unsigned int reg_num;
@@ -72,29 +72,29 @@ extern symbol *first_symbol;
 void print_symbol(FILE *,symbol *);
 const char *get_bind_name(symbol *);
 void add_symbol(symbol *);
-symbol *find_symbol(char *);
-void refer_symbol(symbol *,char *);
+symbol *find_symbol(const char *);
+void refer_symbol(symbol *,const char *);
 void save_symbols(void);
 void restore_symbols(void);
 
-int check_symbol(char *);
-char *set_last_global_label(char *);
-int is_local_label(char *);
-strbuf *make_local_label(int,char *,int,char *,int);
-symbol *new_abs(char *,expr *);
-symbol *new_equate(char *,expr *);
-symbol *new_import(char *);
-symbol *new_labsym(section *,char *);
+int check_symbol(const char *);
+const char *set_last_global_label(const char *);
+int is_local_label(const char *);
+strbuf *make_local_label(int,const char *,int,const char *,int);
+symbol *new_abs(const char *,expr *);
+symbol *new_equate(const char *,expr *);
+symbol *new_import(const char *);
+symbol *new_labsym(section *,const char *);
 symbol *new_tmplabel(section *);
-symbol *internal_abs(char *);
-expr *set_internal_abs(char *,taddr);
+symbol *internal_abs(const char *);
+expr *set_internal_abs(const char *,taddr);
 
 #ifdef HAVE_REGSYMS
 void add_regsym(regsym *);
-regsym *find_regsym(char *,int);
-regsym *find_regsym_nc(char *,int);
-regsym *new_regsym(int,int,char *,int,unsigned int,unsigned int);
-int undef_regsym(char *,int,int);
+regsym *find_regsym(const char *,int);
+regsym *find_regsym_nc(const char *,int);
+regsym *new_regsym(int,int,const char *,int,unsigned int,unsigned int);
+int undef_regsym(const char *,int,int);
 #endif /* HAVE_REGSYMS */
 
 int init_symbol(void);

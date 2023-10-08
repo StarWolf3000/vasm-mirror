@@ -74,10 +74,12 @@ static void write_data_record(FILE *f)
   /* pre-flight checks */
   if (buffer_i == 0)
     return;
-  if (ihex_fmt == I8HEX && addr > UINT16_MAX)
-    output_error(11, addr);
-  if (ihex_fmt == I16HEX && addr > MEBIBYTE)
-    output_error(11, addr);
+  /* addr points to the next inserted byte
+     addr-1 is the last one written */
+  if (ihex_fmt == I8HEX && addr-1 > UINT16_MAX)
+    output_error(11, addr-1);
+  if (ihex_fmt == I16HEX && addr-1 > MEBIBYTE)
+    output_error(11, addr-1);
   
   start = addr - buffer_i;
   ext = start >> 16;
@@ -116,7 +118,7 @@ static void buffer_data(FILE *f, uint8_t b)
 }
 
 /* align the atom if necessary
-   adapted from output_srec.c */
+   adapted from srec.c */
 static void align(FILE *f, section *sec, atom *a)
 {
   uint32_t align = balign(addr, a->align);
@@ -159,7 +161,7 @@ static void write_output(FILE *f, section *sec, symbol *sym)
 {
   uint32_t i, j;
   atom *a;
-  section *s, *s2;
+  section *s;
 
   if (!sec)
     return;
@@ -168,17 +170,7 @@ static void write_output(FILE *f, section *sec, symbol *sym)
     if (sym->type == IMPORT)
       output_error(6, sym->name); /* undefined symbol (sym->name) */
   
-  /* fail on overlapping sections
-     adapted from output_bin.c */
-  for (s = sec; s != NULL; s = s->next) {
-    for (s2 = s->next; s2; s2 = s2->next) {
-      if (((ULLTADDR(s2->org) >= ULLTADDR(s->org) &&
-            ULLTADDR(s2->org) < ULLTADDR(s->pc)) ||
-           (ULLTADDR(s2->pc) > ULLTADDR(s->org) &&
-            ULLTADDR(s2->pc) <= ULLTADDR(s->pc))))
-        output_error(0);
-    }
-  }
+  chk_sec_overlap(sec); /* fail on overlapping sections */
 
   buffer = mymalloc(sizeof(uint8_t) * buffer_s);
 
@@ -247,7 +239,8 @@ int init_output_ihex(char **cp, void (**wo)(FILE *, section *, symbol *), int (*
   *cp = copyright;
   *wo = write_output;
   *oa = parse_args;
-  asciiout=1;
+  asciiout = 1;
+  defsecttype = emptystr;  /* default section is "org 0" */
   return 1;
 }
 

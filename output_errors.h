@@ -1,4 +1,4 @@
-  "sections must not overlap",FATAL|ERROR|NOLINE,
+  "sections <%s>:%llx-%llx and <%s>:%llx-%llx must not overlap",FATAL|ERROR|NOLINE,
   "output module doesn't support cpu %s",ERROR|NOLINE,
   "write error",FATAL|ERROR|NOLINE,
   "section attributes <%s> not supported",ERROR|NOLINE,
@@ -18,3 +18,4 @@
   "no additional space in section to convert NONE relocation <%s> to ABS",ERROR|NOLINE,
   "section <%s>: kickstart 1.x cannot initialize bss sections >256k to zero",WARNING|NOLINE,
   "too many symbols for selected output file format",ERROR|NOLINE,
+  "all sections are absolute, nothing to relocate",WARNING|NOLINE,  /* 20 */

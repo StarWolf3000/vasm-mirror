@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm motorola syntax module 3.17a (c) 2002-2023 Frank Wille";
+const char *syntax_copyright="vasm motorola syntax module 3.18 (c) 2002-2023 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -27,8 +27,6 @@ static char rs_name[] = "__RS";
 static char so_name[] = "__SO";
 static char fo_name[] = "__FO";
 static char line_name[] = "__LINE__";
-char *defsectname = code_name;
-char *defsecttype = code_type;
 
 static struct namelen macro_dirlist[] = {
   { 5,"macro" }, { 0,0 }
@@ -73,8 +71,9 @@ static int id_stack_index;
 #define INLLABFMT "=%06d"
 static int inline_stack[INLSTACKSIZE];
 static int inline_stack_index;
-static char *saved_last_global_label;
+static const char *saved_last_global_label;
 static char inl_lab_name[8];
+static int local_id;
 
 static int parse_end = 0;
 static expr *carg1;
@@ -204,6 +203,23 @@ char *skip_operand(char *s)
   if (par_cnt != 0)
     syntax_error(4);  /* missing closing parentheses */
   return s;
+}
+
+
+/* make the given struct- or frame-offset symbol dividable my the next
+   multiple of "align" (must be a power of 2!) */
+static void setoffset_align(char *symname,int dir,utaddr align)
+{
+  symbol *sym;
+  expr *new;
+
+  sym = internal_abs(symname);
+  --align;  /* @@@ check it */
+  new = make_expr(BAND,
+                  make_expr(dir>0?ADD:SUB,sym->expr,number_expr(align)),
+                  number_expr(~align));
+  simplify_expr(new);
+  sym->expr = new;
 }
 
 
@@ -559,7 +575,9 @@ static void handle_org(char *s)
       syntax_error(7);  /* syntax error */
   }
   else {
-    if (current_section!=NULL && !(current_section->flags & ABSOLUTE))
+    if (current_section!=NULL &&
+        (!(current_section->flags & ABSOLUTE) ||
+          (current_section->flags & IN_RORG)))
       start_rorg(parse_constexpr(&s));
     else
       set_section(new_org(parse_constexpr(&s)));
@@ -1219,16 +1237,18 @@ static void handle_struct(char *s)
 
 static void handle_endstruct(char *s)
 {
+  section *structsec = current_section;
   section *prevsec;
   symbol *szlabel;
 
   if (end_structure(&prevsec)) {
     /* create the structure name as label defining the structure size */
-    current_section->flags &= ~LABELS_ARE_LOCAL;
-    szlabel = new_labsym(0,current_section->name);
-    add_atom(0,new_label_atom(szlabel));
+    structsec->flags &= ~LABELS_ARE_LOCAL;
+    szlabel = new_labsym(0,structsec->name);
     /* end structure declaration by switching to previous section */
     set_section(prevsec);
+    /* avoid that this label is moved into prevsec in set_section() */
+    add_atom(structsec,new_label_atom(szlabel));
   }
 }
 #endif
@@ -1465,7 +1485,12 @@ static void handle_rsreset(char *s)
 
 static void handle_rsset(char *s)
 {
-  new_abs(rs_name,number_expr(parse_constexpr(&s)));
+  new_abs(rs_name,parse_expr_tmplab(&s));
+}
+
+static void handle_rseven(char *s)
+{
+  setoffset_align(rs_name,1,2);
 }
 
 static void handle_clrfo(char *s)
@@ -1475,7 +1500,7 @@ static void handle_clrfo(char *s)
 
 static void handle_setfo(char *s)
 {
-  new_abs(fo_name,number_expr(parse_constexpr(&s)));
+  new_abs(fo_name,parse_expr_tmplab(&s));
 }
 
 static void handle_rs8(char *s)
@@ -1696,17 +1721,22 @@ static void handle_comment(char *s)
   /* otherwise it's just a comment to be ignored */
 }
 
+static void handle_local(char *s)
+{
+  sprintf(inl_lab_name,INLLABFMT,local_id++);
+  set_last_global_label(mystrdup(inl_lab_name));
+}
+
 static void handle_inline(char *s)
 {
-  static int id;
-  char *last;
+  const char *last;
 
   if (inline_stack_index < INLSTACKSIZE) {
-    sprintf(inl_lab_name,INLLABFMT,id);
+    sprintf(inl_lab_name,INLLABFMT,local_id);
     last = set_last_global_label(inl_lab_name);
     if (inline_stack_index == 0)
       saved_last_global_label = last;
-    inline_stack[inline_stack_index++] = id++;
+    inline_stack[inline_stack_index++] = local_id++;
   }
   else
     syntax_error(22,INLSTACKSIZE);  /* maximum inline nesting depth exceeded */
@@ -1744,7 +1774,7 @@ static void handle_popsect(char *s)
 #define D 1 /* available for DevPac */
 #define P 2 /* available for PhxAss */
 struct {
-  char *name;
+  const char *name;
   int avail;
   void (*func)(char *);
 } directives[] = {
@@ -1896,6 +1926,7 @@ struct {
   "endc",P|D,handle_endif,
   "rsreset",P|D,handle_rsreset,
   "rsset",P|D,handle_rsset,
+  "rseven",0,handle_rseven,
   "clrso",P,handle_rsreset,
   "setso",P,handle_rsset,
   "clrfo",P,handle_clrfo,
@@ -1930,6 +1961,7 @@ struct {
   "printv",0,handle_printv,
   "showoffset",P,handle_showoffset,
   "auto",0,handle_noop,
+  "local",0,handle_local,
   "inline",P,handle_inline,
   "einline",P,handle_einline,
 #if STRUCT
@@ -2728,6 +2760,14 @@ int init_syntax(void)
     }
   }
 
+  return 1;
+}
+
+
+int syntax_defsect(void)
+{
+  defsectname = code_name;
+  defsecttype = code_type;
   return 1;
 }
 

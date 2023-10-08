@@ -7,7 +7,8 @@
 /* searches mnemonic list and tries to parse (via the cpu module)
    the operands according to the mnemonic requirements; returns an
    instruction or 0 */
-instruction *new_inst(char *inst,int len,int op_cnt,char **op,int *op_len)
+instruction *new_inst(const char *inst,int len,
+                      int op_cnt,char **op,int *op_len)
 {
 #if MAX_OPERANDS!=0
   operand ops[MAX_OPERANDS];
@@ -585,7 +586,7 @@ void add_sleb128_atom(section *sec,taddr c)
 }
 
 
-atom *add_bytes_atom(section *sec,void *p,size_t sz)
+atom *add_bytes_atom(section *sec,const void *p,size_t sz)
 {
   dblock *db = new_dblock();
   atom *a;
@@ -675,7 +676,7 @@ atom *new_opts_atom(void *o)
 }
 
 
-atom *new_text_atom(char *txt)
+atom *new_text_atom(const char *txt)
 {
   atom *new = new_atom(PRINTTEXT,1);
 
@@ -727,7 +728,7 @@ atom *new_rorgend_atom(void)
 }
 
 
-atom *new_assert_atom(expr *aexp,char *exp,char *msg)
+atom *new_assert_atom(expr *aexp,const char *exp,const char *msg)
 {
   atom *new = new_atom(ASSERT,1);
 
@@ -739,7 +740,7 @@ atom *new_assert_atom(expr *aexp,char *exp,char *msg)
 }
 
 
-atom *new_nlist_atom(char *name,int type,int other,int desc,expr *value)
+atom *new_nlist_atom(const char *name,int type,int other,int desc,expr *value)
 {
   atom *new = new_atom(NLIST,1);
 

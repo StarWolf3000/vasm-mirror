@@ -1,4 +1,4 @@
-/* output_hunk.h header file for AmigaOS hunk format */
+/* hunk.h header file for AmigaOS hunk format */
 /* (c) in 2002-2019 by Frank Wille */
 
 /* hunk-format relocs */
@@ -13,7 +13,7 @@ struct hunkreloc {
 /* hunk-format external reference */
 struct hunkxref {
   struct node n;
-  char *name;
+  const char *name;
   uint32_t type;
   uint32_t size;
   uint32_t offset;
@@ -22,7 +22,7 @@ struct hunkxref {
 /* line debug hunk */
 struct linedb_block {
   struct node n;
-  char *filename;
+  const char *filename;
   uint32_t offset;
   int entries;
   struct list lines;

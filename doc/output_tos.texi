@@ -1,6 +1,6 @@
 This chapter describes the TOS output module, which can be
-selected with option @option{-Ftos} to generate executable Atari TOS
-executable files, or with option{-Fdri} to generate DRI-format object
+selected with option @option{-Ftos} to generate Atari TOS
+executable files, or with option @option{-Fdri} to generate DRI-format object
 files.
 
 @section Legal
@@ -10,12 +10,18 @@ files.
 
 @section Additional options for this module
 
-All these options only have an effect in executable files.
+@table @option
+    @item -szbx
+        Use the SozobonX extension, which allows symbol names with
+        unlimited length in DRI objects and executables.
+        Overrides the HiSoft extension.
+    @item -stdsymbols
+        Do not write HiSoft extended symbol names. Cut at 8 characters.
+@end table
+These options are valid for the @code{tos} module only:
 @table @option
     @item -monst
         Write Devpac "MonST"-compatible symbols.
-    @item -stdsymbols
-        Do not write HiSoft extended symbol names. Cut at 8 characters.
     @item -tos-flags=<flags>
         Sets the flags field in the TOS file header. Defaults to 0.
         Overwrites a TOS flags definition in the assembler source.
@@ -28,7 +34,7 @@ All these options only have an effect in executable files.
     The TOS executable file format is used on Atari 16/32-bit computers
     with 68000 up to 68060 CPU running any TOS, MiNT or any compatible
     operating system. The symbol table is in DRI format and may use
-    HiSoft extended symbol names.
+    HiSoft (default) or SozobonX extended symbol names.
   @item -Fdri
     The object file format defined by Digital Research for Atari M68k
     systems.
@@ -48,6 +54,8 @@ All these options only have an effect in executable files.
 @item The maximum symbol length is 8 characters only. The @code{tos}
   format increases the maximum length to 22 by using an extension
   created by HiSoft, unless forbidden by @option{-stdsymbols}.
+  With @option{-szbx} you may enable the SozobonX extension for
+  unlimited length - but you need a linker which supports that format.
 @item Symbol references in @code{dri} object files are limited to a
   maximum of 8192 symbols.
 @end itemize

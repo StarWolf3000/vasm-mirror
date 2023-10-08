@@ -1,4 +1,4 @@
-/* output_o65.c Andre Fachat's o65 relocatable binary format for vasm */
+/* o65.c Andre Fachat's o65 relocatable binary format for vasm */
 /* (c) in 2021 by Frank Wille */
 
 #include <time.h>
@@ -21,7 +21,7 @@ static char *out_copyright="vasm o65 output module 0.2a (c) 2021,2022 Frank Will
 
 struct o65Import {
   struct o65Import *next;
-  char *name;
+  const char *name;
   int idx;
 };
 
@@ -327,7 +327,7 @@ static void add_o65reloc(int secno,taddr offs,uint8_t type,uint8_t segid,
 }
 
 
-static int add_import(char *name)
+static int add_import(const char *name)
 {
   static struct o65Import *last;
   hashdata data;
@@ -354,14 +354,7 @@ static int add_import(char *name)
 static void do_relocs(int secno,taddr offs,atom *p)
 /* Try to resolve all relocations in a DATA or SPACE atom. */
 {
-  rlist *rl;
-
-  if (p->type == DATA)
-    rl = p->content.db->relocs;
-  else if (p->type == SPACE)
-    rl = p->content.sb->relocs;
-  else
-    rl = NULL;
+  rlist *rl = get_relocs(p);
 
   for (; rl!=NULL; rl=rl->next) {
     uint8_t type,segid;

@@ -70,7 +70,7 @@ enum {
   BD,BS,AK,MS,MR,CFMM,CFMN,ND,NI,NJ,NK,BY,BI,BJ,OF_,
   _CCR,_SR,_USP,_CACHES,_ACC,_MACSR,_MASK,_CTRL,_ACCX,_AEXT,
   _VAL,_FC,_RP_030,_RP_851,_TC,_AC,_M1_B,_BAC,_BAD,_PSR,_PCSR,
-  _TT,SH,VX,VXR2,VXR4,OVX
+  _TT,SH,VX,VXR2,VXR4,OVX,VXBF
 };
 
 struct optype optypes[] = {
@@ -354,6 +354,8 @@ struct optype optypes[] = {
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_VXRNG4|OTF_SRRANGE|OTF_CHKREG,REG_VX00,REG_VX23,
 /* OVX (Apollo) optional En register */
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_OPT|OTF_SPECREG|OTF_SRRANGE|OTF_CHKREG,REG_VX00,REG_VX23,
+/* VXBF (Apollo) En{b1:b2} */
+  _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),OTF_SPECREG|OTF_SRRANGE|OTF_CHKREG|FL_Bitfield,REG_VX00,REG_VX23,
 };
 
 #undef _

@@ -1,4 +1,4 @@
-/* output_cdef.c #define output driver for vasm */
+/* cdef.c #define output driver for vasm */
 /* (c) in 2020 by Volker Barthelmann */
 
 #include "vasm.h"

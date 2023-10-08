@@ -1,4 +1,4 @@
-/* output_srec.c Motorola S-record output driver for vasm
+/* srec.c Motorola S-record output driver for vasm
  (c) in 2015 by Joseph Zatarski
  
  jzatar2@illinois.edu
@@ -363,7 +363,8 @@ int init_output_srec(char **cp,void (**wo)(FILE *,section *,symbol *),int (**oa)
   *cp = copyright;
   *wo = write_output;
   *oa = output_args;
-  asciiout=1;
+  asciiout = 1;
+  defsecttype = emptystr;  /* default section is "org 0" */
   return 1;
 }
 

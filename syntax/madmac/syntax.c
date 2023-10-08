@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm madmac syntax module 0.6 (c) 2015-2023 Frank Wille";
+const char *syntax_copyright="vasm madmac syntax module 0.7 (c) 2015-2023 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -24,8 +24,6 @@ static char bss_name[] = ".bss";
 static char text_type[] = "acrx";
 static char data_type[] = "adrw";
 static char bss_type[] = "aurw";
-char *defsectname = text_name;
-char *defsecttype = text_type;
 
 static char macroname[] = ".macro";
 static char endmname[] = ".endm";
@@ -234,7 +232,9 @@ static void handle_bss(char *s)
 
 static void handle_org(char *s)
 {
-  if (current_section!=NULL && !(current_section->flags & ABSOLUTE))
+  if (current_section!=NULL &&
+      (!(current_section->flags & ABSOLUTE) ||
+        (current_section->flags & IN_RORG)))
     start_rorg(parse_constexpr(&s));
   else
     set_section(new_org(parse_constexpr(&s)));
@@ -646,7 +646,7 @@ static void handle_offset(char *s)
 
 
 struct {
-  char *name;
+  const char *name;
   void (*func)(char *);
 } directives[] = {
   "equ",handle_equ,
@@ -1070,6 +1070,12 @@ int init_syntax()
   modify_gen_err(WARNING,47,0);
 
   return 1;
+}
+
+
+int syntax_defsect(void)
+{
+  return 0;  /* default to .text */
 }
 
 

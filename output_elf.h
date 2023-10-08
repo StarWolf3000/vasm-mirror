@@ -1,4 +1,4 @@
-/* output_elf.h header file for ELF objects */
+/* elf.h header file for ELF objects */
 /* (c) in 2002-2016,2022 by Frank Wille */
 
 /* e_indent indexes */
@@ -249,7 +249,7 @@ struct StrTabList {
 
 struct StrTabNode {
   struct node n;
-  char *str;
+  const char *str;
 };
 
 struct Shdr32Node {
@@ -259,7 +259,7 @@ struct Shdr32Node {
 
 struct Symbol32Node {
   struct node n;
-  char *name;
+  const char *name;
   unsigned idx;
   struct Elf32_Sym s;
 };
@@ -281,7 +281,7 @@ struct Shdr64Node {
 
 struct Symbol64Node {
   struct node n;
-  char *name;
+  const char *name;
   unsigned idx;
   struct Elf64_Sym s;
 };

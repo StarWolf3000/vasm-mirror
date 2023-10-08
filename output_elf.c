@@ -1,4 +1,4 @@
-/* output_elf.c ELF output driver for vasm */
+/* elf.c ELF output driver for vasm */
 /* (c) in 2002-2016,2020,2022 by Frank Wille */
 
 #include "vasm.h"
@@ -23,7 +23,7 @@ static utaddr stablen;
 static char stabname[] = ".stab";
 
 
-static unsigned addString(struct StrTabList *sl,char *s)
+static unsigned addString(struct StrTabList *sl,const char *s)
 {
   struct StrTabNode *sn = mymalloc(sizeof(struct StrTabNode));
   unsigned idx = sl->index;
@@ -77,7 +77,7 @@ static struct Shdr64Node *addShdr64(void)
 }
 
 
-static struct Symbol32Node *addSymbol32(char *name)
+static struct Symbol32Node *addSymbol32(const char *name)
 {
   struct Symbol32Node *sn = mycalloc(sizeof(struct Symbol32Node));
   hashdata data;
@@ -94,7 +94,7 @@ static struct Symbol32Node *addSymbol32(char *name)
 }
 
 
-static struct Symbol64Node *addSymbol64(char *name)
+static struct Symbol64Node *addSymbol64(const char *name)
 {
   struct Symbol64Node *sn = mycalloc(sizeof(struct Symbol64Node));
   hashdata data;
@@ -111,7 +111,7 @@ static struct Symbol64Node *addSymbol64(char *name)
 }
 
 
-static void newSym32(char *name,elfull value,elfull size,uint8_t bind,
+static void newSym32(const char *name,elfull value,elfull size,uint8_t bind,
                      uint8_t type,unsigned shndx)
 {
   struct Symbol32Node *elfsym = addSymbol32(name);
@@ -123,7 +123,7 @@ static void newSym32(char *name,elfull value,elfull size,uint8_t bind,
 }
 
 
-static void newSym64(char *name,elfull value,elfull size,uint8_t bind,
+static void newSym64(const char *name,elfull value,elfull size,uint8_t bind,
                      uint8_t type,unsigned shndx)
 {
   struct Symbol64Node *elfsym = addSymbol64(name);
@@ -213,7 +213,7 @@ static void *makeShdr64(elfull name,elfull type,elfull flags,elfull offset,
 }
 
 
-static unsigned findelfsymbol(char *name)
+static unsigned findelfsymbol(const char *name)
 /* find symbol with given name in symlist, return its index */
 {
   hashdata data;
@@ -258,7 +258,7 @@ static uint32_t elf_sec_type(section *s)
 }
 
 
-static utaddr get_sec_flags(char *a)
+static utaddr get_sec_flags(const char *a)
 /* scan section attributes for flags (read, write, alloc, execute) */
 {
   utaddr f = 0;
@@ -355,7 +355,7 @@ static utaddr get_reloc_type(rlist **rl,
 
 
 static utaddr make_relocs(rlist *rl,utaddr pc,
-                          void (*newsym)(char *,elfull,elfull,uint8_t,
+                          void (*newsym)(const char *,elfull,elfull,uint8_t,
                                          uint8_t,unsigned),
                           void (*addrel)(elfull,elfull,elfull,elfull))
 /* convert all of an atom's relocations into ELF32/ELF64 relocs */
@@ -400,7 +400,7 @@ static utaddr make_relocs(rlist *rl,utaddr pc,
 
 
 static utaddr make_stabreloc(utaddr pc,struct stabdef *nlist,
-                             void (*newsym)(char *,elfull,elfull,uint8_t,
+                             void (*newsym)(const char *,elfull,elfull,uint8_t,
                                             uint8_t,unsigned),
                              void (*addrel)(elfull,elfull,elfull,elfull))
 {
@@ -424,7 +424,7 @@ static utaddr make_stabreloc(utaddr pc,struct stabdef *nlist,
 
 
 /* create .rel(a)XXX section header */
-static void make_relsechdr(char *sname,utaddr roffs,utaddr len,unsigned idx,
+static void make_relsechdr(const char *sname,utaddr roffs,utaddr len,unsigned idx,
                            void *(*makeshdr)(elfull,elfull,elfull,elfull,
                                              elfull,elfull,elfull,elfull))
 {
@@ -444,7 +444,7 @@ static void make_relsechdr(char *sname,utaddr roffs,utaddr len,unsigned idx,
 static utaddr prog_sec_hdrs(section *sec,utaddr soffset,
                             void *(*makeshdr)(elfull,elfull,elfull,elfull,
                                               elfull,elfull,elfull,elfull),
-                            void (*newsym)(char *,elfull,elfull,
+                            void (*newsym)(const char *,elfull,elfull,
                                            uint8_t,uint8_t,
                                            unsigned))
 {
@@ -475,7 +475,7 @@ static utaddr prog_sec_hdrs(section *sec,utaddr soffset,
   /* look for stabs (32 bits only) */
   if (!no_symbols && bits==32 && nlist!=NULL) {
     struct Shdr32Node *shn;
-    char *cuname = NULL;
+    const char *cuname = NULL;
 
     /* count them, set name of compilation unit */
     while (nlist != NULL) {
@@ -512,7 +512,7 @@ static utaddr prog_sec_hdrs(section *sec,utaddr soffset,
 
 
 static unsigned build_symbol_table(symbol *first,
-                                   void (*newsym)(char *,elfull,elfull,
+                                   void (*newsym)(const char *,elfull,elfull,
                                                   uint8_t,uint8_t,
                                                   unsigned))
 {
@@ -545,7 +545,7 @@ static unsigned build_symbol_table(symbol *first,
 
 
 static void make_reloc_sections(section *sec,
-                                void (*newsym)(char *,elfull,elfull,
+                                void (*newsym)(const char *,elfull,elfull,
                                                uint8_t,uint8_t,
                                                unsigned),
                                 void (*addrel)(elfull,elfull,elfull,elfull),

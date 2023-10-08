@@ -5,7 +5,7 @@ TARGETEXTENSION = .exe
 
 CC = pocc
 CCOUT = -Fo 
-COPTS = -W0 -Ze -c -O2 -D_WIN32 $(OUTFMTS)
+CFLAGS = -W0 -Ze -c -O2 -D_WIN32 $(OUTFMTS)
 
 LD = cc
 LDOUT = -Fe

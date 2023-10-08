@@ -274,6 +274,22 @@ int countbits(taddr val)
 }
 
 
+int tffs(taddr val)
+/* first first bit set in a taddr - similar to POSIX ffs() */
+{
+  int i,n=sizeof(taddr)<<3;
+
+  if (val == 0)
+    return 0;
+  for (i=0; i<n; i++) {
+    if (val & 1)
+      break;
+    val >>= 1;
+  }
+  return i;
+}
+
+
 void copy_cpu_taddr(void *dest,taddr val,size_t bytes)
 /* copy 'bytes' low-order bytes from val to dest in cpu's endianness */
 {
@@ -292,37 +308,6 @@ void copy_cpu_taddr(void *dest,taddr val,size_t bytes)
   }
   else
     ierror(0);
-}
-
-
-int patch_nreloc(atom *a,rlist *rl,int signedflag,taddr val,int be)
-/* patch relocated value into the atom, when rlist contains an nreloc */
-{
-  nreloc *nrel;
-  char *p;
-
-  if (rl->type > LAST_STANDARD_RELOC) {
-    unsupp_reloc_error(rl);
-    return 0;
-  }
-  nrel = (nreloc *)rl->reloc;
-
-  if (field_overflow(signedflag,nrel->size,val)) {
-    output_atom_error(12,a,rl->type,(unsigned long)nrel->mask,nrel->sym->name,
-                      (unsigned long)nrel->addend,nrel->size);
-    return 0;
-  }
-
-  if (a->type == DATA)
-    p = (char *)a->content.db->data + nrel->byteoffset;
-  else if (a->type == SPACE)
-    p = (char *)a->content.sb->fill;  /* @@@ ignore offset completely? */
-  else
-    return 1;
-
-  setbits(be,p,(nrel->bitoffset+nrel->size+7)&~7,
-          nrel->bitoffset,nrel->size,val);
-  return 1;
 }
 
 
@@ -526,7 +511,7 @@ size_t filesize(FILE *fp)
 }
 
 
-int abs_path(char *path)
+int abs_path(const char *path)
 /* return true, when path is absolute */
 {
   return *path=='/' || *path=='\\' || strchr(path,':')!=NULL;
@@ -683,6 +668,26 @@ int make_padding(taddr val,uint8_t *pad,int maxlen)
   return len;
 }
 
+
+size_t chk_sec_overlap(section *s)
+/* fatal error when section address ranges overlap, return number of sect. */
+{
+  section *s2;
+  size_t nsecs;
+
+  for (nsecs=0; s!=NULL; s=s->next) {
+    for (s2=s->next; s2; s2=s2->next) {
+      if (((ULLTADDR(s2->org) >= ULLTADDR(s->org) &&
+            ULLTADDR(s2->org) < ULLTADDR(s->pc)) ||
+           (ULLTADDR(s2->pc) > ULLTADDR(s->org) &&
+            ULLTADDR(s2->pc) <= ULLTADDR(s->pc))))
+        output_error(0,s->name,ULLTADDR(s->org),ULLTADDR(s->pc),
+                     s2->name,ULLTADDR(s2->org),ULLTADDR(s2->pc));
+    }
+    nsecs++;
+  }
+  return nsecs;
+}
 
 taddr get_sym_value(symbol *s)
 /* determine symbol's value, returns alignment for common symbols */

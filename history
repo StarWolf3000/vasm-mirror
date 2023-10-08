@@ -1,6 +1,39 @@
 vasm history
 =============
 
+- 1.9e (30.09.23)
+o Exit before reading the source (from stdin) when there were errors already.
+o Make sure the relocated blocks within all sections are closed after
+  parsing. Otherwise the first pass may find the section in a wrong state.
+o Output modules may define the default section, when no SECTION or ORG
+  directive was given. "bin", "ihex" and "srec" now default to "ORG 0".
+o New output module "woz", which outputs sections as "wozmon" monitor
+  commands, suitable for ASCII transfer via a serial connection.
+  Contributed by anomie-p.
+o m68k: Improved -opt-movem (OPT om+) optimizations, for MOVEM with two
+  registers.
+o m68k: Fixed Apollo ADD/SUB->ADDQ/SUBQ optimization with AMMX registers.
+o m68k: Enabled Apollo FPU instructions using 64-bit data registers:
+  Fxxx.D Dn,ea, FMOVE.D Fn,Dm, etc.
+o m68k: Added missing PC-relative destination addressing modes for Apollo
+  shift instructions and FMOVE, FMOVEM.
+o m68k: Apollo bchg/bclr/bset/btst Dn,An must not be allowed (conflicts
+  with MOVEP).
+o m68k: New Apollo instructions FDBcc.L, DBcc En,lab; EXTUB.L and EXTUW.L.
+o 6809: Fixed typo in the opcode for the 6309 LDMD instruction.
+o mot-syntax: Allow multiple consecutive relocated blocks within a section.
+o mot-syntax: New directives LOCAL and RSEVEN for compatibility.
+o mot-syntax: Allow any type of expression for RSSET, SETSO, SETFO.
+o madmac-syntax: Allow multiple consecutive relocated blocks within a section.
+o oldstyle-syntax: The label defining the size of a STRUCT block may have
+  been moved into the previous section, or caused a segfault at ENDSTRUCT,
+  since V1.9b.
+o tos-output: Also write absolute symbols (equates) into executables.
+o tos-output: New option -szbx to enable unlimited symbol names using the
+  SozobonX extension.
+o bin-output: New option -start to define the start address for the
+  default org-section.
+
 - 1.9d (23.04.23)
 o m68k: Using MOVEQ.L instead of MOVEQ must only disable the warning for
   values between 128 and 255, but not allow any value without error.

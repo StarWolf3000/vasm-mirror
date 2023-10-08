@@ -13,7 +13,7 @@ mnemonic mnemonics[] = {
 const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
 const char *cpu_copyright="vasm PowerPC cpu backend 3.1 (c) 2002-2019 Frank Wille";
-char *cpuname = "PowerPC";
+const char *cpuname = "PowerPC";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
 int ppc_endianess = 1;

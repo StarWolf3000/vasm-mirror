@@ -5,7 +5,7 @@ TARGETEXTENSION = .exe
 
 CC = gcc
 CCOUT = -o $(DUMMY)
-COPTS = -c -O2 -DUNIX $(OUTFMTS)
+CFLAGS = -c -O2 -DUNIX $(OUTFMTS)
 
 LD = $(CC)
 LDOUT = $(CCOUT)

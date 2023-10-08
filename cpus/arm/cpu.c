@@ -11,7 +11,7 @@ mnemonic mnemonics[] = {
 const int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
 const char *cpu_copyright = "vasm ARM cpu backend 0.5 (c) 2004,2006,2010,2011,2014-2020 Frank Wille";
-char *cpuname = "ARM";
+const char *cpuname = "ARM";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
 

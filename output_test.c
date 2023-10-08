@@ -1,4 +1,4 @@
-/* output_test.c example output driver for vasm */
+/* test.c example output driver for vasm */
 /* (c) in 2002 by Volker Barthelmann */
 
 #include "vasm.h"

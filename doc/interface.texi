@@ -210,6 +210,45 @@ it explicitly with @command{make}'s @option{-f} option:
 @end example
 
 
+@section vasm global variables
+
+Important global variables, which may be read or modified by
+syntax-, cpu- or output-modules.
+
+@table @code
+
+@item char *inname;
+Input source file name.
+
+@item char *outname;
+Output source file name.
+
+@item int exec_out;
+Non-zero, when the output file is an executable and not an object file.
+
+@item source *cur_src;
+Pointer to the current source text instance (see structures below).
+
+@item char *defsectname;
+Name of a default section which vasm creates when a label or code occurs
+in the source without any preceding @code{section} or @code{org} directive.
+Assigning NULL means that the default is an absolute section and its
+base address is taken from @code{defsectorg}.
+
+@item char *defsecttype;
+Attributes of the default section (see above). May be NULL to indicate
+that no default has been defined and vasm will show an error.
+
+@item taddr defsectorg;
+Used when @code{defsectname==NULL}. Defines the base address of a default
+absolute @code{org} section.
+
+@item char emptystr[];
+An empty string (zero length).
+
+@end table
+
+
 @section General data structures
 
 This section describes the fundamental data structures used in vasm
@@ -591,7 +630,7 @@ The contents of each section are a linked list built out of non-separable
 atoms. The general structure of an atom is:
 
 @example
-typedef struct atom @{
+struct atom @{
   struct atom *next;
   int type;
   taddr align;
@@ -615,7 +654,7 @@ typedef struct atom @{
     assertion *assert;
     aoutnlist *nlist;
   @} content;
-@} atom;
+@};
 @end example
 
 The members have the following meaning:
@@ -642,9 +681,10 @@ can change length during optimization passes and will be translated to
 @code{DATA}-atoms later.
 
 @item #define SPACE 4
-Defines a block of data filled with one value (byte). BSS sections usually
-contain only such atoms, but they are also sometimes useful as shorter
-versions of @code{DATA}-atoms in other sections.
+Defines a block of data filled with one value of a given size (up to
+@code{MAXBYTES} bytes). BSS sections usually contain only such atoms,
+but they are also sometimes useful as shorter versions of
+@code{DATA}-atoms in other sections.
 
 @item #define DATADEF 5
 Defines data of fixed size which can contain cpu specific operands and
@@ -757,7 +797,7 @@ of a @code{LABEL}-atom.
 of a @code{SPACE}-atom. Contains the following elements:
 @table @code
 @item size_t space;
-The size of the empty/filled space in bytes.
+The number of space-elements (see below) to generate here.
 
 @item expr *space_exp;
 The above size as an expression, which will be evaluated during assembly
@@ -1120,16 +1160,7 @@ A character used to introduce a comment until the end of the line.
 Define @code{dotdirs} as non-zero, when the syntax module works with
 directives starting with a dot (@code{.}).
 
-@item char *defsectname;
-Name of a default section which vasm creates when a label or code occurs
-in the source, but the programmer forgot to specify a section. Assigning
-NULL means that there is no default and vasm will show an error in this
-case.
-
-@item char *defsecttype;
-Type of the default section (see above). May be NULL.
-
-@item int init_syntax();
+@item int init_syntax(void);
 Will be called during startup, after argument parsing Must return zero if
 initializations failed, non-zero otherwise.
 
@@ -1137,6 +1168,15 @@ initializations failed, non-zero otherwise.
 This function will be called with the command line arguments (unless they
 were already recognized by other modules). If an argument was recognized,
 return non-zero.
+
+@item int syntax_defsect(void);
+Lets the syntax module define a default section, which is used when no
+section was created by any @code{section} or @code{org} directive before
+the first code or data is defined.
+May set @code{defsectname}, @code{defsecttype} and @code{defsectorg}
+accordingly and return with non-zero. Or return with zero and accept
+the defaults, which are: @code{defsectname=".text"} and
+@code{defsecttype="acrx"}.
 
 @item char *skip(char *);
 A function to skip whitespace etc.
@@ -1363,7 +1403,7 @@ include a target specific @code{mnemonic_extension}.
 @item const char *cpu_copyright;
 A string that will be emitted as part of the copyright message.
 
-@item char *cpuname;
+@item const char *cpuname;
 A string describing the target cpu.
 
 @item int init_cpu();
@@ -1469,7 +1509,7 @@ several output modules are linked into one vasm executable and their
 structure differs somewhat from syntax and cpu modules.
 
 Usually, an output module for some object format @code{fmt} should be contained
-in a file @file{output_<fmt>.c} (it may use/include other files if necessary).
+in a file @file{output/<fmt>.c} (it may use/include other files if necessary).
 To automatically include this format in the build process, the
 @code{OUTFMTS} definition in @file{make.rules} has to be extended.
 The module should be added to the @code{OBJS} variable
@@ -1512,8 +1552,21 @@ zero must be returned.
 
 @end table
 
-At last, a call to the @code{output_init_<fmt>} has to be added in the
+At last, a call to the @code{init_output_<fmt>()} has to be added in the
 @code{init_output()} function in @file{vasm.c} (should be self-explanatory).
+Besides assigning the above mentioned function pointers, this function
+can be used to redefine the assembler's behaviour.
+For example you may set the following global variables:
+
+@table @code
+@item unnamed_sections = 1;
+  Set when the output module cannot handle section names. Usually such
+  an output module only knows section types: text, data, bss.
+@item secname_attr = 1;
+  Set when the section attributes are used to differentiate between
+  two sections with the same name.
+@end table
+
 
 Some remarks:
 @itemize @minus
@@ -1532,6 +1585,11 @@ As all output modules are linked together, they have a common list of error
 messages in the file @file{output_errors.h}. If a new message is needed, this
 file has to be extended (see the section on general data structures for
 details).
+When the cause for an error relates to an @code{atom} you may also use
+the @code{output_atom_error} function instead, which additionally prints
+the atom's source text line.
+In @file{output_errors.h} use the @code{NOLINE} flag when no atom is
+available.
 
 @item
 @command{vasm} has a mechanism to specify rather complex relocations in a
