@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm std syntax module 5.5 (c) 2002-2023 Volker Barthelmann";
+const char *syntax_copyright="vasm std syntax module 5.5b (c) 2002-2023 Volker Barthelmann";
 hashtable *dirhash;
 int dotdirs = 1;
 
@@ -27,7 +27,7 @@ static char sbssname[]=".sbss",sbssattr[]="aurw";
 static char tocdname[]=".tocd",tocdattr[]="adrw";
 static char dpagename[]=".dpage",dpageattr[]="adrw";
 
-#if defined(VASM_CPU_C16X) || defined(VASM_CPU_M68K) || defined(VASM_CPU_650X) || defined(VASM_CPU_ARM) || defined(VASM_CPU_Z80)|| defined(VASM_CPU_6800) || defined(VASM_CPU_JAGRISC) || defined(VASM_CPU_QNICE) || defined(VASM_CPU_6809)
+#if defined(VASM_CPU_C16X) || defined(VASM_CPU_M68K) || defined(VASM_CPU_650X) || defined(VASM_CPU_ARM) || defined(VASM_CPU_Z80)|| defined(VASM_CPU_6800) || defined(VASM_CPU_JAGRISC) || defined(VASM_CPU_QNICE) || defined(VASM_CPU_6809) || defined(VASM_CPU_HANS)
 char commentchar=';';
 #else
 char commentchar='#';
@@ -1310,7 +1310,7 @@ char *macro_arg_opts(macro *m,int argno,char *name,char *s)
   if (*s == '=') {
     /* define a default value for this argument */
     s = skip(s+1);
-    if (end = skip_operand(s)) {
+    if (end = skip_macroparam(s)) {
       if (req)
         syntax_error(13,name);  /* pointless default value for req. parameter */
       addmacarg(&m->defaults,s,end);
@@ -1468,7 +1468,7 @@ strbuf *get_local_label(int n,char **start)
   }
   else if (isdigit((unsigned char)*s)) {
     s++;
-    if (*s=='b' || *s=='f') {
+    if ((*s=='b' || *s=='f') && !isdigit((unsigned char)*(s+1))) {
       unsigned serno = local_labno[*(s-1)-'0'];
       char sernostr[16];
 

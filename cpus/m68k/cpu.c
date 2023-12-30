@@ -25,7 +25,7 @@ const struct cpu_models models[] = {
 static const int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.6b (c) 2002-2023 Frank Wille";
+const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.6c (c) 2002-2023 Frank Wille";
 const char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -2815,10 +2815,10 @@ static void incr_ea(operand *op,taddr offset,int final)
 }
 
 
-static int aindir_in_list(operand *op,taddr list)
-/* tests if operand is (An)+ or -(An) and An is present in register list */
+static int aindir_in_list(operand *op,int mfirst,int mlast,taddr list)
+/* tests if operand is in given mode-range and An is present in reg. list */
 {
-  if (op->mode==MODE_AnPostInc || op->mode==MODE_AnPreDec)
+  if (op->mode>=mfirst && op->mode<=mlast)
     return (list & (1 << (REGAn + REGget(op->reg)))) != 0;
   return 0;
 }
@@ -3363,7 +3363,7 @@ dontswap:
 
   else if ((opt_gen || opt_movem) && (oc & 0xfbff) == 0x4880) {
     /* MOVEM */
-    int o = (oc & 0x0400) ? 1 : 0;
+    int o = (oc & 0x0400) ? 1 : 0;  /* register list operand */
 
     if (ip->op[o]->mode==MODE_Extended &&
         (ip->op[o]->reg==REG_RnList || ip->op[o]->reg==REG_Immediate) &&
@@ -3378,7 +3378,8 @@ dontswap:
           cpu_error(51,"movem deleted");
       }
       else if (regs==1 && (opt_movem || (!(list&0xff) && o==1)) &&
-               !aindir_in_list(ip->op[o^1],list)) {
+               !aindir_in_list(ip->op[o^1],
+                               MODE_AnPostInc,MODE_AnPreDec,list)) {
         /* a single register - MOVEM <ea>,Rn --> MOVE <ea>,Rn */
         signed char r = lsbit(list,0,16);
 
@@ -3391,11 +3392,13 @@ dontswap:
       else if (regs==2 && (opt_movem || (!(list&0xff) && o==1)) &&
                ((opt_speed && (cpu_type & m68040)) ||
                (ip->op[o^1]->mode<=MODE_AnPreDec &&
+                ip->op[o^1]->mode>=MODE_AnPostInc &&
                 ((cpu_type & m68020up) || o==1))) &&
-               !aindir_in_list(ip->op[o^1],list)) {
+               !aindir_in_list(ip->op[o^1],
+                               MODE_AnIndir,MODE_An8Format,list)) {
         /* MOVEM with two registers is faster with two separate MOVEs,
            unless having Rn/Rm,<ea> on a 68000/68010. Addressing modes with
-           displacemen or extended addressing for 68040 and opt_speed only. */
+           displacement or extended addressing for 68040+opt_speed only. */
         taddr offs = ext=='l' ? 4 : 2;
 
         if (!(cpu_type & m68040) || test_incr_ea(ip->op[o^1],offs)) {

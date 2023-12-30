@@ -693,6 +693,7 @@ int execute_macro(char *name,int name_len,char **q,int *q_len,int nq,
   m->recursions++;
 
   src = new_source(m->name,NULL,m->text,m->size);
+  src->macro = m;
   src->defsrc = m->defsrc;
   src->defline = m->defline;
   src->argnames = m->argnames;
@@ -781,14 +782,15 @@ int execute_macro(char *name,int name_len,char **q,int *q_len,int nq,
       break;
   }
 
-  if (n < 0)
-    n = m->num_argnames>=0 ? m->num_argnames : 0;
+  if (m->num_argnames >= 0) {
+    if (n > m->num_argnames)
+      general_error(87,m->num_argnames);  /* additional macro arguments ignored */
+    n = m->num_argnames;  /* named arguments define number of args */
+  }
   if (n > maxmacparams) {
     general_error(27,maxmacparams);  /* number of args exceeded */
     n = maxmacparams;
   }
-
-  src->macro = m;
   src->num_params = n;      /* >=0 indicates macro source */
 
   for (n=0; n<maxmacparams; n++) {

@@ -1,5 +1,5 @@
 /* atom.c - atomic objects from source */
-/* (c) in 2010-2022 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2023 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -248,11 +248,11 @@ static size_t space_size(sblock *sb,section *sec,taddr pc)
 
 static size_t roffs_size(reloffs *roffs,section *sec,taddr pc)
 {
-  taddr offs;
+  utaddr offs;
 
-  eval_expr(roffs->offset,&offs,sec,pc);
-  offs = sec->org + offs - pc;
-  return offs>0 ? offs : 0;
+  eval_expr(roffs->offset,(taddr *)&offs,sec,pc);
+  return ((utaddr)sec->org + offs > (utaddr)pc) ?
+         (utaddr)sec->org + offs - (utaddr)pc : 0;
 }
 
 

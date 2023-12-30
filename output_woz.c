@@ -4,7 +4,7 @@
 #include "vasm.h"
 
 #ifdef OUTWOZ
-static char *copyright="vasm wozmon output module 0.1 (c) 2023 anomie-p@protonmail.com";
+static char *copyright="vasm wozmon output module 0.1a (c) 2023 anomie-p@protonmail.com";
 
 /* file, ptr, addr, len, modulus:
    Using the modulus allows for handling both space and data atoms with
@@ -18,7 +18,7 @@ static uint32_t write_bytes(FILE *f, uint8_t *p, uint32_t a,
   for (i = 0, pc = a; i < l; ++i, ++pc) {
     r = pc % 8;
     if(r == 0) {
-      fprintf(f, "%X:", pc);
+      fprintf(f, "%X:", (unsigned)pc);
     }
     fprintf(f, " %02X", p[i%m]);
     if(r == 7) {
@@ -49,7 +49,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 
   /* Output data and space atoms */
   for (s = sec; s != NULL; s = s->next) {
-    addr = ULLTADDR(s->org);
+    addr = s->org;
     /* If the address is aligned on an eight byte boundary, write_bytes() will
        output the address. */
     if(addr%8 != 0) {

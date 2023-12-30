@@ -16,7 +16,7 @@ likely need to be converted to ASCII to use it elsewhere.
 #include "vasm.h"
 
 #ifdef OUTSREC
-static char *copyright="vasm motorola srecord output module 1.1 (c) 2015 Joseph Zatarski";
+static char *copyright="vasm motorola srecord output module 1.1a (c) 2015 Joseph Zatarski";
 
 static uint8_t data[32];  /* acts as a buffer for data portion of a record */
 static size_t data_size;  /* indicates current size of data[] */
@@ -231,8 +231,7 @@ static void addralign(FILE *f,atom *a,section *sec)
   while (n % patlen) {
     if (!align_warning) {
       align_warning = 1;
-      /*output_error(9,sec->name,(unsigned long)n,(unsigned long)patlen,
-                   ULLTADDR(pc));*/
+      /*output_error(9,sec->name,(unsigned long)n,(unsigned long)patlen,pc);*/
     }
     put_byte_in_buffer(f,0);
     n--;
@@ -251,8 +250,7 @@ static void addralign(FILE *f,atom *a,section *sec)
   while (n--) {
     if (!align_warning) {
       align_warning = 1;
-      /*output_error(9,sec->name,(unsigned long)n,(unsigned long)patlen,
-                   ULLTADDR(pc));*/
+      /*output_error(9,sec->name,(unsigned long)n,(unsigned long)patlen,pc);*/
     }
     put_byte_in_buffer(f, 0);
   }
@@ -290,9 +288,9 @@ static void write_output(FILE *f,section *sec,symbol *sym)
     }
     write_data_buffer(f, 0); /* record type is S0 for header */
     
-    pc = ULLTADDR(s->org);	/* start at the org address */
-    srec_pc = pc;		/* need to update both */
-    for (p=s->first; p; p=p->next)	/* iterate through atoms */
+    pc = s->org;                        /* start at the org address */
+    srec_pc = pc;                       /* need to update both */
+    for (p=s->first; p; p=p->next)      /* iterate through atoms */
     {
       addralign(f,p,s);
       if(p->type == DATA)

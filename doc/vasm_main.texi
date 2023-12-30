@@ -586,4 +586,5 @@ The frontend has the following error messages:
 @item 85: no debug output possible with source from stdin
 @item 86: external symbol <%s> must not be defined
 @item 87: missing definition for symbol <%s>
+@item 88: additional macro arguments ignored (expecting %d)
 @end itemize

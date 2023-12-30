@@ -1,5 +1,5 @@
 /* listing.h - listing file */
-/* (c) in 2020-2022 by Volker Barthelmann and Frank Wille */
+/* (c) in 2020-2023 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -387,7 +387,7 @@ static void write_listing_old(char *listname,section *first_section)
 
 static void write_listing_wide(char *listname,section *first_section)
 {
-  int addrw = bytespertaddr*2;  /* width of address field */
+  int addrw = bytespertaddr*(bitsperbyte/8)*2;  /* width of address field */
   source *lastsrc = NULL;
   FILE *f;
   section *secp;

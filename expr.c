@@ -232,6 +232,7 @@ static expr *primary_expr(void)
   if(*s=='\''||*s=='\"'){
     taddr val=0;
     int shift=0,cnt=0;
+    int charspertaddr=bytespertaddr*bitsperbyte/8;
     char quote=*s++;
     while(*s){
       char c;
@@ -245,8 +246,8 @@ static expr *primary_expr(void)
           else break;
         }
       }
-      if(++cnt>bytespertaddr){
-        general_error(21,bytespertaddr*8);  /* target data type overflow */
+      if(++cnt>charspertaddr){
+        general_error(21,bytespertaddr*bitsperbyte); /* target data type overflow */
         break;
       }
       if(BIGENDIAN){
@@ -1131,14 +1132,14 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     val=tree->c.val;
     break;
   case HUG:
-    if (!huge_chkrange(tree->c.huge,bytespertaddr*8) && final_pass)
-      general_error(21,bytespertaddr*8);  /* target data type overflow */
+    if (!huge_chkrange(tree->c.huge,bytespertaddr*bitsperbyte) && final_pass)
+      general_error(21,bytespertaddr*bitsperbyte); /* target data type overflow */
     val=huge_to_int(tree->c.huge);
     break;
 #if FLOAT_PARSER
   case FLT:
-    if (!flt_chkrange(tree->c.flt,bytespertaddr*8) && final_pass)
-      general_error(21,bytespertaddr*8);  /* target data type overflow */
+    if (!flt_chkrange(tree->c.flt,bytespertaddr*bitsperbyte) && final_pass)
+      general_error(21,bytespertaddr*bitsperbyte); /* target data type overflow */
     val=(taddr)tree->c.flt;
     break;
 #endif

@@ -4,7 +4,7 @@
 #include "vasm.h"
 
 #ifdef OUTBIN
-static char *copyright="vasm binary output module 2.3 (c) 2002-2023 Volker Barthelmann and Frank Wille";
+static char *copyright="vasm binary output module 2.3a (c) 2002-2023 Volker Barthelmann and Frank Wille";
 
 enum {
   BINFMT_RAW,           /* no header */
@@ -26,9 +26,9 @@ static taddr exec_addr;
 
 static int orgcmp(const void *sec1,const void *sec2)
 {
-  if (ULLTADDR((*(section **)sec1)->org) > ULLTADDR((*(section **)sec2)->org))
+  if (((utaddr)(*(section **)sec1)->org) > ((utaddr)(*(section **)sec2)->org))
     return 1;
-  if (ULLTADDR((*(section **)sec1)->org) < ULLTADDR((*(section **)sec2)->org))
+  if (((utaddr)(*(section **)sec1)->org) < ((utaddr)(*(section **)sec2)->org))
     return -1;
   return 0;
 }
@@ -200,14 +200,14 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 
       default:
         /* fill gap between sections with pad-bytes */
-        if (s!=seclist[0] && ULLTADDR(s->org) > pc)
-          fwalignpattern(f,ULLTADDR(s->org)-pc,s->pad,s->padbytes);
+        if (s!=seclist[0] && ((unsigned long long)s->org) > pc)
+          fwalignpattern(f,((unsigned long long)s->org)-pc,s->pad,s->padbytes);
         break;
     }
 
     /* write section contents */
-    for (p=s->first,pc=ULLTADDR(s->org); p; p=p->next) {
-      npc = ULLTADDR(fwpcalign(f,p,s,pc));
+    for (p=s->first,pc=(unsigned long long)s->org; p; p=p->next) {
+      npc = fwpcalign(f,p,s,pc);
 
       if (p->type == DATA)
         fwdata(f,p->content.db->data,p->content.db->size);

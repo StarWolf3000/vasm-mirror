@@ -753,7 +753,7 @@ Pointer to the source text object to which this atom belongs.
 The source line number that created this atom.
 
 @item listing *list;
-Pointer to the listing file object to which this atoms belong.
+Pointer to the listing file object to which this atom belongs.
 
 @item    instruction *inst;
 (In union @code{content}.) Pointer to an instruction structure in the case
@@ -1458,7 +1458,7 @@ operand type. Can be used to break a @code{PO_COMB_OPT} or @code{PO_COMB_REQ}
 attempt and continue normally.
 @end table
 
-@item taddr instruction_size(instruction *ip, section *sec, taddr pc);
+@item size_t instruction_size(instruction *ip, section *sec, taddr pc);
 Returns the size of the instruction @code{ip} in bytes, which, in the
 final pass, must be identical to the number of bytes written by
 @code{eval_instruction()}

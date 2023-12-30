@@ -1,6 +1,18 @@
 vasm history
 =============
 
+- 1.9f (10.11.23)
+o Fix relative section offset directives, which must be unsigned to work
+  correctly over the whole target's address space.
+o Fixed a few issues with named macro arguments.
+o Do not warn about missing references to Common or Weak symbols.
+o Binary output modules allow addresses outside of the backend's
+  address space.
+o m68k: MOVEM (An),An/Am must not be optimized into two MOVE instructions.
+  This was a new bug in V1.9e.
+o std-syntax: Fixed binary constant 0b...., which was erroneously mistaken
+  for a one-digit temporary label destination since V1.9a.
+
 - 1.9e (30.09.23)
 o Exit before reading the source (from stdin) when there were errors already.
 o Make sure the relocated blocks within all sections are closed after

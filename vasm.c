@@ -10,7 +10,7 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 1.9e"
+#define _VER "vasm 1.9f"
 const char *copyright = _VER " (c) in 2002-2023 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
@@ -149,15 +149,14 @@ static void remove_unalloc_sects(void)
 static void roffs_to_space(section *sec,atom *p)
 {
   uint8_t padding[MAXPADBYTES];
-  taddr space,padbytes,n;
+  utaddr space,padbytes,n;
   sblock *sb = NULL;
 
-  if (eval_expr(p->content.roffs->offset,&space,sec,sec->pc) &&
+  if (eval_expr(p->content.roffs->offset,(taddr *)&space,sec,sec->pc) &&
       (p->content.roffs->fillval==NULL ||
-       eval_expr(p->content.roffs->fillval,&n,sec,sec->pc))) {
-    space = sec->org + space - sec->pc;
-
-    if (space >= 0) {
+       eval_expr(p->content.roffs->fillval,(taddr *)&n,sec,sec->pc))) {
+    if ((utaddr)sec->org + space > (utaddr)sec->pc) {
+      space = (utaddr)sec->org + space - (utaddr)sec->pc;
       if (p->content.roffs->fillval == NULL) {
         memcpy(padding,sec->pad,MAXPADBYTES);
         padbytes = sec->padbytes;
@@ -188,8 +187,6 @@ static void roffs_to_space(section *sec,atom *p)
         p->content.sb = new_sblock(number_expr(space),1,0);
       }
     }
-    else
-      general_error(20);  /* rorg is lower than current pc */
   }
   else
     general_error(30);  /* expression must be constant */
@@ -574,7 +571,7 @@ static void undef_syms(void)
         general_error(22,sym->name);  /* undefined */
       else if (sym->flags&XDEF)
         general_error(86,sym->name);  /* missing definition */
-      else if (!(sym->flags&REFERENCED))
+      else if (!(sym->flags&(REFERENCED|COMMON|WEAK)))
         general_error(61,sym->name);  /* not referenced */
     }
   }
@@ -915,10 +912,11 @@ section *new_section(char *name,char *attr,int align)
 /* create a dummy code section for each new ORG directive */
 section *new_org(taddr org)
 {
+  static unsigned cnt;
   char buf[16];
   section *sec;
 
-  sprintf(buf,"seg%llx",ULLTADDR(org));
+  sprintf(buf,"org%04u:%llx",++cnt,(unsigned long long)org);
   sec = new_section(buf,"acrwx",1);
   sec->org = sec->pc = org;
   sec->flags |= ABSOLUTE;  /* absolute destination address */
