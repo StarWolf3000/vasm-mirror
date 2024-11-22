@@ -1,0 +1,54 @@
+This chapter describes the MOS paper tape output module which can be
+selected with the @option{-Fpap} option.
+
+@section Legal
+
+    This module was written in 2024 by Dimitri Theulings and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+
+@table @option
+    @item -strict
+        Enforce strict compliance with MOS paper tape format.
+        In particular, in strict mode six NULL characters (ASCII 0x00)
+        are appended after the carriage return (ASCII 0x0D) and line feed
+        (ASCII 0x0A) for each record. Additionally the file is terminated
+        with XOFF (ASCII 0x13).
+    @item -record-size=<number>
+        Set the number of data bytes per record. Defaults to 24.
+    @item -start=<address>
+        Set the start address for the default section, when no
+        @code{section} or @code{org} directive was given.
+@end table
+
+@section General
+
+This module outputs the contents of all sections in MOS Paper Tape format,
+which is a simple ASCII output of hexadecimal digits. Each record starts
+with '@code{;}' followed by a single byte indicating number of data bytes
+contained in the record (by default 24). The record's starting address
+high (1 byte, 2 characters), starting address low (1 byte, 2 characters),
+and data (@emph{n} bytes, @emph{2n} characters) follow. Each record
+is terminated by the record's check-sum (2 bytes, 4 characters), a carriage
+return (ASCII 0x0D), line feed (ASCII 0x0A). The final record does not
+contain data bytes and instead lists the number of records, followed by a
+checksum.
+
+In @option{strict} mode, each record is followed by six NULL characters
+(ASCII 0x00) and the file is terminated with XOFF (ASCII 0x13).
+
+@section Known Problems
+
+    There are currently no known problems.
+
+@section Error Messages
+
+This module may return the following error messages:
+
+@itemize @minus
+@item 3001: sections <%s>:%llx-%llx and <%s>:%llx-%llx must not overlap
+@item 3002: output module doesn't support cpu %s
+@item 3007: undefined symbol <%s>
+@item 3012: address 0x%llx out of range for selected format
+@end itemize

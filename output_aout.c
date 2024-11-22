@@ -1,10 +1,10 @@
 /* aout.c a.out output driver for vasm */
-/* (c) in 2008-2016,2020,2021 by Frank Wille */
+/* (c) in 2008-2016,2020-2024 by Frank Wille */
 
 #include "vasm.h"
 #include "output_aout.h"
 #if defined(OUTAOUT) && defined(MID)
-static char *copyright="vasm a.out output module 0.8a (c) 2008-2016,2020-2022 Frank Wille";
+static char *copyright="vasm a.out output module 0.9 (c) 2008-2016,2020-2024 Frank Wille";
 
 static section *sections[3];
 static utaddr secsize[3];
@@ -62,7 +62,8 @@ static int aout_getbind(symbol *sym)
 }
 
 
-static uint32_t aoutstd_getrinfo(rlist **rl,int xtern,const char *sname,int be)
+static uint32_t aoutstd_getrinfo(atom *a,rlist **rl,
+                                 int xtern,const char *sname,int be)
 /* Convert vasm relocation type into standard a.out relocations, */
 /* as used by M68k and x86 targets. */
 /* For xtern=-1, return true when this relocation requires a base symbol. */
@@ -73,9 +74,10 @@ static uint32_t aoutstd_getrinfo(rlist **rl,int xtern,const char *sname,int be)
     rlist *rl2 = (*rl)->next;
     uint32_t r=0,s=4;
     nreloc *nr2;
+    utaddr szmask;
     int b=0;
 
-    switch ((*rl)->type) {
+    switch (std_reloc(*rl)) {
       case REL_ABS: b=-1; break;
       case REL_PC: b=RSTDB_pcrel; break;
       case REL_SD: b=RSTDB_baserel; break;
@@ -86,9 +88,10 @@ static uint32_t aoutstd_getrinfo(rlist **rl,int xtern,const char *sname,int be)
       return b==RSTDB_baserel || b==RSTDB_jmptable;
 
     nr2 = rl2!=NULL ? (nreloc *)rl2->reloc : NULL;
+    szmask = MAKEMASK(nr->size);
 
     if (nr->bitoffset==0 && (nr2==NULL || nr2->byteoffset!=nr->byteoffset)
-        && (nr->mask & MAKEMASK(nr->size)) == MAKEMASK(nr->size)) {
+        && (nr->mask & szmask) == szmask) {
       switch (nr->size) {
         case 8: s=0; break;
         case 16: s=1; break;
@@ -98,8 +101,8 @@ static uint32_t aoutstd_getrinfo(rlist **rl,int xtern,const char *sname,int be)
 #ifdef VASM_CPU_JAGRISC
     else if (nr->size==16 && nr2!=NULL && nr2->size==16 &&
         nr2->byteoffset==nr->byteoffset &&
-        ((nr->mask==0xffff && nr2->mask==0xffff0000) ||
-         (nr->mask==0xffff0000 && nr2->mask==0xffff)) &&
+        ((nr->mask==0xffff && nr2->mask==~0xffff) ||
+         (nr->mask==~0xffff && nr2->mask==0xffff)) &&
         ((nr->bitoffset==0 && nr2->bitoffset==16) ||
          (nr->bitoffset==16 && nr2->bitoffset==0))) {
       /* Jaguar RISC MOVEI instruction with swapped words, indicated by
@@ -120,7 +123,7 @@ static uint32_t aoutstd_getrinfo(rlist **rl,int xtern,const char *sname,int be)
   }
 
 unsupp_reloc:
-  unsupp_reloc_error(*rl);
+  unsupp_reloc_error(a,*rl);
   return ~0;
 }
 
@@ -391,7 +394,7 @@ static void aout_addreloclist(struct list *rlst,uint32_t raddr,
 static uint32_t aout_convert_rlist(int be,atom *a,int secid,
                                    struct list *rlst,taddr pc,
                                    uint32_t (*getrinfo)
-                                            (rlist **,int,const char *,int))
+                                            (atom *,rlist **,int,const char *,int))
 /* convert all of an atom's relocs into a.out relocations */
 {
   uint32_t rsize = 0;
@@ -401,48 +404,52 @@ static uint32_t aout_convert_rlist(int be,atom *a,int secid,
     return 0;  /* no relocs or not the right atom type */
 
   do {
-    nreloc *r = (nreloc *)rl->reloc;
-    symbol *refsym = r->sym;
-    taddr val = get_sym_value(refsym);
-    taddr add = nreloc_real_addend(r);
-    int baserel = rl->type == REL_SD;  /* @@@ Amiga GNU-binutils compat. */
+    if (is_nreloc(rl)) {
+      nreloc *r = (nreloc *)rl->reloc;
+      symbol *refsym = r->sym;
+      taddr val = get_sym_value(refsym);
+      taddr add = nreloc_real_addend(r);
+      int baserel = std_reloc(rl)==REL_SD;  /* @@@ Amiga GNU-binutils compat.*/
 
-    if (LOCREF(refsym)) {
-      /* this is a local relocation */
-      int rsecid = refsym->sec->idx;
+      if (LOCREF(refsym)) {
+        /* this is a local relocation */
+        int rsecid = refsym->sec->idx;
 
-      aout_addreloclist(rlst,pc+r->byteoffset,sectype[rsecid],
-                        getrinfo(&rl,0,sections[secid]->name,be),
-                        be);
-      if (baserel)  /* val is based on .data for small-data/bss */
-        val += rsecid==S_BSS ? secoffs[S_BSS]-secoffs[S_DATA] : 0;
+        aout_addreloclist(rlst,pc+r->byteoffset,sectype[rsecid],
+                          getrinfo(a,&rl,0,sections[secid]->name,be),
+                          be);
+        if (baserel)  /* val is based on .data for small-data/bss */
+          val += rsecid==S_BSS ? secoffs[S_BSS]-secoffs[S_DATA] : 0;
+        else
+          val += secoffs[rsecid];
+        rsize += sizeof(struct relocation_info);
+      }
+      else if (EXTREF(refsym)) {
+        /* this is an external symbol reference */
+        int symidx;
+
+        if ((symidx = aout_findsym(refsym->name,be)) == -1)
+          symidx = aout_addsymhash(refsym->name,0,0,0,N_UNDF|N_EXT,0,be);
+        aout_addreloclist(rlst,pc+r->byteoffset,symidx,
+                          getrinfo(a,&rl,1,sections[secid]->name,be),
+                          be);
+        rsize += sizeof(struct relocation_info);
+      }
       else
-        val += secoffs[rsecid];
-      rsize += sizeof(struct relocation_info);
-    }
-    else if (EXTREF(refsym)) {
-      /* this is an external symbol reference */
-      int symidx;
+        ierror(0);
 
-      if ((symidx = aout_findsym(refsym->name,be)) == -1)
-        symidx = aout_addsymhash(refsym->name,0,0,0,N_UNDF|N_EXT,0,be);
-      aout_addreloclist(rlst,pc+r->byteoffset,symidx,
-                        getrinfo(&rl,1,sections[secid]->name,be),
-                        be);
-      rsize += sizeof(struct relocation_info);
+      /* patch addend for a.out */
+      if (std_reloc(rl) == REL_PC)
+        val -= pc + r->byteoffset;
+      if (a->type == DATA)
+        setval(be,a->content.db->data+r->byteoffset,r->size>>3,val+add);
+      else if (a->type==SPACE && a->content.sb->space!=0) {
+        setval(be,a->content.sb->fill,r->size>>3,val+add);
+        a->content.sb->space = 0;  /* we only need to patch 'fill' once */
+      }
     }
     else
-      ierror(0);
-
-    /* patch addend for a.out */
-    if (rl->type == REL_PC)
-      val -= pc + r->byteoffset;
-    if (a->type == DATA)
-      setval(be,a->content.db->data+r->byteoffset,r->size>>3,val+add);
-    else if (a->type==SPACE && a->content.sb->space!=0) {
-      setval(be,a->content.sb->fill,r->size>>3,val+add);
-      a->content.sb->space = 0;  /* we only need to patch 'fill' once */
-    }
+      unsupp_reloc_error(a,rl);
   }
   while (rl = rl->next);
 
@@ -451,7 +458,8 @@ static uint32_t aout_convert_rlist(int be,atom *a,int secid,
 
 
 static uint32_t aout_addrelocs(int be,int secid,struct list *rlst,
-                               uint32_t (*getrinfo)(rlist **,int,const char *,int))
+                               uint32_t (*getrinfo)
+                                        (atom *,rlist **,int,const char *,int))
 /* creates a.out relocations for a single section (.text or .data) */
 {
   uint32_t rtabsize=0;

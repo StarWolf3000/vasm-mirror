@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2023 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2024 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 #include "stabs.h"
@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm std syntax module 5.5b (c) 2002-2023 Volker Barthelmann";
+const char *syntax_copyright="vasm std syntax module 5.6a (c) 2002-2024 Volker Barthelmann";
 hashtable *dirhash;
 int dotdirs = 1;
 
@@ -25,12 +25,12 @@ static char rodataname[]=".rodata",rodataattr[]="adr";
 static char bssname[]=".bss",bssattr[]="aurw";
 static char sbssname[]=".sbss",sbssattr[]="aurw";
 static char tocdname[]=".tocd",tocdattr[]="adrw";
-static char dpagename[]=".dpage",dpageattr[]="adrw";
+static char dpagename[]=".dpage",dpageattr[]="adrwz";
 
-#if defined(VASM_CPU_C16X) || defined(VASM_CPU_M68K) || defined(VASM_CPU_650X) || defined(VASM_CPU_ARM) || defined(VASM_CPU_Z80)|| defined(VASM_CPU_6800) || defined(VASM_CPU_JAGRISC) || defined(VASM_CPU_QNICE) || defined(VASM_CPU_6809) || defined(VASM_CPU_HANS)
-char commentchar=';';
-#else
+#ifdef SYNTAX_STD_COMMENTCHAR_HASH  /* define in cpu.h to allow #-comments */
 char commentchar='#';
+#else
+char commentchar=';';
 #endif
 
 static char macroname[] = ".macro";
@@ -71,6 +71,7 @@ static int align_data;
 static int noesc;
 static unsigned local_labno[10]; /* ser.no. of GNU-as local labels 0 .. 9 */
 static taddr sdlimit=-1;         /* max size of common data in .sbss section */
+static int dir_else,dir_elif,dir_endif;  /* directive indices */
 
 
 char *skip(char *s)
@@ -103,6 +104,9 @@ char *chkidend(char *start,char *end)
 
 char *skip_operand(char *s)
 {
+#if defined(VASM_CPU_Z80)
+  unsigned char lastuc = 0;
+#endif
   int par_cnt=0;
   char c;
 
@@ -114,10 +118,18 @@ char *skip_operand(char *s)
         par_cnt--;
       else
         syntax_error(3);
+#if defined(VASM_CPU_Z80)
+    /* For the Z80 ignore ' behind a letter, as it may be a register */
+    }else if((c=='\''&&(lastuc<'A'||lastuc>'Z'))||c=='\"')
+#else
     }else if(c=='\''||c=='\"')
+#endif
       s=skip_string(s,c,NULL)-1;
     else if(ISEOL(s)||(c==','&&par_cnt==0))
       break;
+#if defined(VASM_CPU_Z80)
+    lastuc = toupper((unsigned char)c);
+#endif
     s++;
   }
   if(par_cnt!=0)
@@ -237,6 +249,9 @@ static void handle_popsection(char *s)
 
 static void handle_org(char *s)
 {
+  if (gas_compat && current_section==NULL)
+    default_section();  /* .org is always section-offset in gas */
+
   if (*s == current_pc_char) {    /*  "* = * + <expr>" reserves bytes */
     s = skip(s+1);
     if (*s == '+') {
@@ -247,7 +262,7 @@ static void handle_org(char *s)
       return;
     }
   }
-  else if (current_section != NULL) {
+  else if (current_section!=NULL && !(current_section->flags & ABSOLUTE)) {
     /* .org inside a section is treated as an offset */
     expr *offs = parse_expr_tmplab(&s);
     expr *fill;
@@ -297,8 +312,8 @@ static void handle_data(char *s,int size,int noalign)
     operand *op;
     dblock *db=NULL;
 
-    if((OPSZ_BITS(size)==8 || OPSZ_BITS(size)==16) && *s=='\"'){
-      if(db=parse_string(&opstart,*s,OPSZ_BITS(size))){
+    if(OPSZ_BITS(size)==size&&*s=='\"'){
+      if(db=parse_string(&opstart,*s,size)){
         add_atom(0,new_data_atom(db,1));
         s=opstart;
       }
@@ -567,7 +582,7 @@ static void new_bss(char *s,int global)
     sym->align=parse_constexpr(&s);
   }
   else
-    sym->align=DATA_ALIGN(size*bitsperbyte);
+    sym->align=DATA_ALIGN(size*BITSPERBYTE);
   a=new_label_atom(sym);
   if(sym->align)
     a->align=sym->align;
@@ -618,7 +633,7 @@ static void handle_comm(char *s)
     sym->align=parse_constexpr(&s);
   }
   else
-    sym->align=DATA_ALIGN((int)sym->size->c.val*bitsperbyte);
+    sym->align=DATA_ALIGN((int)sym->size->c.val*BITSPERBYTE);
   eol(s);
 } 
 
@@ -812,6 +827,30 @@ static void handle_ifnb(char *s)
   cond_if(!ISEOL(s));
 }
 
+static void ifc(char *s,int b)
+{
+  strbuf *str1,*str2;
+
+  str1 = parse_name(0,&s);
+  if (*s == ',') {
+    s = skip(s+1);
+    str2 = parse_name(1,&s);
+    cond_if((!strcmp(str1?str1->str:emptystr,str2?str2->str:emptystr)) == b);
+  }
+  else
+    syntax_error(5);  /* missing operand */
+}
+
+static void handle_ifc(char *s)
+{
+  ifc(s,1);
+}
+
+static void handle_ifnc(char *s)
+{
+  ifc(s,0);
+}
+
 static int eval_ifexp(char **s,int c)
 {
   expr *condexp = parse_expr_tmplab(s);
@@ -903,7 +942,7 @@ static void handle_8bit(char *s){ handle_data(s,8,0); }
 static void handle_16bit(char *s){ handle_data(s,16,0); }
 static void handle_32bit(char *s){ handle_data(s,32,0); }
 static void handle_64bit(char *s){ handle_data(s,64,0); }
-static void handle_taddr(char *s){ handle_data(s,bytespertaddr*bitsperbyte,0); }
+static void handle_taddr(char *s){ handle_data(s,bytespertaddr*BITSPERBYTE,0); }
 static void handle_16bit_noalign(char *s){ handle_data(s,16,1); }
 static void handle_32bit_noalign(char *s){ handle_data(s,32,1); }
 static void handle_64bit_noalign(char *s){ handle_data(s,64,1); }
@@ -996,6 +1035,7 @@ static void handle_list(char *s)
 
 static void handle_nolist(char *s)
 {
+  del_last_listing();  /* hide directive in listing */
   set_listing(0);
 }
 
@@ -1007,7 +1047,23 @@ static void handle_swbeg(char *s)
 struct {
   const char *name;
   void (*func)(char *);
-} directives[]={
+} directives[]={ /* NOTE: Conditional if-directives first, followed by endif */
+  "ifdef",handle_ifd,
+  "ifndef",handle_ifnd,
+  "ifb",handle_ifb,
+  "ifnb",handle_ifnb,
+  "ifc",handle_ifc,
+  "ifnc",handle_ifnc,
+  "if",handle_ifne,
+  "ifeq",handle_ifeq,
+  "ifne",handle_ifne,
+  "ifgt",handle_ifgt,
+  "ifge",handle_ifge,
+  "iflt",handle_iflt,
+  "ifle",handle_ifle,
+  "endif",handle_endif,
+  "else",handle_else,
+  "elseif",handle_elseif,
   "org",handle_org,
   "section",handle_section,
   "pushsection",handle_pushsection,
@@ -1079,20 +1135,6 @@ struct {
   "endr",handle_endr,
   "macro",handle_macro,
   "endm",handle_endm,
-  "ifdef",handle_ifd,
-  "ifndef",handle_ifnd,
-  "ifb",handle_ifb,
-  "ifnb",handle_ifnb,
-  "if",handle_ifne,
-  "ifeq",handle_ifeq,
-  "ifne",handle_ifne,
-  "ifgt",handle_ifgt,
-  "ifge",handle_ifge,
-  "iflt",handle_iflt,
-  "ifle",handle_ifle,
-  "else",handle_else,
-  "elseif",handle_elseif,
-  "endif",handle_endif,
   "abort",handle_abort,
   "err",handle_err,
   "fail",handle_fail,
@@ -1185,14 +1227,14 @@ void parse(void)
       s = line;
       (void)parse_stdlabel(&s);  /* skip label field */
       idx = check_directive(&s);
-      if (idx >= 0) {
-        if (!strncmp(directives[idx].name,"if",2))
-          cond_skipif();
-        else if (directives[idx].func == handle_else)
+      if (idx>=0) {
+        if (idx<dir_endif)
+          cond_skipif();  /* if... */
+        else if (idx==dir_else)
           cond_else();
-        else if (directives[idx].func == handle_endif)
+        else if (idx==dir_endif)
           cond_endif();
-        else if (directives[idx].func == handle_elseif) {
+        else if (idx==dir_elif) {
           s = skip(s);
           cond_elseif(eval_ifexp(&s,1));
         }
@@ -1490,7 +1532,7 @@ strbuf *get_local_label(int n,char **start)
   return name;
 }
 
-int init_syntax()
+int init_syntax(void)
 {
   size_t i;
   hashdata data;
@@ -1498,7 +1540,15 @@ int init_syntax()
   for(i=0;i<dir_cnt;i++){
     data.idx=i;
     add_hashentry(dirhash,directives[i].name,data);
+    if(!strcmp(directives[i].name,"else"))
+      dir_else=i;
+    if(!strcmp(directives[i].name,"elseif"))
+      dir_elif=i;
+    if(!strcmp(directives[i].name,"endif"))
+      dir_endif=i;
   }
+  if(!(dir_else&&dir_elif&&dir_endif))
+    ierror(0);
   if(debug && dirhash->collisions)
     fprintf(stderr,"*** %d directive collisions!!\n",dirhash->collisions);
 

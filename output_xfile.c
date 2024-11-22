@@ -1,11 +1,14 @@
 /* xfile.c Sharp X68000 Xfile output driver for vasm */
-/* (c) in 2018,2020,2021 by Frank Wille */
+/* (c) in 2018,2020,2021,2024 by Frank Wille */
 
 #include "vasm.h"
 #include "output_xfile.h"
 #if defined(OUTXFIL) && defined(VASM_CPU_M68K)
-static char *copyright="vasm xfile output module 0.3 (c) 2018,2020,2021 Frank Wille";
+static char *copyright="vasm xfile output module 0.4 (c) 2018,2020,2021,2024 Frank Wille";
 
+static char *exec_symname;
+static uint32_t exec_offs;
+static uint8_t loadmode;
 static int max_relocs_per_atom;
 static section *sections[3];
 static utaddr secsize[3];
@@ -13,6 +16,18 @@ static utaddr secoffs[3];
 static utaddr sdabase,lastoffs;
 
 #define SECT_ALIGN 2  /* Xfile sections have to be aligned to 16 bits */
+
+
+static taddr xfile_sym_value(symbol *sym)
+{
+  taddr val = get_sym_value(sym);
+
+  /* all sections form a contiguous block, so add section offset */
+  if (sym->type==LABSYM && sym->sec!=NULL)
+    val += secoffs[sym->sec->idx];
+
+  return val;
+}
 
 
 static void xfile_initwrite(section *sec,symbol *sym)
@@ -47,6 +62,17 @@ static void xfile_initwrite(section *sec,symbol *sym)
                   balign(secsize[S_DATA],SECT_ALIGN);
   /* define small data base as .data+32768 @@@FIXME! */
   sdabase = secoffs[S_DATA] + 0x8000;
+
+  /* find start label */
+  if (exec_symname != NULL) {
+    for (; sym; sym=sym->next) {
+      if (!strcmp(exec_symname,sym->name)) {
+        exec_offs = xfile_sym_value(sym);
+        return;
+      }
+    }
+    output_error(6,exec_symname);  /* start label not found */
+  }
 }
 
 
@@ -57,6 +83,8 @@ static void xfile_header(FILE *f,unsigned long tsize,unsigned long dsize,
 
   memset(&hdr,0,sizeof(XFILE));
   setval(1,hdr.x_id,2,0x4855);  /* "HU" ID for Human68k */
+  hdr.x_loadmode = loadmode;
+  setval(1,hdr.x_execaddr,4,exec_offs);
   setval(1,hdr.x_textsz,4,tsize);
   setval(1,hdr.x_datasz,4,dsize);
   setval(1,hdr.x_heapsz,4,bsize);
@@ -67,7 +95,7 @@ static void xfile_header(FILE *f,unsigned long tsize,unsigned long dsize,
 
 static void checkdefined(rlist *rl,section *sec,taddr pc,atom *a)
 {
-  if (rl->type <= LAST_STANDARD_RELOC) {
+  if (is_std_reloc(rl)) {
     nreloc *r = (nreloc *)rl->reloc;
 
     if (EXTREF(r->sym))
@@ -76,18 +104,6 @@ static void checkdefined(rlist *rl,section *sec,taddr pc,atom *a)
   }
   else
     ierror(0);
-}
-
-
-static taddr xfile_sym_value(symbol *sym)
-{
-  taddr val = get_sym_value(sym);
-
-  /* all sections form a contiguous block, so add section offset */
-  if (sym->type==LABSYM && sym->sec!=NULL)
-    val += secoffs[sym->sec->idx];
-
-  return val;
 }
 
 
@@ -100,16 +116,16 @@ static void do_relocs(section *asec,taddr pc,atom *a)
   section *sec;
 
   while (rl) {
-    switch (rl->type) {
+    switch (std_reloc(rl)) {
       case REL_SD:
         checkdefined(rl,asec,pc,a);
-        patch_nreloc(a,rl,1,
+        patch_nreloc(a,rl,
                      (xfile_sym_value(((nreloc *)rl->reloc)->sym)
                       + nreloc_real_addend(rl->reloc)) - sdabase,1);
         break;
       case REL_PC:
         checkdefined(rl,asec,pc,a);
-        patch_nreloc(a,rl,1,
+        patch_nreloc(a,rl,
                      (xfile_sym_value(((nreloc *)rl->reloc)->sym)
                       + nreloc_real_addend(rl->reloc)) -
                      (pc + ((nreloc *)rl->reloc)->byteoffset),1);
@@ -118,14 +134,14 @@ static void do_relocs(section *asec,taddr pc,atom *a)
         rcnt++;
         checkdefined(rl,asec,pc,a);
         sec = ((nreloc *)rl->reloc)->sym->sec;
-        if (!patch_nreloc(a,rl,0,
+        if (!patch_nreloc(a,rl,
                           secoffs[sec?sec->idx:0] +
                           ((nreloc *)rl->reloc)->addend,1))
           break;  /* field overflow */
         if (((nreloc *)rl->reloc)->size == 32)
           break;  /* only support 32-bit absolute */
       default:
-        unsupp_reloc_error(rl);
+        unsupp_reloc_error(a,rl);
         break;
     }
     if (a->type == SPACE)
@@ -224,7 +240,7 @@ static size_t xfile_writerelocs(FILE *f,section *sec)
 
       rl = get_relocs(a);
       while (rl) {
-        if (rl->type==REL_ABS && ((nreloc *)rl->reloc)->size==32)
+        if (std_reloc(rl)==REL_ABS && ((nreloc *)rl->reloc)->size==32)
           sortoffs[nrel++] = ((nreloc *)rl->reloc)->byteoffset;
         rl = rl->next;
       }
@@ -291,12 +307,14 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 
 static int output_args(char *p)
 {
-#if 0
-  if (!strncmp(p,"-startoffs=",11)) {
-    startoffs = atoi(p+11);
+  if (!strncmp(p,"-exec=",6)) {
+    exec_symname = p + 6;
     return 1;
   }
-#endif
+  else if (!strcmp(p,"-loadhigh")) {
+    loadmode = XLMD_HIGHADDR;
+    return 1;
+  }
   return 0;
 }
 

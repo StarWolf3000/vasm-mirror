@@ -9,9 +9,8 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-const char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5 (c)2020-2022 by Frank Wille";
+const char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5a (c)2020-2024 by Frank Wille";
 const char *cpuname = "6809";
-int bitsperbyte = 8;
 int bytespertaddr = 2;
 
 static uint8_t cpu_type = M6809;
@@ -115,7 +114,7 @@ void init_instruction_ext(instruction_ext *ext)
 }
 
 
-operand *new_operand()
+operand *new_operand(void)
 {
   operand *new = mymalloc(sizeof(*new));
   new->mode = 0;
@@ -1048,7 +1047,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
         if (op->base && is_pc_reloc(op->base,sec)) {
           val -= 2;  /* reloc addend adjustment */
           add_extnreloc_masked(&db->relocs,op->base,val,REL_PC,
-                               3,1,offs-1,0x100);
+                               3,1,offs-1,~0xff);
           add_extnreloc_masked(&db->relocs,op->base,val,REL_PC,
                                8,8,offs-1,0xff);
         }
@@ -1345,7 +1344,7 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
           break;
       }
     }
-    else if (btype != BASE_NONE)
+    else
       general_error(38);  /* illegal relocation */
   }
 
@@ -1368,7 +1367,7 @@ int cpu_available(int idx)
 }
 
 
-int init_cpu()
+int init_cpu(void)
 {
   int i;
 

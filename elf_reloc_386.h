@@ -18,8 +18,9 @@
 #define R_386_PC8       23
 
 
-  if ((*rl)->type <= LAST_STANDARD_RELOC) {
+  if (is_std_reloc(*rl)) {
     nreloc *r = (nreloc *)(*rl)->reloc;
+    utaddr szmask;
 
     *refsym = r->sym;
     *addend = r->addend;
@@ -27,15 +28,16 @@
     size = r->size;
     *roffset = r->byteoffset;
     mask = r->mask;
+    szmask = MAKEMASK(size);
 
-    switch ((*rl)->type) {
+    switch (STD_REL_TYPE((*rl)->type)) {
 
       case REL_NONE:
         t = R_386_NONE;
         break;
 
       case REL_ABS:
-        if (pos==0 && mask==~0) {
+        if (pos==0 && (mask&szmask)==szmask) {
           if (size == 32)
             t = R_386_32;
           else if (size == 16)

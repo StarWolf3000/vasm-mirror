@@ -1,14 +1,15 @@
 /* xfile.h header file for the Sharp X68000 Xfile format */
-/* (c) in 2018,2020 by Frank Wille */
+/* (c) in 2018,2020,2024 by Frank Wille */
 
 
 /* Xfile program header, big endian */
 typedef struct
 {
   uint8_t x_id[2];        /* 'H','U' - xfile identification */
-  uint8_t x_rsrvd1[2];    /* unused - always zero */
-  uint8_t x_baseaddr[4];  /* linker's base address */
-  uint8_t x_execaddr[4];  /* start address on base address */
+  uint8_t x_rsrvd1[1];    /* unused - always zero */
+  uint8_t x_loadmode;     /* normal, minimal memory, high address */
+  uint8_t x_baseaddr[4];  /* linker's base address, usually 0 */
+  uint8_t x_execaddr[4];  /* execution offset on load address */
   uint8_t x_textsz[4];    /* .text size in bytes */
   uint8_t x_datasz[4];    /* .data size in bytes */
   uint8_t x_heapsz[4];    /* .bss and .stack size in bytes */
@@ -20,6 +21,11 @@ typedef struct
   uint8_t x_rsrvd2[20];   /* unused - always zero */
 } XFILE;
 
+/* x_loadmode */
+#define XLMD_NORMAL     0
+#define XLMD_MINMEM     1
+#define XLMD_HIGHADDR   2
+
 
 /* Xfile symbol table */
 typedef struct
@@ -29,7 +35,7 @@ typedef struct
   char name[1];           /* null-terminated symbol name, padded to even */
 } Xsym;
 
-#define XSYM_ABS	0x0200
+#define XSYM_ABS        0x0200
 #define XSYM_TEXT       0x0201
 #define XSYM_DATA       0x0202
 #define XSYM_BSS        0x0203

@@ -1,19 +1,23 @@
 /* vobj format output driver for vasm */
-/* (c) in 2002-2020 by Volker Barthelmann */
+/* (c) in 2002-2023 by Volker Barthelmann */
 
 #include "vasm.h"
 
 #ifdef OUTVOBJ
-static char *copyright="vasm vobj output module 1.0 (c) 2002-2020 Volker Barthelmann";
+static char *copyright="vasm vobj output module 2.0 (c) 2002-2023 Volker Barthelmann";
+static unsigned char version;
 
 /*
-  Format (WILL CHANGE!):
+  Format:
 
   .byte 0x56,0x4f,0x42,0x4a
   .byte flags
-    1: BIGENDIAN
-    2: LITTLENDIAN
-  .number bitsperbyte
+    Bits 0-1:
+     1: BIGENDIAN
+     2: LITTLENDIAN
+    Bits 2-7:
+     VOBJ-Version (0-based)
+  .number bitsperbyte 
   .number bytespertaddr
   .string cpu
   .number nsections [1-based]
@@ -25,17 +29,17 @@ nsymbols
   .number flags
   .number secindex
   .number val
-  .number size
+  .number size (in target-bytes)
 
 nsections
   .string name
   .string attr
   .number flags
   .number align
-  .number size
+  .number size (in target-bytes)
   .number nrelocs
-  .number databytes
-  .byte[databytes]
+  .number databytes (in target-bytes)
+  .byte[databytes*(BITSPERBYTE+7)/8]
 
 nrelocs [standard|special]
 standard
@@ -49,24 +53,42 @@ standard
 
 special
     .number type
-    .number size
+    .number size (0 means standard nreloc)
     .byte[size]
 
 .number:[taddr]
     .byte 0--127 [0--127]
-    .byte 128-255 [x-0x80 bytes little-endian]
-
+    .byte 128-191 [x-0x80 bytes little-endian], fill remaining with 0
+    .byte 192-255 [x-0xC0 bytes little-endian], fill remaining with 0xff [vobj version 2+]
 */
 
 static void write_number(FILE *f,taddr val)
 {
-  int i;
+  int i,s,u;
+  taddr tmp;
+
   if(val>=0&&val<=127){
     fw8(f,val);
     return;
   }
-  fw8(f,0x80+sizeof(taddr));
-  for(i=sizeof(taddr);i>0;i--){
+  
+  if(!version){
+    s=u=sizeof(taddr);
+  }else{
+    for(i=1,s=u=1,tmp=val;i<=sizeof(taddr);i++){
+      if(tmp&0xff) s=i;
+      if((tmp&0xff)!=0xff) u=i;
+      tmp>>=8;
+    }
+  }
+
+  if(u<s){
+    fw8(f,0xC0+u);
+    s=u;
+  }else
+    fw8(f,0x80+s);
+
+  for(i=s;i>0;i--){
     fw8(f,val&0xff);
     val>>=8;
   }
@@ -90,20 +112,28 @@ static int sym_valid(symbol *symp)
   return 1;
 }
 
-static int count_relocs(rlist *rl)
+static int count_relocs(atom *p,rlist *rl)
 {
   int nrelocs;
 
   for(nrelocs=0; rl; rl=rl->next) {
-    if(rl->type>=FIRST_STANDARD_RELOC && rl->type<=LAST_STANDARD_RELOC) {
+
+    if(is_nreloc(rl)){
       nreloc *r = (nreloc *)rl->reloc;
-      if (r->sym->type==IMPORT&&!sym_valid(r->sym))
-        unsupp_reloc_error(rl);
+      if(r->sym->type==IMPORT&&!sym_valid(r->sym))
+        goto badreloc;
       else
         nrelocs++;
     }
-    else
-      unsupp_reloc_error(rl);
+#ifdef LAST_CPU_RELOC
+    else if(rl->type>=FIRST_CPU_RELOC&&rl->type<=LAST_CPU_RELOC){
+      nrelocs+=cpu_reloc_size(rl)!=0;
+    }
+#endif
+    else{
+      badreloc:
+      unsupp_reloc_error(p,rl);
+    }
   }
   return nrelocs;
 }
@@ -120,14 +150,14 @@ static void get_section_sizes(section *sec,taddr *rsize,taddr *rdata,taddr *rnre
     sec->pc+=atom_size(p,sec,sec->pc);
     if(p->type==DATA){
       data=sec->pc;
-      nrelocs+=count_relocs(p->content.db->relocs);
+      nrelocs+=count_relocs(p,p->content.db->relocs);
     }
     else if(p->type==SPACE){
       if(p->content.sb->relocs){
-        nrelocs+=count_relocs(p->content.sb->relocs);
+        nrelocs+=count_relocs(p,p->content.sb->relocs);
         data=sec->pc;
       }else{
-        for(i=0;i<p->content.sb->size;i++)
+        for(i=0;i<OCTETS(p->content.sb->size);i++)
           if(p->content.sb->fill[i]!=0)
             data=sec->pc;
       }
@@ -148,24 +178,35 @@ static void write_data(FILE *f,section *sec,taddr data)
     sec->pc=fwpcalign(f,p,sec,sec->pc);
     sec->pc+=atom_size(p,sec,sec->pc);
     if(p->type==DATA)
-      fwdata(f,p->content.db->data,p->content.db->size);
+      fwdblock(f,p->content.db);
     else if(p->type==SPACE)
       fwsblock(f,p->content.sb);
   }
+}
+
+static int get_nreloc_sym_idx(nreloc *rel)
+{
+  int idx;
+
+  if(!(idx=rel->sym->idx)){
+    if(rel->sym->type==IMPORT&&!sym_valid(rel->sym))
+      return 0;
+    idx=rel->sym->sec->idx;  /* symbol does not exist, use section-symbol */
+  }
+  return idx;
 }
 
 static void write_rlist(FILE *f,section *sec,rlist *rl)
 {
   int idx;
   for(;rl;rl=rl->next){
-    if(rl->type>=FIRST_STANDARD_RELOC&&rl->type<=LAST_STANDARD_RELOC){
+    write_number(f,rl->type);
+    if(is_nreloc(rl)){
       nreloc *rel=rl->reloc;
-      if(!(idx=rel->sym->idx)){
-        if(rel->sym->type==IMPORT&&!sym_valid(rel->sym))
-          continue;
-        idx=rel->sym->sec->idx;  /* symbol does not exist, use section-symbol */
-      }
-      write_number(f,rl->type);
+      if (!(idx=get_nreloc_sym_idx(rel)))
+        continue;
+      if (rl->type>=FIRST_CPU_RELOC)
+        write_number(f,0);  /* cpu-specific reloc is in nreloc format */
       write_number(f,sec->pc+rel->byteoffset);
       write_number(f,rel->bitoffset);
       write_number(f,rel->size);
@@ -173,6 +214,18 @@ static void write_rlist(FILE *f,section *sec,rlist *rl)
       write_number(f,rel->addend);
       write_number(f,idx);
     }
+#ifdef LAST_CPU_RELOC
+    else if(rl->type>=FIRST_CPU_RELOC&&rl->type<=LAST_CPU_RELOC){
+      size_t sz;
+
+      if (sz=cpu_reloc_size(rl)){
+        write_number(f,sz);
+        cpu_reloc_write(f,rl);
+      }
+    }
+#endif
+    else
+      ierror(0);
   }
 }
 
@@ -196,6 +249,9 @@ static void write_output(FILE *f,section *sec,symbol *sym)
   section *secp;
   symbol *symp,*first,*last;
   taddr size,data,nrelocs;
+
+  /* target-bytes in sections will always be written big-endian */
+  output_bytes_le=0;
 
   /* assign section index, make section symbols */
   for(nsecs=1,secp=sec,first=sym,last=NULL;secp;secp=secp->next){
@@ -225,12 +281,12 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 
   fw32(f,0x564f424a,1); /* "VOBJ" */
   if(BIGENDIAN)
-    fw8(f,1);
+    fw8(f,1|version);
   else if(LITTLEENDIAN)
-    fw8(f,2);
+    fw8(f,2|version);
   else
     ierror(0);
-  write_number(f,bitsperbyte);
+  write_number(f,BITSPERBYTE);
   write_number(f,bytespertaddr);
   write_string(f,cpuname);
   write_number(f,nsecs-1);
@@ -263,6 +319,10 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 
 static int output_args(char *p)
 {
+  if(!strcmp(p,"-vobj2")){
+    version=(1<<2);
+    return 1;
+  }
   return 0;
 }
 
@@ -271,7 +331,8 @@ int init_output_vobj(char **cp,void (**wo)(FILE *,section *,symbol *),int (**oa)
   *cp=copyright;
   *wo=write_output;
   *oa=output_args;
-  secname_attr = 1; /* attribute is used to differentiate between sections */
+  secname_attr = 1;  /* attribute is used to differentiate between sections */
+  output_bitsperbyte = 1;  /* we do support BITSPERBYTE != 8 */
   return 1;
 }
 

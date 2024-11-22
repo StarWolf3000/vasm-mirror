@@ -1,5 +1,5 @@
 /* vasm.c  main module for vasm */
-/* (c) in 2002-2023 by Volker Barthelmann */
+/* (c) in 2002-2024 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,8 +10,8 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 1.9f"
-const char *copyright = _VER " (c) in 2002-2023 Volker Barthelmann";
+#define _VER "vasm 2.0"
+const char *copyright = _VER " (c) in 2002-2024 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 #endif
@@ -49,6 +49,8 @@ int debug,final_pass,exec_out,nostdout;
 char *defsectname,*defsecttype;
 taddr defsectorg;
 
+int octetsperbyte;
+int output_bitsperbyte,output_bytes_le,input_bytes_le;
 unsigned long long taddrmask;
 taddr taddrmin,taddrmax;
 
@@ -72,7 +74,7 @@ static int secstack_index;
 
 /* options */
 static char *listname,*dep_filename;
-static int dwarf,fail_on_warning;
+static int add_uscore,dwarf,fail_on_warning;
 static int verbose=1,auto_import=1;
 static taddr sec_padding;
 
@@ -148,7 +150,7 @@ static void remove_unalloc_sects(void)
 /* convert reloffs-atom into one or more space-atoms */
 static void roffs_to_space(section *sec,atom *p)
 {
-  uint8_t padding[MAXPADBYTES];
+  uint8_t padding[MAXPADSIZE];
   utaddr space,padbytes,n;
   sblock *sb = NULL;
 
@@ -158,18 +160,18 @@ static void roffs_to_space(section *sec,atom *p)
     if ((utaddr)sec->org + space > (utaddr)sec->pc) {
       space = (utaddr)sec->org + space - (utaddr)sec->pc;
       if (p->content.roffs->fillval == NULL) {
-        memcpy(padding,sec->pad,MAXPADBYTES);
+        memcpy(padding,sec->pad,MAXPADSIZE);
         padbytes = sec->padbytes;
       }
       else
-        padbytes = make_padding(n,padding,MAXPADBYTES);
+        padbytes = make_padding(n,padding,MAXPADSIZE*8);
 
       if (space >= padbytes) {
         n = balign(sec->pc,padbytes);  /* alignment is automatic */
         space -= n;
         sec->pc += n;  /* Important! Fix the PC for new alignment. */
         sb = new_sblock(number_expr(space/padbytes),padbytes,0);
-        memcpy(sb->fill,padding,padbytes);
+        memcpy(sb->fill,padding,OCTETS(padbytes));
         p->type = SPACE;
         p->content.sb = sb;
         p->align = padbytes;
@@ -242,11 +244,11 @@ static void new_stabdef(aoutnlist *nlist,section *sec)
 }
 
 /* emit internal debug info, triggered by a VASMDEBUG atom */
-void vasmdebug(const char *f,section *s,atom *a)
+static void vasmdebug(const char *f,section *s,atom *a)
 {
   if (a->next != NULL) {
     a = a->next;
-    printf("%s: (%s+0x%llx) %2d:%lu(%u) ",
+    printf("%s: (%s+%#llx) %2d:%lu(%u) ",
            f,s->name,ULLTADDR(s->pc),a->type,(unsigned long)a->lastsize,a->changes);
     print_atom(stdout,a);
     putchar('\n');
@@ -305,7 +307,7 @@ static int resolve_section(section *sec)
           ierror(0);
         if(label->pc!=sec->pc){
           if(debug)
-            printf("moving label %s at line %d from 0x%lx to 0x%lx\n",
+            printf("moving label %s at line %d from %#lx to %#lx\n",
                    label->name,p->line,
                    (unsigned long)label->pc,(unsigned long)sec->pc);
           done=0;
@@ -323,7 +325,7 @@ static int resolve_section(section *sec)
         /* atom changed size too frequently, set warning flag */
         if(debug)
           printf("setting resolve-warning flag for atom type %d at "
-                 "line %d (0x%lx)\n",p->type,p->line,(unsigned long)sec->pc);
+                 "line %d (%#lx)\n",p->type,p->line,(unsigned long)sec->pc);
         sec->flags|=RESOLVE_WARN;
         size=atom_size(p,sec,sec->pc);
         sec->flags&=~RESOLVE_WARN;
@@ -332,7 +334,7 @@ static int resolve_section(section *sec)
         size=atom_size(p,sec,sec->pc);
       if(size!=p->lastsize){
         if(debug)
-          printf("modify size of atom type %d at line %d (0x%lx) from "
+          printf("modify size of atom type %d at line %d (%#lx) from "
                  "%lu to %lu\n",p->type,p->line,(unsigned long)sec->pc,
                  (unsigned long)p->lastsize,(unsigned long)size);
         done=0;
@@ -398,9 +400,9 @@ static void assemble(void)
 {
   taddr basepc,rorg_pc,org_pc;
   struct dwarf_info dinfo;
-  int bss,rorg;
   section *sec;
   atom *p,*pp;
+  int rorg;
 
   convert_offset_labels();
   if(dwarf){
@@ -414,9 +416,8 @@ static void assemble(void)
     source *lasterrsrc=NULL;
     utaddr oldpc;
     int lasterrline=0,ovflw=0;
-    sec->pc=sec->org;
-    bss=strchr(sec->attr,'u')!=NULL;
-    for(p=sec->first,pp=NULL;p;p=p->next){
+    int bss=strchr(sec->attr,'u')!=NULL;
+    for(sec->pc=sec->org,p=sec->first,pp=NULL;p;p=p->next){
       basepc=sec->pc;
       sec->pc=pcalign(p,sec->pc);
       if(cur_src=p->src)
@@ -524,7 +525,15 @@ static void assemble(void)
         new_stabdef(p->content.nlist,sec);
       else if(p->type==VASMDEBUG)
         vasmdebug("assemble",sec,p);
-      if(p->type==DATA&&bss){
+      oldpc=sec->pc;
+      sec->pc+=atom_size(p,sec,sec->pc);
+      if((utaddr)sec->pc!=oldpc){
+        if((utaddr)(sec->pc-1)<oldpc||ovflw)
+          general_error(45);  /* address space overflow */
+        ovflw=sec->pc==0;
+      }
+      if(bss&&((p->type==DATA&&p->content.db->size)||
+         (p->type==SPACE&&p->content.sb->size&&p->content.sb->fill_exp))){
         if(lasterrsrc!=p->src||lasterrline!=p->line){
           if(sec->flags&UNALLOCATED){
             if(warn_unalloc_ini_dat)
@@ -535,13 +544,6 @@ static void assemble(void)
           lasterrsrc=p->src;
           lasterrline=p->line;
         }
-      }
-      oldpc=sec->pc;
-      sec->pc+=atom_size(p,sec,sec->pc);
-      if((utaddr)sec->pc!=oldpc){
-        if((utaddr)(sec->pc-1)<oldpc||ovflw)
-          general_error(45);  /* address space overflow */
-        ovflw=sec->pc==0;
       }
       sec->flags&=~RESOLVE_WARN;
       pp=p;  /* prev atom */
@@ -607,6 +609,15 @@ static void fix_labels(void)
           general_error(53,sym->name);  /* non-relocatable expr. in equate */
       }
     }
+    if (add_uscore && (sym->type==IMPORT || sym->flags&(EXPORT|COMMON|WEAK))) {
+      /* imported/exported symbol names receive a leading underscore */
+      size_t len = strlen(sym->name) + 1;
+      char *p = myrealloc(sym->name,len+1);
+ 
+      memmove(p+1,p,len);
+      p[0] = '_';
+      sym->name = p;
+    }
   }
 }
 
@@ -630,11 +641,12 @@ static void trim_uninitialized(section *sec)
   }
 }
 
-static void set_taddr(void)
+void set_taddr(void)
 {
-  taddrmask=MAKEMASK(bytespertaddr*bitsperbyte);
+  taddrmask=MAKEMASK(bytespertaddr*BITSPERBYTE);
   taddrmax=DEFMASK>>1;
   taddrmin=~taddrmax;
+  octetsperbyte=(BITSPERBYTE+7)/8;
 }
 
 static void statistics(void)
@@ -661,11 +673,13 @@ static struct {
   "dri",0,init_output_tos,
   "elf",0,init_output_elf,
   "gst",0,init_output_gst,
+  "hans",0,init_output_hans,
   "hunk",0,init_output_hunk,
   "hunkexe",1,init_output_hunk,
   "ihex",0,init_output_ihex,
   "o65",0,init_output_o65,
   "o65exe",1,init_output_o65,
+  "pap",0,init_output_pap,
   "srec",0,init_output_srec,
   "test",0,init_output_test,
   "tos",1,init_output_tos,
@@ -678,6 +692,7 @@ static int init_output(char *fmt)
 {
   static size_t num_out_formats=sizeof(out_formats)/sizeof(out_formats[0]);
   size_t i;
+  output_bitsperbyte=BITSPERBYTE==8;
   for(i=0;i<num_out_formats;i++){
     if(!strcmp(fmt,out_formats[i].name)){
       exec_out=out_formats[i].executable;
@@ -877,7 +892,7 @@ void set_section(section *s)
 
 /* creates a new section with given attributes and alignment;
    does not switch to this section automatically */
-section *new_section(char *name,char *attr,int align)
+section *new_section(const char *name,const char *attr,int align)
 {
   section *p;
   if(unnamed_sections)
@@ -893,9 +908,9 @@ section *new_section(char *name,char *attr,int align)
   p->org=p->pc=0;
   p->flags=0;
   p->memattr=0;
-  memset(p->pad,0,MAXPADBYTES);
+  memset(p->pad,0,MAXPADSIZE);
   if(sec_padding)
-    p->padbytes=make_padding(sec_padding,p->pad,MAXPADBYTES);
+    p->padbytes=make_padding(sec_padding,p->pad,MAXPADSIZE*8);
   else
     p->padbytes=1;
   if(last_section)
@@ -913,10 +928,10 @@ section *new_section(char *name,char *attr,int align)
 section *new_org(taddr org)
 {
   static unsigned cnt;
-  char buf[16];
+  char buf[32];
   section *sec;
 
-  sprintf(buf,"org%04u:%llx",++cnt,(unsigned long long)org);
+  sprintf(buf,"org%04u:%llx",++cnt,(unsigned long long)(utaddr)org);
   sec = new_section(buf,"acrwx",1);
   sec->org = sec->pc = org;
   sec->flags |= ABSOLUTE;  /* absolute destination address */
@@ -924,7 +939,7 @@ section *new_org(taddr org)
 }
 
 /* switches current section to the section with the specified name */
-void switch_section(char *name,char *attr)
+void switch_section(const char *name,const char *attr)
 {
   section *p;
   if(unnamed_sections)
@@ -938,7 +953,7 @@ void switch_section(char *name,char *attr)
 
 /* Switches current section to an offset section. Create a new section when
    it doesn't exist yet or needs a different offset. */
-void switch_offset_section(char *name,taddr offs)
+void switch_offset_section(const char *name,taddr offs)
 {
   static unsigned long id;
   char unique_name[14];
@@ -1132,12 +1147,16 @@ int main(int argc,char **argv)
   }
   if(!init_output(output_format))
     general_error(16,output_format);
+  if(!output_bitsperbyte)
+    general_error(15,"output",BITSPERBYTE);
   if(!init_main())
     general_error(10,"main");
   if(!init_symbol())
     general_error(10,"symbol");
   if(!init_osdep())
     general_error(10,"osdep");
+  if (!init_listing())
+    general_error(10,"listing");
   if(verbose){
     printf("%s\n%s\n%s\n%s\n",
            copyright,cpu_copyright,syntax_copyright,output_copyright);
@@ -1250,6 +1269,10 @@ int main(int argc,char **argv)
       nocase=1;
       continue;
     }
+    if(!strcmp("-relpath",argv[i])){
+      relpath=1;
+      continue;
+    }
     if(!strcmp("-nocompdir",argv[i])){
       nocompdir=1;
       continue;
@@ -1270,6 +1293,22 @@ int main(int argc,char **argv)
       disable_warning(wno);
       continue;
     }
+    if(!strcmp("-ibe",argv[i])){
+      input_bytes_le = 0;
+      continue;
+    }
+    if(!strcmp("-ile",argv[i])){
+      input_bytes_le = 1;
+      continue;
+    }
+    if(!strcmp("-obe",argv[i])){
+      output_bytes_le = 0;
+      continue;
+    }
+    if(!strcmp("-ole",argv[i])){
+      output_bytes_le = 1;
+      continue;
+    }
     if(!strcmp("-unsshift",argv[i])){
       unsigned_shift=1;
       continue;
@@ -1288,6 +1327,10 @@ int main(int argc,char **argv)
     }
     if(!strcmp("-chklabels",argv[i])){
       chklabels=1;
+      continue;
+    }
+    if(!strcmp("-underscore",argv[i])){
+      add_uscore=1;
       continue;
     }
     if(!strcmp("-noialign",argv[i])){
@@ -1347,6 +1390,8 @@ int main(int argc,char **argv)
     general_error(10,"cpu");
   set_taddr();  /* update taddr mask/min/max */
   set_defaults();
+  if(!init_expr())
+    general_error(10,"expr");
   parse();
   end_all_rorg();
   listena=0;

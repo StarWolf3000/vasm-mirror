@@ -1,8 +1,9 @@
 /* cpu.h x86 cpu-description header-file */
-/* (c) in 2005-2006,2017 by Frank Wille */
+/* (c) in 2005-2006,2017,2024 by Frank Wille */
 
 #define LITTLEENDIAN 1
 #define BIGENDIAN 0
+#define BITSPERBYTE 8
 #define VASM_CPU_X86 1
 #define MNEMOHTABSIZE 0x10000
 
@@ -11,10 +12,25 @@
 
 /* maximum number of mnemonic-qualifiers per mnemonic */
 #define MAX_QUALIFIERS 1
+/* but no qualifiers for macros */
+#define NO_MACRO_QUALIFIERS
 
 /* data type to represent a target-address */
 typedef int64_t taddr;
 typedef uint64_t utaddr;
+
+/* assembler mode: 16, 32 or 64 bit */
+enum codetype {
+  CODE_32BIT,
+  CODE_16BIT,
+  CODE_64BIT
+};
+
+/* we use OPTS atoms for cpu-specific options */
+#define HAVE_CPU_OPTS 1
+typedef struct {
+  enum codetype mode;
+} cpuopts;
 
 /* we support floating point constants */
 #define FLOAT_PARSER 1
@@ -34,6 +50,9 @@ int x86_data_operand(int);
 
 /* make sure operand is cleared upon first entry into parse_operand() */
 #define CLEAR_OPERANDS_ON_START 1
+
+/* may use '#' to introduce comments in std-syntax */
+#define SYNTAX_STD_COMMENTCHAR_HASH
 
 
 /* register symbols */
@@ -270,3 +289,6 @@ typedef struct {
 #define NoRex64     0x20000000  /* doesn't require REX64 prefix */
 #define Rex64       0x40000000  /* requires REX64 prefix */
 #define Deprecated  0x80000000  /* deprecated FPU instruction */
+
+/* instruction doesn't take any suffix (or is already part of mnemonic) */
+#define NOSUF (b_Illegal|w_Illegal|l_Illegal|s_Illegal|x_Illegal|q_Illegal)

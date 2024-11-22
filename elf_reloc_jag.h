@@ -1,5 +1,5 @@
 /* elf_reloc_jag.h ELF relocation types for Jaguar RISC */
-/* (c) in 2015 by Frank Wille */
+/* (c) in 2015,2024 by Frank Wille */
 
 #define R_JAG_NONE 0      /* No reloc */
 #define R_JAG_ABS32 1     /* Direct 32 bit */
@@ -17,7 +17,7 @@
 #define RFLD(p,s) (BIGENDIAN?(size==(s)&&(pos&15)==(p)):(size==(s)&&(pos&15)==(16-(p)-(s))))
 
 
-  if ((*rl)->type <= LAST_STANDARD_RELOC) {
+  if (is_std_reloc(*rl)) {
     nreloc *r = (nreloc *)(*rl)->reloc;
 
     *refsym = r->sym;
@@ -27,7 +27,7 @@
     *roffset = r->byteoffset;
     mask = r->mask;
 
-    switch ((*rl)->type) {
+    switch (STD_REL_TYPE((*rl)->type)) {
 
       case REL_NONE:
         t = R_JAG_NONE;
@@ -42,7 +42,7 @@
           else if (size == 8)
             t = R_JAG_ABS8;
         }
-        else if (RFLD(6,5) && mask==0x1f)
+        else if (RFLD(6,5) && mask==~0)
           t = R_JAG_ABS5;
         else if (RFLD(0,16) && (mask==0xffff || mask==0xffff0000)
                  && (rl2=(*rl)->next)!=NULL
@@ -67,9 +67,9 @@
           else if (size == 8)
             t = R_JAG_REL8;
         }
-        else if (RFLD(6,5) && mask==0x1f)
+        else if (RFLD(6,5) && mask==~0)
           t = R_JAG_REL5;
-        else if (RFLD(6,5) && mask==0x3e)
+        else if (RFLD(6,5) && mask==~1)
           t = R_JAG_JR;
         else if (RFLD(0,16) && (mask==0xffff || mask==0xffff0000)
                  && (rl2=(*rl)->next)!=NULL

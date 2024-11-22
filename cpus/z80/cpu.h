@@ -29,6 +29,7 @@
 
 #define BIGENDIAN 0
 #define LITTLEENDIAN 1
+#define BITSPERBYTE 8
 #define VASM_CPU_Z80 1
 
 /* maximum number of operands for one mnemonic */
@@ -36,8 +37,6 @@
 
 /* maximum number of mnemonic-qualifiers per mnemonic */
 #define MAX_QUALIFIERS 0
-
-/* maximum number of additional command-line-flags for this cpu */
 
 /* data type to represent a target-address */
 typedef int32_t taddr;

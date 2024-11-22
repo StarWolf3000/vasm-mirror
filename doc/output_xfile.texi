@@ -1,14 +1,22 @@
 This chapter describes the Xfile output module which can be
 selected with the @option{-Fxfile} option.
+Refer to the TOS output module for generating absolute Z-file executables.
 
 @section Legal
 
-    This module is written in 2018,2020,2021 by Frank Wille and
+    This module is written in 2018,2020,2021,2024 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
-
-None.
+ 
+@table @option
+    @item -exec=<symbol>
+        Use the given label @code{<symbol>} as entry point of the program.
+        Omitting this option will define the execution address
+        to be the same as the code section's base address.
+    @item -loadhigh
+        Set the load mode in the header to @code{high address (2)}.
+@end table
 
 @section General
 
@@ -44,6 +52,6 @@ This module has the following error messages:
 @item 3006: reloc type %d not supported
 @item 3007: undefined symbol <%s>
 @item 3008: output module doesn't allow multiple sections of the same type
+@item 3009: undefined symbol <%s> at %s+%#lx, reloc type %d
 @item 3011: weak symbol <%s> not supported by output format, treating as global
-@item 3013: reloc type %d, mask 0x%lx to symbol %s + 0x%lx does not fit into %u bits
 @end itemize

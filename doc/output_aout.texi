@@ -39,7 +39,7 @@ The following standard relocations are supported by default:
 @end itemize
 
 Standard relocation table entries occupy 8 bytes and don't include an addend,
-so they are not suitable for most RISC CPUs. The extended relocations
+so they are not suitable for most RISC CPUs. The extended relocation
 format occupies 12 bytes and also allows more relocation types.
 
 @section Known Problems

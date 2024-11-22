@@ -1,15 +1,18 @@
 /* cdef.c #define output driver for vasm */
-/* (c) in 2020 by Volker Barthelmann */
+/* (c) in 2020,2024 by Volker Barthelmann */
 
 #include "vasm.h"
 
-static char *copyright="vasm cdef output module 0.1a (c) 2020 Volker Barthelmann";
+static char *copyright="vasm cdef output module 0.2 (c) 2020,2024 Volker Barthelmann";
 
 static void write_output(FILE *f,section *sec,symbol *sym)
 {
   for(;sym;sym=sym->next){
-    if(!(sym->flags&VASMINTERN)&&sym->type==EXPRESSION&&sym->expr->type==NUM)
-      fprintf(f,"#define %s\t0x%llx\n",sym->name,(unsigned long long)sym->expr->c.val);
+    if(!(sym->flags&VASMINTERN)&&*sym->name!=' '&&sym->type==EXPRESSION){
+      simplify_expr(sym->expr);
+      if(sym->expr->type==NUM)
+        fprintf(f,"#define %s\t%#llx\n",sym->name,(unsigned long long)sym->expr->c.val);
+    }
   }
 }
 

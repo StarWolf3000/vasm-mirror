@@ -15,6 +15,9 @@ int isidchar(char);
 char *exp_skip(char *);
 #define EXPSKIP() s=exp_skip(s)
 
+/* support for broken negative hex-constants: $-hex */
+#define BROKEN_HEXCONST
+
 /* operator separation characters */
 #ifndef OPERSEP_COMMA
 #define OPERSEP_COMMA 1

@@ -16,7 +16,7 @@ likely need to be converted to ASCII to use it elsewhere.
 #include "vasm.h"
 
 #ifdef OUTSREC
-static char *copyright="vasm motorola srecord output module 1.1a (c) 2015 Joseph Zatarski";
+static char *copyright="vasm motorola srecord output module 2.0 (c) 2015 Joseph Zatarski";
 
 static uint8_t data[32];  /* acts as a buffer for data portion of a record */
 static size_t data_size;  /* indicates current size of data[] */
@@ -200,17 +200,28 @@ static void put_byte_in_buffer(FILE *f, uint8_t byte)
   
   if(data_size >= 32)
     write_data_buffer(f, srecfmt);
-    
+}
+
+static void put_tbyte_in_buffer(FILE *f, void *tbyte)
+/* puts a target byte into the data buffer (not necessarily 8-bit bytes) */
+{
+  uint8_t *p = tbyte;
+  int i;
+
+  if (output_bytes_le)
+    for (i = octetsperbyte; i > 0; put_byte_in_buffer(f, p[--i]));
+  else
+    for (i = 0; i < octetsperbyte; put_byte_in_buffer(f, p[i++]));
   pc++;
 }
 
 static void addralign(FILE *f,atom *a,section *sec)
 /* modified from fwpcalign() in supp.c */
 {
-  int align_warning = 0;
   taddr n = balign(pc,a->align);
   taddr patlen;
   uint8_t *pat;
+  int i;
 
   if (n == 0)
     return;
@@ -226,33 +237,23 @@ static void addralign(FILE *f,atom *a,section *sec)
     patlen = sec->padbytes;
   }
 
-  /*pc += n; */ /*done in put_byte_in_buffer()*/
-
   while (n % patlen) {
-    if (!align_warning) {
-      align_warning = 1;
-      /*output_error(9,sec->name,(unsigned long)n,(unsigned long)patlen,pc);*/
-    }
-    put_byte_in_buffer(f,0);
+    for (i = 0; i < octetsperbyte; i++)
+      put_byte_in_buffer(f, 0);
     n--;
+    pc++;
   }
 
-  /* write alignment pattern */
   while (n >= patlen) {
-    int i;
     for(i = 0; i < patlen; i++)
-    {
-      put_byte_in_buffer(f, *(pat + i));
-    }
+      put_tbyte_in_buffer(f, pat + OCTETS(i));
     n -= patlen;
   }
 
   while (n--) {
-    if (!align_warning) {
-      align_warning = 1;
-      /*output_error(9,sec->name,(unsigned long)n,(unsigned long)patlen,pc);*/
-    }
-    put_byte_in_buffer(f, 0);
+    for (i = 0; i < octetsperbyte; i++)
+      put_byte_in_buffer(f, 0);
+    pc++;
   }
 }
 
@@ -289,20 +290,20 @@ static void write_output(FILE *f,section *sec,symbol *sym)
     write_data_buffer(f, 0); /* record type is S0 for header */
     
     pc = s->org;                        /* start at the org address */
-    srec_pc = pc;                       /* need to update both */
+    srec_pc = pc * octetsperbyte;       /* displayed in s-records */
     for (p=s->first; p; p=p->next)      /* iterate through atoms */
     {
       addralign(f,p,s);
       if(p->type == DATA)
         for (i = 0; i < p->content.db->size; i++)
-          put_byte_in_buffer(f,(uint8_t)p->content.db->data[i]);
+          put_tbyte_in_buffer(f,p->content.db->data+OCTETS(i));
       else if (p->type == SPACE)
       {
         for (i = 0; i < p->content.sb->space; i++)
         {
           for (j = 0; j < p->content.sb->size; j++)
           {
-            put_byte_in_buffer(f,p->content.sb->fill[j]);
+            put_tbyte_in_buffer(f,p->content.sb->fill+OCTETS(j));
           }
         }
       } 
@@ -362,6 +363,7 @@ int init_output_srec(char **cp,void (**wo)(FILE *,section *,symbol *),int (**oa)
   *wo = write_output;
   *oa = output_args;
   asciiout = 1;
+  output_bitsperbyte = 1;  /* we do support BITSPERBYTE != 8 */
   defsecttype = emptystr;  /* default section is "org 0" */
   return 1;
 }

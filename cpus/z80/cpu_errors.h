@@ -3,7 +3,7 @@
     "Index registers not available on %s",ERROR,
     "out of range for 8 bit expression (%d)",ERROR,
     "invalid bit number (%d) should be in range 0..7",ERROR,
-    "rst value out of range (%d/0x%02x)",ERROR,   /* 5 */
+    "rst value out of range (%d/%#02x)",ERROR,   /* 5 */
     "%s value out of range (%d)",ERROR,
     "index offset should be a constant",ERROR,
     "invalid branch type for %s",ERROR,
@@ -18,7 +18,7 @@
     "%s specifier redundant for the opcode %s",WARNING,
     "%s specifier has no effect on the opcode %s",WARNING,
     "Operand value must evaluate to a constant for opcode %s",ERROR,
-    "Unhandled operand type wanted 0x%x got 0x%x",ERROR, /* 20 */
+    "Unhandled operand type wanted %#x got %#x",ERROR, /* 20 */
     "Missed matched index registers on %s",ERROR,
     "Only out (c),0 is supported for the opcode %s",ERROR,
     "Operations between different index registers are forbidden",ERROR,

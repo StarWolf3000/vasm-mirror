@@ -1,5 +1,5 @@
 /* osdep.c - OS-dependant routines */
-/* (c) in 2018,2020 by Frank Wille */
+/* (c) in 2018,2020,2024 by Frank Wille */
 
 #include <string.h>
 char *mystrdup(const char *);
@@ -147,6 +147,13 @@ char *get_filepart(char *path)
       (filepart = strrchr(path,':')) != NULL)
     return filepart+1;
   return path;
+}
+
+
+int abs_path(const char *path)
+/* return true, when path is absolute */
+{
+  return *path=='/' || *path=='\\' || strchr(path,':')!=NULL;
 }
 
 

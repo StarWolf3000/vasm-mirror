@@ -4,11 +4,19 @@ selected with the @option{-Fhunk} option to generate objects and with the
 
 @section Legal
 
-    This module is written in 2002-2022 by Frank Wille and
+    This module is written in 2002-2024 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
 @table @option
+    @item -dbg-globloc
+        Adds all local labels to the debug symbol hunk, by trying to
+        construct a unique name out of the previous global label and
+        the original local label name: @code{global$local}.
+        The default is to write global labels only.
+    @item -dbg-local
+        Adds all local labels with their original name to the debug
+        symbol hunk. The default is to write global labels only.
     @item -hunkpad=<code>
         Sets a two-byte code used for aligning a code hunk to the
         next 32-bit border. Defaults to 0x4e71 for M68k code sections, to
@@ -18,7 +26,7 @@ selected with the @option{-Fhunk} option to generate objects and with the
         Do not delete empty sections without any symbol definition.
     @item -kick1hunks
         Use only those hunk types and external reference types which have
-        been valid at the time of Kickstart 1.x for compatibility with
+        been valid at the time of Kickstart 1.x, for compatibility with
         old assembler sources and old linkers. For example: no longer
         differentiate between absolute and relative references.
         In executables it will prevent the assembler from using
@@ -28,6 +36,10 @@ selected with the @option{-Fhunk} option to generate objects and with the
         Automatically generate an SAS/C-compatible LINE DEBUG hunk for
         the input source. Overrides any line debugging directives from
         the source text.
+    @item -noabspath
+        Do not make absolute paths from source file names for the
+        LINE DEBUG format. Except the path was already specified as
+        absolute on the command line or via a directive.
 @end table
 
 These options are valid for the @code{hunkexe} module only:
@@ -40,7 +52,7 @@ These options are valid for the @code{hunkexe} module only:
 
 @section General
 
-This output module outputs the @code{hunk} object (standard for @code{M68k}
+This module outputs the @code{hunk} object (standard for @code{M68k}
 and extended for @code{PowerPC}) and @code{hunkexe} executable format, which
 is a proprietary file format used by AmigaOS and WarpOS.
 
@@ -109,7 +121,7 @@ This module has the following error messages:
 @item 3004: section attributes <attr> not supported
 @item 3005: reloc type <m>, size <n>, mask <mask> (symbol <sym> + <offset>) not supported
 @item 3006: reloc type <n> not supported
-@item 3009: undefined symbol <%s> at %s+0x%lx, reloc type %d
+@item 3009: undefined symbol <%s> at %s+%#lx, reloc type %d
 @item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
 @item 3011: weak symbol <%s> not supported by output format, treating as global
 @item 3014: data definition following a databss space directive
@@ -117,5 +129,6 @@ This module has the following error messages:
 @item 3017: converting NONE relocation <%s> to 8-bit ABS with zero addend
 @item 3018: no additional space in section to convert NONE relocation <%s> to ABS
 @item 3019: section <%s>: kickstart 1.x cannot initialize bss sections >256k to zero
+@item 3023: unaligned relocation offset at %s+%#lx
 
 @end itemize

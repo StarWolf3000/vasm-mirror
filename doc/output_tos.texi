@@ -2,10 +2,12 @@ This chapter describes the TOS output module, which can be
 selected with option @option{-Ftos} to generate Atari TOS
 executable files, or with option @option{-Fdri} to generate DRI-format object
 files.
+Additionally you can generate absolute Z-file executables for the Sharp
+X68000, when specifying option @option{-zfile} together with @option{-Ftos}.
 
 @section Legal
 
-    This module is written in 2009-2016,2020,2021,2023 by Frank Wille and
+    This module is written in 2009-2016,2020-2024 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -16,7 +18,7 @@ files.
         unlimited length in DRI objects and executables.
         Overrides the HiSoft extension.
     @item -stdsymbols
-        Do not write HiSoft extended symbol names. Cut at 8 characters.
+        Do not write HiSoft extended symbol names. Cut names after 8 characters.
 @end table
 These options are valid for the @code{tos} module only:
 @table @option
@@ -25,6 +27,9 @@ These options are valid for the @code{tos} module only:
     @item -tos-flags=<flags>
         Sets the flags field in the TOS file header. Defaults to 0.
         Overwrites a TOS flags definition in the assembler source.
+    @item -zfile=<load-address>
+        Outputs an absolute Z-file for Sharp X68000 computers to be loaded
+        at @code{<load-address>} in memory.
 @end table
 
 @section General
@@ -32,12 +37,12 @@ These options are valid for the @code{tos} module only:
 @table @option
   @item -Ftos
     The TOS executable file format is used on Atari 16/32-bit computers
-    with 68000 up to 68060 CPU running any TOS, MiNT or any compatible
+    with 68000 up to 68060 CPU running TOS, MiNT or any compatible
     operating system. The symbol table is in DRI format and may use
     HiSoft (default) or SozobonX extended symbol names.
   @item -Fdri
     The object file format defined by Digital Research for Atari M68k
-    systems.
+    systems. May use SozobonX extended symbol names.
 @end table
 
 @section Restrictions
@@ -79,6 +84,7 @@ This module has the following error messages:
 @item 3006: reloc type %d not supported
 @item 3007: undefined symbol <%s>
 @item 3008: output module doesn't allow multiple sections of the same type
+@item 3009: undefined symbol <%s> at %s+%#lx, reloc type %d
 @item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
 @item 3011: weak symbol <%s> not supported by output format, treating as global
 @item 3020: too many symbols for selected output file format

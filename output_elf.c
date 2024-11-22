@@ -5,7 +5,7 @@
 #include "output_elf.h"
 #include "stabs.h"
 #if ELFCPU && defined(OUTELF)
-static char *copyright="vasm ELF output module 2.7a (c) 2002-2016,2020,2022 Frank Wille";
+static char *copyright="vasm ELF output module 2.7b (c) 2002-2016,2020,2022 Frank Wille";
 
 static int keep_empty_sects;
 
@@ -309,7 +309,7 @@ static unsigned get_sym_index(symbol *s)
 }
 
 
-static utaddr get_reloc_type(rlist **rl,
+static utaddr get_reloc_type(atom *a,rlist **rl,
                              utaddr *roffset,taddr *addend,symbol **refsym)
 {
   rlist *rl2;
@@ -348,13 +348,13 @@ static utaddr get_reloc_type(rlist **rl,
 #endif
 
   if (t == RTYPE_ILLEGAL)
-    unsupp_reloc_error(*rl);
+    unsupp_reloc_error(a,*rl);
 
   return t;
 }
 
 
-static utaddr make_relocs(rlist *rl,utaddr pc,
+static utaddr make_relocs(atom *a,rlist *rl,utaddr pc,
                           void (*newsym)(const char *,elfull,elfull,uint8_t,
                                          uint8_t,unsigned),
                           void (*addrel)(elfull,elfull,elfull,elfull))
@@ -368,7 +368,7 @@ static utaddr make_relocs(rlist *rl,utaddr pc,
       taddr addend;
       symbol *refsym;
 
-      rtype = get_reloc_type(&rl,&offset,&addend,&refsym);
+      rtype = get_reloc_type(a,&rl,&offset,&addend,&refsym);
       if (rtype != RTYPE_ILLEGAL) {
 
         if (LOCREF(refsym)) {
@@ -419,7 +419,7 @@ static utaddr make_stabreloc(utaddr pc,struct stabdef *nlist,
   rl->reloc = &nrel;
   rl->type = REL_ABS;
 
-  return make_relocs(rl,pc,newsym,addrel);
+  return make_relocs(NULL,rl,pc,newsym,addrel);
 }
 
 
@@ -566,9 +566,9 @@ static void make_reloc_sections(section *sec,
       for (a=secp->first,basero=roffset,pc=0; a; a=a->next) {
         npc = pcalign(a,pc);
         if (a->type == DATA)
-          roffset += make_relocs(a->content.db->relocs,npc,newsym,addrel);
+          roffset += make_relocs(a,a->content.db->relocs,npc,newsym,addrel);
         if (a->type == SPACE)
-          roffset += make_relocs(a->content.sb->relocs,npc,newsym,addrel);
+          roffset += make_relocs(a,a->content.sb->relocs,npc,newsym,addrel);
         pc = npc + atom_size(a,secp,npc);
       }
 
@@ -859,7 +859,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 {
   cpu = ELFCPU;    /* cpu ID */
   be = BIGENDIAN;  /* true for big endian */
-  bits = bytespertaddr * bitsperbyte;
+  bits = bytespertaddr * BITSPERBYTE;
   shtreloc = RELA ? SHT_RELA : SHT_REL;
 
   if (bits==32 && cpu!=EM_NONE)

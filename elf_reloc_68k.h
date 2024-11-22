@@ -26,7 +26,7 @@
 #define R_68K_RELATIVE 22 /* Adjust by program base */      
 
 
-  if ((*rl)->type <= LAST_STANDARD_RELOC) {
+  if (is_std_reloc(*rl)) {
     nreloc *r = (nreloc *)(*rl)->reloc;
 
     *refsym = r->sym;
@@ -36,7 +36,7 @@
     *roffset = r->byteoffset;
     mask = r->mask;
 
-    switch ((*rl)->type) {
+    switch (STD_REL_TYPE((*rl)->type)) {
 
       case REL_NONE:
         t = R_68K_NONE;

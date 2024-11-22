@@ -195,7 +195,7 @@ sblock *new_sblock(expr *space,size_t size,expr *fill)
   sb->space_exp = space;
   sb->size = size;
   if (!(sb->fill_exp = fill))
-    memset(sb->fill,space_init,MAXPADBYTES);
+    memset(sb->fill,space_init,MAXPADSIZE);
   sb->relocs = 0;
   sb->maxalignbytes = 0;
   sb->flags = 0;
@@ -213,7 +213,7 @@ static size_t space_size(sblock *sb,section *sec,taddr pc)
     general_error(30);  /* expression must be constant */
 
   if (final_pass && sb->fill_exp) {
-    if (sb->size <= sizeof(taddr)) {
+    if (OCTETS(sb->size) <= sizeof(taddr)) {
       /* space is filled with an expression which may also need relocations */
       symbol *base=NULL;
       taddr fill;
@@ -229,7 +229,7 @@ static size_t space_size(sblock *sb,section *sec,taddr pc)
         if (sb->size) {
           for (i=0; i<space; i++)
             add_extnreloc(&sb->relocs,base,fill,REL_ABS,
-                          0,sb->size*bitsperbyte,sb->size*i);
+                          0,sb->size*BITSPERBYTE,sb->size*i);
         }
         else {
           /* xrefs with size zero usually come from a "symdepend" directive */
@@ -341,7 +341,7 @@ size_t atom_size(atom *p,section *sec,taddr pc)
     case SPACE:
       return space_size(p->content.sb,sec,pc);
     case DATADEF:
-      return (p->content.defb->bitsize+7)/8;
+      return (p->content.defb->bitsize+BITSPERBYTE-1)/BITSPERBYTE;
     case ROFFS:
       return roffs_size(p->content.roffs,sec,pc);
     default:
@@ -380,9 +380,10 @@ void print_atom(FILE *f,atom *p)
     case DATA:
       fprintf(f,"data(%lu): ",(unsigned long)p->content.db->size);
       for (i=0;i<p->content.db->size;i++)
-        fprintf(f,"%02x ",p->content.db->data[i]);
+        fprintf(f,"%0*llx ",BITSPERBYTE/4,(unsigned long long)readbyte(
+                p->content.db->data+OCTETS(i)));
       for (rl=p->content.db->relocs; rl; rl=rl->next)
-        print_reloc(f,rl->type,rl->reloc);
+        print_reloc(f,rl);
       break;
     case INSTRUCTION:
       print_instruction(f,p->content.inst);
@@ -390,11 +391,11 @@ void print_atom(FILE *f,atom *p)
     case SPACE:
       fprintf(f,"space(%lu,fill=",
               (unsigned long)(p->content.sb->space*p->content.sb->size));
-      for (i=0; i<p->content.sb->size; i++)
+      for (i=0; i<OCTETS(p->content.sb->size); i++)
         fprintf(f,"%02x%c",(unsigned char)p->content.sb->fill[i],
-                (i==p->content.sb->size-1)?')':' ');
+                (i==OCTETS(p->content.sb->size)-1)?')':' ');
       for (rl=p->content.sb->relocs; rl; rl=rl->next)
-        print_reloc(f,rl->type,rl->reloc);
+        print_reloc(f,rl);
       break;
     case DATADEF:
       fprintf(f,"datadef(%lu bits)",(unsigned long)p->content.defb->bitsize);
@@ -424,7 +425,7 @@ void print_atom(FILE *f,atom *p)
         fprintf(f,"none");
       break;
     case RORG:
-      fprintf(f,"rorg: relocate to 0x%llx",ULLTADDR(*p->content.rorg));
+      fprintf(f,"rorg: relocate to %#llx",ULLTADDR(*p->content.rorg));
       break;
     case RORGEND:
       fprintf(f,"rorg end");
@@ -544,11 +545,11 @@ atom *add_data_atom(section *sec,size_t sz,taddr alignment,taddr c)
   atom *a;
 
   db->size = sz;
-  db->data = mymalloc(sz);
+  db->data = mymalloc(OCTETS(sz));
   if (sz > 1)
     setval(BIGENDIAN,db->data,sz,c);
   else
-    *(db->data) = c;
+    writebyte(db->data,c);
 
   a = new_data_atom(db,alignment);
   add_atom(sec,a);
@@ -556,7 +557,8 @@ atom *add_data_atom(section *sec,size_t sz,taddr alignment,taddr c)
 }
 
 
-void add_leb128_atom(section *sec,taddr c)
+/* FIXME: does DWARF support bytes with more than 8 bits? */
+void add_leb128_atom(section *sec,utaddr c)
 {
   taddr b;
 
@@ -569,6 +571,7 @@ void add_leb128_atom(section *sec,taddr c)
 }
 
 
+/* FIXME: does DWARF support bytes with more than 8 bits? */
 void add_sleb128_atom(section *sec,taddr c)
 {
   int done = 0;
@@ -586,14 +589,15 @@ void add_sleb128_atom(section *sec,taddr c)
 }
 
 
-atom *add_bytes_atom(section *sec,const void *p,size_t sz)
+/* FIXME: does DWARF support bytes with more than 8 bits? */
+atom *add_char_atom(section *sec,const void *p,size_t len)
 {
   dblock *db = new_dblock();
   atom *a;
 
-  db->size = sz;
-  db->data = mymalloc(sz);
-  memcpy(db->data,p,sz);
+  db->size = (len+octetsperbyte-1) / octetsperbyte;
+  db->data = mycalloc(OCTETS(db->size));
+  memcpy(db->data,p,len);
   a = new_data_atom(db,1);
   add_atom(sec,a);
   return a;

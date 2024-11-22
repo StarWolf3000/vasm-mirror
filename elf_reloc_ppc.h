@@ -68,7 +68,7 @@
 #define R_PPC_TOC16 255
 
 
-  if ((*rl)->type <= LAST_PPC_RELOC) {
+  if ((*rl)->type>=FIRST_CPU_RELOC && (*rl)->type<=LAST_CPU_RELOC) {
     nreloc *r = (nreloc *)(*rl)->reloc;
 
     *refsym = r->sym;
@@ -79,139 +79,6 @@
     mask = r->mask;
 
     switch ((*rl)->type) {
-
-      case REL_NONE:
-        t = R_PPC_NONE;
-        break;
-
-      case REL_ABS:
-        if (pos==0 && mask==~0) {
-          if (size == 32)
-            t = R_PPC_ADDR32;
-          else if (size == 16)
-            t = R_PPC_ADDR16;
-        }
-        else if (size==30 && pos==0 && mask==~3)
-          t = R_PPC_ADDR30;
-        else if (size==24 && pos==6 && mask==0x3fffffc)
-          t = R_PPC_ADDR24;
-        else if (size==14 && pos==0 && mask==0xfffc)
-          t = R_PPC_ADDR14;
-        else if (size==16 && pos==0) {
-          if (mask == 0x0000ffff)
-            t = R_PPC_ADDR16_LO;
-          else if (mask == 0xffff0000) {
-            if (rl2 = (*rl)->next) {
-              nreloc *r2 = (nreloc *)rl2->reloc;
-              if (rl2->type==(*rl)->type && r2->byteoffset==*roffset &&
-                  r2->bitoffset==pos && r2->size==size && r2->mask==0x8000) {
-                t = R_PPC_ADDR16_HA;
-                *rl = (*rl)->next;
-              }
-            }
-            else
-              t = R_PPC_ADDR16_HI;
-          }
-        }
-        break;
-
-      case REL_PC:
-        if (size==32 && pos==0 && mask==~0)
-          t = R_PPC_REL32;
-        else if (size==24 && pos==6 && mask==0x3fffffc)
-          t = R_PPC_REL24;
-        else if (size==14 && pos==0 && mask==0xfffc)
-          t = R_PPC_REL14;
-        break;
-
-      case REL_GOT:
-        if (size==16 && pos==0 && mask==~0)
-          t = R_PPC_GOT16;
-        else if (size==16 && pos==0) {
-          if (mask == 0x0000ffff)
-            t = R_PPC_GOT16_LO;
-          else if (mask == 0xffff0000) {
-            if (rl2 = (*rl)->next) {
-              nreloc *r2 = (nreloc *)rl2->reloc;
-              if (rl2->type==(*rl)->type && r2->byteoffset==*roffset &&
-                  r2->bitoffset==pos && r2->size==size && r2->mask==0x8000) {
-                t = R_PPC_GOT16_HA;
-                *rl = (*rl)->next;
-              }
-            }
-            else
-              t = R_PPC_GOT16_HI;
-          }
-        }
-        break;
-
-      case REL_PLT:
-        if (size==32 && pos==0 && mask==~0)
-          t = R_PPC_PLT32;
-        else if (size==16 && pos==0) {
-          if (mask == 0x0000ffff)
-            t = R_PPC_PLT16_LO;
-          else if (mask == 0xffff0000) {
-            if (rl2 = (*rl)->next) {
-              nreloc *r2 = (nreloc *)rl2->reloc;
-              if (rl2->type==(*rl)->type && r2->byteoffset==*roffset &&
-                  r2->bitoffset==pos && r2->size==size && r2->mask==0x8000) {
-                t = R_PPC_PLT16_HA;
-                *rl = (*rl)->next;
-              }
-            }
-            else
-              t = R_PPC_PLT16_HI;
-          }
-        }
-        break;
-
-      case REL_PLTPC:
-        if (size==32 && pos==0 && mask==~0)
-          t = R_PPC_PLTREL32;
-        else if (size==24 && pos==6 && mask==0x3fffffc)
-          t = R_PPC_PLTREL24;
-        break;
-
-      case REL_SD:
-        if (size==16 && pos==0 && mask==~0)
-          t = R_PPC_SDAREL16;
-        break;
-
-      case REL_LOCALPC:
-        if (size==24 && pos==6 && mask==0x3fffffc)
-          t = R_PPC_LOCAL24PC;
-        break;
-
-      case REL_UABS:
-        if (pos==0 && mask==~0) {
-          if (size == 32)
-            t = R_PPC_UADDR32;
-          else if (size == 16)
-            t = R_PPC_UADDR16;
-        }
-        break;
-
-      case REL_SECOFF:
-        if (size==16 && pos==0 && mask==~0)
-          t = R_PPC_SECTOFF;
-        else if (size==16 && pos==0) {
-          if (mask == 0x0000ffff)
-            t = R_PPC_SECTOFF_LO;
-          else if (mask == 0xffff0000) {
-            if (rl2 = (*rl)->next) {
-              nreloc *r2 = (nreloc *)rl2->reloc;
-              if (rl2->type==(*rl)->type && r2->byteoffset==*roffset &&
-                  r2->bitoffset==pos && r2->size==size && r2->mask==0x8000) {
-                t = R_PPC_SECTOFF_HA;
-                *rl = (*rl)->next;
-              }
-            }
-            else
-              t = R_PPC_SECTOFF_HI;
-          }
-        }
-        break;
 
       case REL_PPCEABI_SDA2:
         if (size==16 && pos==0 && mask==~0)
@@ -273,6 +140,152 @@
             }
             else
               t = R_PPC_AMIGAOS_BREL_HI;
+          }
+        }
+        break;
+    }
+  }
+  else if (is_std_reloc(*rl)) {
+    nreloc *r = (nreloc *)(*rl)->reloc;
+
+    *refsym = r->sym;
+    *addend = r->addend;
+    pos = r->bitoffset;
+    size = r->size;
+    *roffset = r->byteoffset;
+    mask = r->mask;
+
+    switch (STD_REL_TYPE((*rl)->type)) {
+
+      case REL_NONE:
+        t = R_PPC_NONE;
+        break;
+
+      case REL_ABS:
+        if (pos==0 && mask==~0) {
+          if (size == 32)
+            t = R_PPC_ADDR32;
+          else if (size == 16)
+            t = R_PPC_ADDR16;
+        }
+        else if (size==30 && pos==0 && mask==~3)
+          t = R_PPC_ADDR30;
+        else if (size==24 && pos==6 && mask==~3)
+          t = R_PPC_ADDR24;
+        else if (size==14 && pos==0 && mask==~3)
+          t = R_PPC_ADDR14;
+        else if (size==16 && pos==0) {
+          if (mask == 0x0000ffff)
+            t = R_PPC_ADDR16_LO;
+          else if (mask == 0xffff0000) {
+            if (rl2 = (*rl)->next) {
+              nreloc *r2 = (nreloc *)rl2->reloc;
+              if (rl2->type==(*rl)->type && r2->byteoffset==*roffset &&
+                  r2->bitoffset==pos && r2->size==size && r2->mask==0x8000) {
+                t = R_PPC_ADDR16_HA;
+                *rl = (*rl)->next;
+              }
+            }
+            else
+              t = R_PPC_ADDR16_HI;
+          }
+        }
+        break;
+
+      case REL_PC:
+        if (size==32 && pos==0 && mask==~0)
+          t = R_PPC_REL32;
+        else if (size==24 && pos==6 && mask==~3)
+          t = R_PPC_REL24;
+        else if (size==14 && pos==0 && mask==~3)
+          t = R_PPC_REL14;
+        break;
+
+      case REL_GOT:
+        if (size==16 && pos==0 && mask==~0)
+          t = R_PPC_GOT16;
+        else if (size==16 && pos==0) {
+          if (mask == 0x0000ffff)
+            t = R_PPC_GOT16_LO;
+          else if (mask == 0xffff0000) {
+            if (rl2 = (*rl)->next) {
+              nreloc *r2 = (nreloc *)rl2->reloc;
+              if (rl2->type==(*rl)->type && r2->byteoffset==*roffset &&
+                  r2->bitoffset==pos && r2->size==size && r2->mask==0x8000) {
+                t = R_PPC_GOT16_HA;
+                *rl = (*rl)->next;
+              }
+            }
+            else
+              t = R_PPC_GOT16_HI;
+          }
+        }
+        break;
+
+      case REL_PLT:
+        if (size==32 && pos==0 && mask==~0)
+          t = R_PPC_PLT32;
+        else if (size==16 && pos==0) {
+          if (mask == 0x0000ffff)
+            t = R_PPC_PLT16_LO;
+          else if (mask == 0xffff0000) {
+            if (rl2 = (*rl)->next) {
+              nreloc *r2 = (nreloc *)rl2->reloc;
+              if (rl2->type==(*rl)->type && r2->byteoffset==*roffset &&
+                  r2->bitoffset==pos && r2->size==size && r2->mask==0x8000) {
+                t = R_PPC_PLT16_HA;
+                *rl = (*rl)->next;
+              }
+            }
+            else
+              t = R_PPC_PLT16_HI;
+          }
+        }
+        break;
+
+      case REL_PLTPC:
+        if (size==32 && pos==0 && mask==~0)
+          t = R_PPC_PLTREL32;
+        else if (size==24 && pos==6 && mask==~3)
+          t = R_PPC_PLTREL24;
+        break;
+
+      case REL_SD:
+        if (size==16 && pos==0 && mask==~0)
+          t = R_PPC_SDAREL16;
+        break;
+
+      case REL_LOCALPC:
+        if (size==24 && pos==6 && mask==~3)
+          t = R_PPC_LOCAL24PC;
+        break;
+
+      case REL_UABS:
+        if (pos==0 && mask==~0) {
+          if (size == 32)
+            t = R_PPC_UADDR32;
+          else if (size == 16)
+            t = R_PPC_UADDR16;
+        }
+        break;
+
+      case REL_SECOFF:
+        if (size==16 && pos==0 && mask==~0)
+          t = R_PPC_SECTOFF;
+        else if (size==16 && pos==0) {
+          if (mask == 0x0000ffff)
+            t = R_PPC_SECTOFF_LO;
+          else if (mask == 0xffff0000) {
+            if (rl2 = (*rl)->next) {
+              nreloc *r2 = (nreloc *)rl2->reloc;
+              if (rl2->type==(*rl)->type && r2->byteoffset==*roffset &&
+                  r2->bitoffset==pos && r2->size==size && r2->mask==0x8000) {
+                t = R_PPC_SECTOFF_HA;
+                *rl = (*rl)->next;
+              }
+            }
+            else
+              t = R_PPC_SECTOFF_HI;
           }
         }
         break;

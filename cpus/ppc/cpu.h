@@ -1,11 +1,12 @@
 /*
 ** cpu.h PowerPC cpu-description header-file
-** (c) in 2002,2006,2011-2016 by Frank Wille
+** (c) in 2002,2006,2011-2016,2024 by Frank Wille
 */
 
 extern int ppc_endianess;
 #define BIGENDIAN (ppc_endianess)
 #define LITTLEENDIAN (!ppc_endianess)
+#define BITSPERBYTE 8
 #define VASM_CPU_PPC 1
 #define MNEMOHTABSIZE 0x20000
 
@@ -14,6 +15,9 @@ extern int ppc_endianess;
 
 /* maximum number of mnemonic-qualifiers per mnemonic */
 #define MAX_QUALIFIERS 0
+
+/* may use '#' to introduce comments in std-syntax */
+#define SYNTAX_STD_COMMENTCHAR_HASH
 
 /* data type to represent a target-address */
 typedef int64_t taddr;
@@ -49,13 +53,13 @@ typedef uint64_t utaddr;
 #define OP_FLOAT(t) (t >= OP_F32)
 
 /* PPC specific relocations */
-#define REL_PPCEABI_SDA2 (LAST_STANDARD_RELOC+1)
-#define REL_PPCEABI_SDA21 (LAST_STANDARD_RELOC+2)
-#define REL_PPCEABI_SDAI16 (LAST_STANDARD_RELOC+3)
-#define REL_PPCEABI_SDA2I16 (LAST_STANDARD_RELOC+4)
-#define REL_MORPHOS_DREL (LAST_STANDARD_RELOC+5)
-#define REL_AMIGAOS_BREL (LAST_STANDARD_RELOC+6)
-#define LAST_PPC_RELOC (LAST_STANDARD_RELOC+6)
+#define REL_PPCEABI_SDA2 (FIRST_CPU_RELOC)
+#define REL_PPCEABI_SDA21 (FIRST_CPU_RELOC+1)
+#define REL_PPCEABI_SDAI16 (FIRST_CPU_RELOC+2)
+#define REL_PPCEABI_SDA2I16 (FIRST_CPU_RELOC+3)
+#define REL_MORPHOS_DREL (FIRST_CPU_RELOC+4)
+#define REL_AMIGAOS_BREL (FIRST_CPU_RELOC+5)
+#define LAST_CPU_RELOC REL_AMIGAOS_BREL
 
 
 /* type to store each operand */
@@ -265,3 +269,6 @@ int ppc_data_align(int);
 int ppc_data_operand(int);
 int ppc_available(int);
 int ppc_operand_optional(operand *,int);
+size_t cpu_reloc_size(rlist *);
+void cpu_reloc_print(FILE *,rlist *);
+void cpu_reloc_write(FILE *,rlist *);

@@ -1,5 +1,5 @@
 /* error.c - error output and modification routines */
-/* (c) in 2002-2023 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2024 by Volker Barthelmann and Frank Wille */
 
 #include <stdarg.h>
 #include "vasm.h"
@@ -32,23 +32,21 @@ int max_errors=5;
 int no_warn;
 
 
-static void print_source_line(FILE *f)
+static void print_source_line(FILE *f,source *src,int l)
 {
   static char *buf = NULL;
   static size_t bufsz = 0;
   char c,*e,*p,*q;
-  int l;
 
   /* allocate a sufficiently dimensioned line buffer */
-  if (cur_src->bufsize > bufsz) {
-    bufsz = cur_src->bufsize;
+  if (src->bufsize > bufsz) {
+    bufsz = src->bufsize;
     buf = myrealloc(buf,bufsz);
   }
 
-  p = cur_src->text;
+  p = src->text;
   q = buf;
   e = buf + bufsz - 1;
-  l = cur_src->line;
 
   do {
     c = *p++;
@@ -58,7 +56,7 @@ static void print_source_line(FILE *f)
       if (--l == 0) {
         /* terminate error line in buffer and print it */
         *q = '\0';
-        fprintf(f,">%s\n",buf);
+        fprintf(f,"%s\n",buf);
         return;
       }
       q = buf;  /* next line, start to fill buffer from the beginning */
@@ -186,11 +184,18 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
 
         if (recurs > 1)
           fprintf(f," %d times",recurs);
-        fprintf(f,"\n");
+
+        if (child==cur_src && child->macro!=NULL) {
+          fprintf(f,": ");
+          print_source_line(f,parent,child->parent_line);
+        }
+        else
+          fprintf(f,"\n");
         child = parent;
       }
     }
-    print_source_line(f);
+    fputc('>',f);
+    print_source_line(f,cur_src,cur_src->line);
   }
 
   if (flags & FATAL) {
@@ -246,11 +251,18 @@ void output_atom_error(int n,atom *a,...)
   va_list vl;
 
   va_start(vl,a);
+
   /* temporarily set the source text and line from the given atom */
-  if ((cur_src = a->src) != NULL)
-    cur_src->line = a->line;
+  if (a != NULL) {
+    if ((cur_src = a->src) != NULL)
+      cur_src->line = a->line;
+  }
+  else
+    cur_src = NULL;  /* no line information, when atom is missing */
+
   error(n,vl,output_err_out,FIRST_OUTPUT_ERROR);
   cur_src = old;
+
   va_end(vl);
 }
 

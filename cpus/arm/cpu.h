@@ -3,6 +3,7 @@
 
 #define LITTLEENDIAN (!arm_be_mode)
 #define BIGENDIAN (arm_be_mode)
+#define BITSPERBYTE 8
 #define VASM_CPU_ARM 1
 
 /* maximum number of operands in one mnemonic */

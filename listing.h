@@ -22,8 +22,10 @@ extern int produce_listing,listena;
 extern int listformfeed,listlinesperpage,listnosyms;
 extern listing *first_listing,*last_listing,*cur_listing;
 
+int init_listing(void);
 int listing_option(char *);
 listing *new_listing(source *,int);
+void del_last_listing(void);
 void set_listing(int);
 void set_list_title(char *,int);
 void set_listformat(const char *);

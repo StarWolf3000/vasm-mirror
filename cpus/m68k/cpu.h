@@ -1,10 +1,11 @@
 /*
 ** cpu.h Motorola M68k, CPU32 and ColdFire cpu-description header-file
-** (c) in 2002,2006-2023 by Frank Wille
+** (c) in 2002,2006-2024 by Frank Wille
 */
 
 #define BIGENDIAN 1
 #define LITTLEENDIAN 0
+#define BITSPERBYTE 8
 #define VASM_CPU_M68K 1
 #define MNEMOHTABSIZE 0x8000
 
@@ -13,8 +14,6 @@
 
 /* maximum number of mnemonic-qualifiers per mnemonic */
 #define MAX_QUALIFIERS 1
-
-/* maximum number of additional command-line-flags for this cpu */
 
 /* data type to represent a target-address */
 typedef int32_t taddr;
@@ -31,7 +30,6 @@ typedef struct {
       unsigned char flags;
       signed char last_size;
       signed char orig_ext;
-      char unused;
     } real;
     struct {
       struct instruction *next;
@@ -82,6 +80,7 @@ enum {
   OCMD_OPTIMMADDR,
   OCMD_OPTSPEED,
   OCMD_OPTSIZE,
+  OCMD_OPTPC080,
   OCMD_SMALLCODE,
   OCMD_SMALLDATA,
   OCMD_OPTWARN,

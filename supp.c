@@ -1,5 +1,5 @@
 /* supp.c miscellaneous support routines */
-/* (c) in 2008-2023 by Frank Wille */
+/* (c) in 2008-2024 by Frank Wille */
 
 #include <math.h>
 #include "vasm.h"
@@ -88,7 +88,7 @@ void *mycalloc(size_t sz)
 }
 
 
-void *myrealloc(void *old,size_t sz)
+void *myrealloc(const void *old,size_t sz)
 {
   size_t *p;
 
@@ -100,7 +100,7 @@ void *myrealloc(void *old,size_t sz)
     *p++ = sz;
   }
   else {
-    p = realloc(old,sz);
+    p = realloc((void *)old,sz);
     if (!p)
       general_error(17);
   }
@@ -123,19 +123,6 @@ void myfree(void *p)
 }
 
 
-int field_overflow(int signedbits,size_t numbits,taddr bitval)
-{
-  if (signedbits) {
-    uint64_t mask = ~MAKEMASK(numbits - 1);
-    uint64_t val = (int64_t)bitval;
-
-    return (bitval < 0) ? (val & mask) != mask : (val & mask) != 0;
-  }
-  else
-    return (((uint64_t)(utaddr)bitval) & ~MAKEMASK(numbits)) != 0;
-}
-
-
 taddr bf_sign_extend(taddr val,int numbits)
 /* sign-extend a bitfield value which fits into numbits bits */
 {
@@ -147,25 +134,60 @@ taddr bf_sign_extend(taddr val,int numbits)
 }
 
 
-uint64_t readval(int be,void *src,size_t size)
-/* read value with given endianness */
+#if BITSPERBYTE != 8
+
+utaddr readbyte(void *src)
+/* reads a target byte */
 {
-  unsigned char *s = src;
+  uint8_t *s = src;
+  utaddr val = 0;
+  int len = octetsperbyte;
+
+  while (len--) {
+    val <<= 8;
+    val += (utaddr)*s++;
+  }
+  return val;
+}
+
+
+void writebyte(void *dest,utaddr val)
+/* writes a target byte */
+{
+  uint8_t *d = dest;
+  int len = octetsperbyte;
+
+  d += len;
+  while (len--) {
+    *(--d) = (uint8_t)val;
+    val >>= 8;
+  }
+}
+
+#endif /* BITSPERBYTE != 8 */
+
+
+uint64_t readval(int be,void *src,size_t size)
+/* read value with given endianness and size in target-bytes */
+{
+  uint8_t *s = src;
   uint64_t val = 0;
 
-  if (size > sizeof(uint64_t))
+  if (OCTETS(size) > sizeof(uint64_t))
     ierror(0);
   if (be) {
     while (size--) {
-      val <<= 8;
-      val += (uint64_t)*s++;
+      val <<= BITSPERBYTE;
+      val += (uint64_t)readbyte(s);
+      s += OCTETS(1);
     }
   }
   else {
-    s += size;
+    s += OCTETS(size);
     while (size--) {
-      val <<= 8;
-      val += (uint64_t)*(--s);
+      s -= OCTETS(1);
+      val <<= BITSPERBYTE;
+      val += (uint64_t)readbyte(s);
     }
   }
   return val;
@@ -177,20 +199,22 @@ void *setval(int be,void *dest,size_t size,uint64_t val)
 {
   uint8_t *d = dest;
 
-  if (size > sizeof(uint64_t))
+  if (OCTETS(size) > sizeof(uint64_t))
     ierror(0);
   if (be) {
-    d += size;
+    d += OCTETS(size);
     dest = d;
     while (size--) {
-      *(--d) = (uint8_t)val;
-      val >>= 8;
+      d -= OCTETS(1);
+      writebyte(d,(utaddr)val);
+      val >>= BITSPERBYTE;
     }
   }
   else {
     while (size--) {
-      *d++ = (uint8_t)val;
-      val >>= 8;
+      writebyte(d,(utaddr)val);
+      val >>= BITSPERBYTE;
+      d += OCTETS(1);
     }
     dest = d;
   }
@@ -204,24 +228,26 @@ void *setval_signext(int be,void *dest,size_t extsz,size_t valsz,int64_t val)
   uint8_t *d = dest;
   int sign = val<0 ? 0xff : 0;
 
-  if (valsz > sizeof(uint64_t))
+  if (OCTETS(valsz) > sizeof(uint64_t))
     ierror(0);
   if (be) {
-    memset(d,sign,extsz);
-    d += extsz + valsz;
+    memset(d,sign,OCTETS(extsz));
+    d += OCTETS(extsz + valsz);
     dest = d;
     while (valsz--) {
-      *(--d) = (uint8_t)val;
-      val >>= 8;
+      d -= OCTETS(1);
+      writebyte(d,(utaddr)val);
+      val >>= BITSPERBYTE;
     }
   }
   else {
     while (valsz--) {
-      *d++ = (uint8_t)val;
-      val >>= 8;
+      writebyte(d,(utaddr)val);
+      val >>= BITSPERBYTE;
+      d += OCTETS(1);
     }
-    memset(d,sign,extsz);
-    dest = d + extsz;
+    memset(d,sign,OCTETS(extsz));
+    dest = d + OCTETS(extsz);
   }
   return dest;
 }
@@ -230,9 +256,9 @@ void *setval_signext(int be,void *dest,size_t extsz,size_t valsz,int64_t val)
 uint64_t readbits(int be,void *p,unsigned bfsize,unsigned offset,unsigned size)
 /* read value from a bitfield (max. 64 bits) */
 {
-  if ((bfsize&7)==0 && offset+size<=bfsize) {
+  if ((bfsize&(BITSPERBYTE-1))==0 && offset+size<=bfsize) {
     uint64_t mask = MAKEMASK(size);
-    uint64_t val = readval(be,p,bfsize>>3);
+    uint64_t val = readval(be,p,bfsize/BITSPERBYTE);
 
     return be ? ((val >> (bfsize-(offset+size))) & mask)
               : ((val >> offset) & mask);
@@ -246,12 +272,12 @@ void setbits(int be,void *p,unsigned bfsize,unsigned offset,unsigned size,
              uint64_t d)
 /* write value to a bitfield (max. 64 bits) */
 {
-  if ((bfsize&7)==0 && offset+size<=bfsize) {
+  if (bfsize%BITSPERBYTE==0 && offset+size<=bfsize) {
     uint64_t mask = MAKEMASK(size);
-    uint64_t val = readval(be,p,bfsize>>3);
+    uint64_t val = readval(be,p,bfsize/BITSPERBYTE);
     int s = be ? bfsize - (offset + size) : offset;
 
-    setval(be,p,bfsize>>3,(val & ~(mask<<s)) | ((d & mask) << s));
+    setval(be,p,bfsize/BITSPERBYTE,(val & ~(mask<<s)) | ((d & mask) << s));
   }
   else
     ierror(0);
@@ -290,21 +316,27 @@ int tffs(taddr val)
 }
 
 
-void copy_cpu_taddr(void *dest,taddr val,size_t bytes)
-/* copy 'bytes' low-order bytes from val to dest in cpu's endianness */
+void copy_cpu_taddr(void *dest,taddr val,size_t tbytes)
+/* copy 'tbytes' low-order target-bytes from val to dest in cpu's endianness */
 {
   uint8_t *d = dest;
-  int i;
 
-  if (bytes > sizeof(taddr))
+  if (OCTETS(tbytes) > sizeof(taddr))
     ierror(0);
   if (BIGENDIAN) {
-    for (i=bytes-1; i>=0; i--,val>>=8)
-      d[i] = (uint8_t)val;
+    d += OCTETS(tbytes);
+    while (tbytes--) {
+      d -= OCTETS(1);
+      writebyte(d,val);
+      val >>= BITSPERBYTE;
+    }
   }
   else if (LITTLEENDIAN) {
-    for (i=0; i<(int)bytes; i++,val>>=8)
-      d[i] = (uint8_t)val;
+    while (tbytes--) {
+      writebyte(d,val);
+      val >>= BITSPERBYTE;
+      d += OCTETS(1);
+    }
   }
   else
     ierror(0);
@@ -321,7 +353,7 @@ void conv2ieee32(int be,uint8_t *buf,tfloat f)
   } conv;
 
   conv.sp = (float)f;
-  setval(be,buf,4,conv.x);
+  setval(be,buf,32/BITSPERBYTE,conv.x);
 }
 
 
@@ -334,7 +366,7 @@ void conv2ieee64(int be,uint8_t *buf,tfloat f)
   } conv;
 
   conv.dp = (double)f;
-  setval(be,buf,8,conv.x);
+  setval(be,buf,64/BITSPERBYTE,conv.x);
 }
 
 
@@ -403,6 +435,7 @@ void fw32(FILE *f,uint32_t x,int be)
 
 
 void fwdata(FILE *f,const void *d,size_t n)
+/* n is in 8-bit bytes */
 {
   if (n) {
     if (!fwrite(d,1,n,f))
@@ -411,18 +444,34 @@ void fwdata(FILE *f,const void *d,size_t n)
 }
 
 
+void fwbytes(FILE *f,void *buf,size_t n)
+/* write target-bytes in selected endianness; n is in target-bytes */
+{
+  if (output_bytes_le) {
+    uint8_t *p = buf;
+    int i;
+
+    while (n--) {
+      for (i=octetsperbyte; i>0; fw8(f,p[--i]));
+      p += octetsperbyte;
+    }
+  }
+  else
+    fwdata(f,buf,OCTETS(n));
+}
+
+
 void fwsblock(FILE *f,sblock *sb)
 {
   size_t i;
 
-  for (i=0; i<sb->space; i++) {
-    if (!fwrite(sb->fill,sb->size,1,f))
-      output_error(2);  /* write error */
-  }
+  for (i=0; i<sb->space; i++)
+    fwbytes(f,sb->fill,sb->size);
 }
 
 
 void fwspace(FILE *f,size_t n)
+/* n is in 8-bit bytes */
 {
   size_t i;
 
@@ -434,31 +483,32 @@ void fwspace(FILE *f,size_t n)
 
 
 void fwalign(FILE *f,taddr n,taddr align)
+/* n and align are in target-bytes */
 {
-  fwspace(f,balign(n,align));
+  fwspace(f,OCTETS(balign(n,align)));
 }
 
 
-int fwalignpattern(FILE *f,taddr n,uint8_t *pat,int patlen)
+int fwpattern(FILE *f,taddr n,uint8_t *pat,int patlen)
+/* n and patlen are in target-bytes */
 {
   int align_warning = 0;
 
   while (n % patlen) {
     align_warning = 1;
-    fw8(f,0);
+    fwspace(f,OCTETS(1));
     n--;
   }
 
   /* write alignment pattern */
   while (n >= patlen) {
-    if (!fwrite(pat,patlen,1,f))
-      output_error(2);  /* write error */
+    fwbytes(f,pat,patlen);
     n -= patlen;
   }
 
   while (n--) {
     align_warning = 1;
-    fw8(f,0);
+    fwspace(f,OCTETS(1));
   }
   
 #if 0
@@ -480,7 +530,7 @@ taddr fwpcalign(FILE *f,atom *a,section *sec,taddr pc)
     return pc;
 
   if (a->type==SPACE && a->content.sb->space==0) {  /* space align atom */
-    if (a->content.sb->maxalignbytes!=0 &&  n>a->content.sb->maxalignbytes)
+    if (a->content.sb->maxalignbytes!=0 && n>a->content.sb->maxalignbytes)
       return pc;
     pat = a->content.sb->fill;
     patlen = a->content.sb->size;
@@ -490,10 +540,9 @@ taddr fwpcalign(FILE *f,atom *a,section *sec,taddr pc)
     patlen = sec->padbytes;
   }
 
-  pc += n;
-  fwalignpattern(f,n,pat,patlen);
+  fwpattern(f,n,pat,patlen);
 
-  return pc;
+  return pc+n;
 }
 
 
@@ -508,13 +557,6 @@ size_t filesize(FILE *fp)
         if (fseek(fp,0,SEEK_SET) >= 0)
           return (size_t)size;
   return 0;
-}
-
-
-int abs_path(const char *path)
-/* return true, when path is absolute */
-{
-  return *path=='/' || *path=='\\' || strchr(path,':')!=NULL;
 }
 
 
@@ -655,15 +697,16 @@ taddr pcalign(atom *a,taddr pc)
 }
 
 
-int make_padding(taddr val,uint8_t *pad,int maxlen)
-/* fill a padding array from a given padding value, return length in bytes */
+int make_padding(taddr val,uint8_t *pad,int maxbits)
+/* fill a padding array with maxbits bits from a given padding value,
+   return length in target-bytes */
 {
   utaddr uval;
   int len;
 
-  for (len=0,uval=(utaddr)val; uval!=0; uval>>=8,len++);
-  if (len > maxlen)
-    len = maxlen;
+  for (len=0,uval=(utaddr)val; uval!=0; uval>>=BITSPERBYTE,len++);
+  if (len*BITSPERBYTE > maxbits)
+    len = maxbits / BITSPERBYTE;
   copy_cpu_taddr(pad,val,len);
   return len;
 }
@@ -680,7 +723,7 @@ size_t chk_sec_overlap(section *s)
       if (((ULLTADDR(s2->org) >= ULLTADDR(s->org) &&
             ULLTADDR(s2->org) < ULLTADDR(s->pc)) ||
            (ULLTADDR(s2->pc) > ULLTADDR(s->org) &&
-            ULLTADDR(s2->pc) <= ULLTADDR(s->pc))))
+            ULLTADDR(s2->pc) < ULLTADDR(s->pc))))
         output_error(0,s->name,ULLTADDR(s->org),ULLTADDR(s->pc),
                      s2->name,ULLTADDR(s2->org),ULLTADDR(s2->pc));
     }

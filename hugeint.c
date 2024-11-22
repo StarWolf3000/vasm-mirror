@@ -127,9 +127,6 @@ int huge_chkrange(thuge h,int bits)
 {
   uint64_t v,mask;
 
-  if (bits & 7)
-    ierror(0);
-
   if (bits >= HUGEBITS)
     return 1;
 

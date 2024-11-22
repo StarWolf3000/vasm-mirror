@@ -1,0 +1,31 @@
+This chapter describes the custom output module for the project "Hans" which 
+can be selected with the @option{-Fhans} option.
+
+@section Legal
+
+    This module is written in 2024 by Yannik Stamm and
+    is covered by the vasm copyright without modifications.
+ 
+@section General
+
+This output module outputs the contents of all sections in a custom verbose
+object format. It is mainly thought to be used together with a custom linker.
+
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item None?
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3022: expression type of symbol %s not supported
+@end itemize

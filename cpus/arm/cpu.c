@@ -1,6 +1,6 @@
 /*
 ** cpu.c ARM cpu-description file
-** (c) in 2004,2006,2010,2011,2014-2020 by Frank Wille
+** (c) in 2004,2006,2010,2011,2014-2020,2024 by Frank Wille
 */
 
 #include "vasm.h"
@@ -10,9 +10,8 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-const char *cpu_copyright = "vasm ARM cpu backend 0.5 (c) 2004,2006,2010,2011,2014-2020 Frank Wille";
+const char *cpu_copyright = "vasm ARM cpu backend 0.5a (c) 2004,2006,2010,2011,2014-2020,2024 Frank Wille";
 const char *cpuname = "ARM";
-int bitsperbyte = 8;
 int bytespertaddr = 4;
 
 uint32_t cpu_type = AAANY;
@@ -1226,14 +1225,13 @@ size_t eval_arm_operands(instruction *ip,section *sec,taddr pc,
             val -= ARM_PREFETCH;
             if (db)
               add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                                   arm_be_mode?8:0,24,0,0x3fffffc);
+                                   arm_be_mode?8:0,24,0,~3);
             break;
           case PCL12:
             op.type = IMUD2;
             if (db) {
               if (val<0x1000 && val>-0x1000) {
-                add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                                     arm_be_mode?20:0,12,0,0x1fff);
+                add_extnreloc(&db->relocs,base,val,REL_PC,arm_be_mode?20:0,12,0);
                 base = NULL;  /* don't add another REL_ABS below */
               }
               else
@@ -1380,8 +1378,8 @@ size_t eval_arm_operands(instruction *ip,section *sec,taddr pc,
               if (!aa4ldst) {
                 /* @@@ does this make any sense? */
                 *insn |= 0x00800000;  /* only UP */
-                add_extnreloc_masked(&db->relocs,base,val,REL_ABS,
-                                     arm_be_mode?20:0,12,0,0xfff);
+                add_extnreloc(&db->relocs,base,val,REL_ABS,
+                              arm_be_mode?20:0,12,0);
               }
               else
                 cpu_error(22); /* operation not allowed on external symbols */
@@ -1419,8 +1417,7 @@ size_t eval_arm_operands(instruction *ip,section *sec,taddr pc,
         if (val>=0 && val<0x1000000) {
           *insn |= val;
           if (base!=NULL && db!=NULL)
-            add_extnreloc_masked(&db->relocs,base,val,REL_ABS,
-                                 arm_be_mode?8:0,24,0,0xffffff);
+            add_extnreloc(&db->relocs,base,val,REL_ABS,arm_be_mode?8:0,24,0);
         }
         else
           cpu_error(16);  /* 24-bit unsigned immediate expected */
@@ -1628,7 +1625,7 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
       if (base)
         add_extnreloc(&db->relocs,base,val,
                       btype==BASE_PCREL?REL_PC:REL_ABS,0,bitsize,0);
-      else if (btype != BASE_NONE)
+      else
         general_error(38);  /* illegal relocation */
     }
     switch (db->size) {
@@ -1652,7 +1649,7 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
 }
 
 
-int init_cpu()
+int init_cpu(void)
 {
   char r[4];
   int i;

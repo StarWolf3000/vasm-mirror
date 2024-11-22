@@ -4,7 +4,7 @@ M68k and ColdFire families of CPUs, which is available with the extension
 
 @section Legal
 
-    This module is written in 2002-2023 by Frank Wille and
+    This module is written in 2002-2024 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -20,11 +20,11 @@ This syntax module provides the following additional options:
 @item -allmp
  Makes all 35 macro arguments available. Default are 9 arguments (@code{\1}
  to @code{\9}). More arguments can be accessed through @code{\a} to
- @code{\z}), which may conflict with escape characters or named arguments,
+ @code{\z}, which may conflict with escape characters or named arguments,
  therefore they are not enabled by default.
 
 @item -cnop=<code>
- Sets a two-byte code used for alignment padding with @code{cnop} in
+ Sets the two-byte code used for alignment padding with @code{cnop} in
  code sections. Defaults to @code{0x4e71} on M68k.
 
 @item -devpac
@@ -60,7 +60,7 @@ This syntax module provides the following additional options:
  PhxAss-compatibility mode. Only directives known to PhxAss are recognized.
 @itemize @minus
   @item Enable escape codes handling in strings (see @option{-esc}).
-  @item Macro names are treated as case-insensitive.
+  @item Macro names are case-insensitive.
   @item Up to 35 macro arguments (see @option{-allmp}).
   @item Allow whitespace in operands.
   @item Enable dots within identifiers (see @option{-ldots}).
@@ -86,7 +86,8 @@ Labels must either start at the first column of a line or have to be
 terminated by a colon (@code{:}). In the first case the mnemonic
 has to be separated from the label by whitespace (not required in any case,
 e.g. with the @code{=} directive). A double colon (@code{::})
-automatically makes the label externally visible (see also @code{xdef}).
+automatically makes the label externally visible (refer to directive
+@code{xdef}).
 
 Local labels are either prefixed by '@code{.}' or suffixed by '@code{$}'.
 For the rest, any alphanumeric character including '@code{_}' is allowed.
@@ -103,7 +104,8 @@ and is no recommended style. Does not work in a macro, as it conflicts
 with macro arguments.
 
 Make sure that you don't define a label on the same line as a
-directive for conditional assembly (if, else, endif)! This is not supported.
+directive for conditional assembly (if, else, endif)! This is not supported
+and leads to undefined behaviour.
 
 Qualifiers are appended to the mnemonic,
 separated by a dot (if the CPU-module supports qualifiers). The
@@ -210,8 +212,8 @@ CPU- and output-module support them):
 @item cnop <offset>,<alignment>
       Insert as many padding bytes as required to reach an address which
       can be divided by <alignment>. Then add <offset> padding bytes.
-      May fill the padding-bytes with no-operation instructions for certain
-      cpus.
+      May fill the alignment- and padding-bytes with no-operation
+      instructions for certain cpus. See option @option{-cnop}.
 
 @item code
       Equivalent to @code{section code,code}.
@@ -664,7 +666,7 @@ foo IIF bar equ 42
       (@option{-Fhunk}).
 
 @item nolist
-      The following lines will not be visible in a listing file.
+      This line and the following lines will not be visible in a listing file.
 
 @item nopage
       Never start a new page in the listing file.
@@ -823,10 +825,10 @@ foo IIF bar equ 42
       Equivalent to @code{section code,code}.
 
 @item ttl <name>
-      PhxAss syntax. Equivalent to @code{idnt <name>}.
+      Devpac/PhxAss syntax. Set current page title for the listing file.
 
 @item <name> ttl
-      Motorola syntax. Equivalent to @code{idnt <name>}.
+      Motorola syntax. Set current page title for the listing file.
 
 @item weak <symbol>[,<symbol>...]
       Flag @code{<symbol>} as a weak symbol, which means that @code{<symbol>}

@@ -29,7 +29,7 @@
 #define R_X86_64_TPOFF32        23
 
 
-  if ((*rl)->type <= LAST_STANDARD_RELOC) {
+  if (is_std_reloc(*rl)) {
     nreloc *r = (nreloc *)(*rl)->reloc;
 
     *refsym = r->sym;
@@ -39,7 +39,7 @@
     *roffset = r->byteoffset;
     mask = r->mask;
 
-    switch ((*rl)->type) {
+    switch (STD_REL_TYPE((*rl)->type)) {
 
       case REL_NONE:
         t = R_X86_64_NONE;

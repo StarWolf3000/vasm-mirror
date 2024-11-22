@@ -11,7 +11,6 @@ const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
 const char *cpu_copyright = "vasm pdp-11 cpu backend 0.2 (c)2020 by Frank Wille";
 const char *cpuname = "pdp11";
-int bitsperbyte = 8;
 int bytespertaddr = 2;
 
 static uint8_t cpu_type = STD|PSW;
@@ -19,7 +18,7 @@ static int opt_bra;       /* relative branch optimization/translation */
 static int OC_BR,OC_JMP;
 
 
-operand *new_operand()
+operand *new_operand(void)
 {
   operand *new = mymalloc(sizeof(*new));
   return new;
@@ -203,7 +202,7 @@ static size_t process_instruction(instruction *ip,section *sec,taddr pc,
       }
       else {
         values[i].base = NULL;
-        values[i].btype = BASE_NONE;
+        values[i].btype = -1;  /* @@@FIXME - was BASE_NONE */
       }
     }
 
@@ -500,7 +499,7 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
       add_extnreloc(&db->relocs,base,val,
                     btype==BASE_PCREL?REL_PC:REL_ABS,0,bitsize,0);
     }
-    else if (btype != BASE_NONE)
+    else
       general_error(38);  /* illegal relocation */
   }
 
@@ -523,7 +522,7 @@ int cpu_available(int idx)
 }
 
 
-int init_cpu()
+int init_cpu(void)
 {
   char r[4];
   int i;

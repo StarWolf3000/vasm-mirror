@@ -1,0 +1,97 @@
+This chapter documents the backend for the unSP CPU architecture.
+
+@section Legal
+    This module is written in 2021-2024 by Adrien Destugues
+    and is covered by the vasm copyright without modifications.
+
+@section General
+
+Instructions consist of one 16-bit word, sometimes followed by a 16-bit
+immediate value or address.
+
+Single byte memory accesses are not possible.
+
+The address space is 22 bits, with a segment register which is used by adding a D: prefix to
+addresses (otherwise, only 16 bit addresses to the "zero page" are accessible). The segment
+register is adjusted automatically when a post or pre increment or decrement overflows the address
+register. There is also a segment register for the PC, but that does not require specific handling
+from the assembler at the moment (except for the presence of an LJMP instruction allowing to call
+code in another segment).
+
+Conditional jump instructions in unSP are PC relative and allow to jump up to 63 instructions
+forward or backwards. When the code in a conditional branch is longer than this, a 2-instruction
+sequence is used: an opposite condition jump to PC+2, followed by a GOTO to the branch target.
+This is done automatically as needed by vasm if you use the "l" prefix to the jump instruction
+(for example LJAE instead of JAE). In this case, the long form instruction is used if necessary,
+and the short form is used if the target is close enough. Without the prefix, the instruction can
+only use the PC-relative mode and you get an assembler error if you try to jump too far.
+
+@section Extensions
+
+This backend provides the following specific extensions:
+
+@itemize @minus
+
+@item The parser understands a lo/hi-modifier to select low- or high-byte
+ of a 22-bit word. The character @code{<} is used to select the low-byte
+ and @code{>} for the high-byte. It has to be the first character before
+ an expression.
+
+@item When applying the operation @code{/65536}, @code{%65536} or @code{&65535}
+ on a label, an appropriate lo/hi-byte relocation will automatically be
+ generated.
+
+@end itemize
+
+@section Compatibility with other assemblers and disassemblers
+
+This backend accepts instructions in a traditional format, reusing the mnemonics from naken_asm.
+The official unSP documentation uses an unusual syntax, which would probably require a custom
+syntax module.
+
+The closest syntax to naken_asm is the oldstyle one, but there are some differences:
+
+@itemize @minus
+
+@item Instructions must be prefixed by a tab or spaces. Everything on the first column is parsed as
+a label.
+
+@item Addresses can be represented with parentheses in addition to square brackets:
+      @code{LD R1,(1234)} instead of @code{LD R1, [1234]}
+
+@item The push/pop instructions list of registers is indicated as two operands instead of a range:
+      @code{PUSH R1, R1, (SP)} instead of @code{PUSH R1-R1, [SP]}
+
+@item Hexadecimal numbers can be prefixed with $ instead of 0x
+
+@end itemize
+
+The backend internally outputs data in big endian format. This is not compatible with other tools,
+which use little endian. The endianness can be changed at the output stage when generating a raw
+binary, by using vasm standard -ole command-line switch.
+
+@section Known Problems
+
+Only version 1.0 and 1.1 of the ISA is supported (they are identical as far as instruction encoding
+is concerned, but a few instructions have slight behavior differences).
+Versions 1.2 and 1.3 are backwards compatible but introduce additional instructions:
+
+@itemize @minus
+
+@item CPU control: SECBANK ON/OFF; FRACTION ON/OFF; IRQNEST ON/OFF
+
+@item Load and stores of DS and flag registers
+
+@item Bit operations: TSTB, SETB, CLRB, INVB (with registers or indirect addressing)
+
+@item Shift operations: ASR, ASROR, LSL, LSLOR, LSR, LSROR, ROL, ROR
+
+@item Multiplication and MAC: unsigned * unsigned
+
+@item Divisions: DIVQ, DIVS, EXP
+
+@item Jumps: GOTO and CALL with indirect address (GOTO MR, CALL MR)
+
+@end itemize
+
+Version 2.0 is not fully compatible and introduces even more instructions.

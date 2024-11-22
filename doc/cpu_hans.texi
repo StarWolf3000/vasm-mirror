@@ -1,0 +1,44 @@
+This chapter documents the backend for the "Hans" processor 
+from the "Hans" project.
+
+@section Legal
+
+    This module is written in 2023-2024 by Yannik Stamm
+   and is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+
+@section General
+
+This backend is made as part of a hobby project "Hans" which includes
+a custom processor with a custom instruction set. The project is open source
+under: @url{https://github.com/Byter64/Hans} (most part is German). 
+
+The instructions as well as all data is exactly 32-Bit, 
+which is equal to 1 Byte on our system. Therefore, the target address
+size is also 32-Bit.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item None.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+
+@item 2001: data size of "%d" bits is not supported
+@item 2002: value does not fit into immediate. Allowed range is [-32768:32767]. Value is %i
+@item 2003: destination address (immediate value) is to far away. Allowed distance/immediate value is [-32768:32767].
+ Actual distance/immediate value is %i
+@item 2004: congratulations. Your jump distance (%i) actually goes beyond the scope of [-33,554,432:33,554,431]. We, the creators of Hans, are so proud of you for writing 33 million instructions. You should maybe take a break :D
+@item 2005: immediate is %i but allowed range is %s for %s
+
+@end itemize

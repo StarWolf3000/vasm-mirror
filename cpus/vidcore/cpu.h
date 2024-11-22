@@ -8,14 +8,13 @@
 /* maximum number of mnemonic-qualifiers per mnemonic */
 #define MAX_QUALIFIERS 2
 
-/* maximum number of additional command-line-flags for this cpu */
-
 /* data type to represent a target-address */
 typedef int32_t taddr;
 typedef uint32_t utaddr;
 
 #define LITTLEENDIAN 1
 #define BIGENDIAN 0
+#define BITSPERBYTE 8
 #define VASM_CPU_VC4 1
 
 /* minimum instruction alignment */
@@ -26,6 +25,9 @@ typedef uint32_t utaddr;
 
 /* operand class for n-bit data definitions */
 #define DATA_OPERAND(n) OP_ABS
+
+/* may use '#' to introduce comments in std-syntax */
+#define SYNTAX_STD_COMMENTCHAR_HASH
 
 #define cc reg
 

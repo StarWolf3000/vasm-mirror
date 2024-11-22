@@ -14,14 +14,58 @@ or additional options.
       @command{vasm<target>_<syntax> [options] [sourcefile]}
 @end example
 
-    When the source file name is missing, then the assembler reads the
-    source text from @file{stdin} until @code{EOF} (end-of-file,
+    When the source file name is missing the assembler reads the source
+    text from @file{stdin} until encountering @code{EOF} (end-of-file,
     which is @code{CTRL-D} in Unix shells, or @code{CTRL-\} in AmigaOS
     shells). Note, that most debugging formats (DWARF, etc.) no longer
-    work with such temporary source texts.
+    function with such temporary source texts.
 
     The following options are supported by the machine independent part
-    of @command{vasm}:
+    of @command{vasm}. The most important ones are:
+
+@table @option
+
+@item -D<name>[=<expression>]
+        Defines a symbol with the name @code{<name>} and assigns the value of the
+        expression when given. The assigned value defaults to 1 otherwise.
+
+@item -F<fmt>
+        Use module @code{<fmt>} as output driver. See the chapter on output
+        drivers for available formats and options.
+
+@item -I<path>
+        Define another include path. They are searched in the order of
+        occurrence on the command line, and always before any include paths
+        defined in the source.
+
+@item -L <listfile>
+        Enables generation of a listing file and directs the output into
+        the file @code{<listfile>}.
+
+@item -nocase
+        Disables case-sensitivity for everything - identifiers, directives
+        and instructions. Note that directives and instructions may already
+        be case-insensitive by default in some modules.
+
+@item -nosym
+        Strips all local symbols from the output file and doesn't include
+        any other symbols than those which are required for external
+        linkage.
+
+@item -o <ofile>
+        Write the generated assembler output to @code{<ofile>} rather than
+        @file{a.out}.
+
+@item -quiet      
+        Do not print the copyright notice and the final statistics.
+
+@item -x
+        Show an error message, when referencing an undefined symbol.
+        The default behaviour is to declare this symbol as externally
+        defined.
+@end table
+
+Other options:
 
 @table @option
 
@@ -29,13 +73,9 @@ or additional options.
         Issues a warning when a label matches a mnemonic or directive name
         in either upper or lower case.
 
-@item -D<name>[=<expression>]
-        Defines a symbol with the name <name> and assigns the value of the
-        expression when given. The assigned value defaults to 1 otherwise.
-
 @item -depend=<type>
         Print all dependencies while assembling the source with the given
-        options. No output is generated. <type> may be the word @option{list}
+        options. No output is generated. @code{<type>} may be the word @option{list}
         for printing one file name in each new line, or @option{make} for
         printing a sequence of file names on a single line, suitable for
         Makefiles.
@@ -50,7 +90,7 @@ or additional options.
 
 @item -depfile <filename>
         Used together with @option{-depend} or @option{-dependall} and
-        instructs vasm to output all dependencies to a new file, instead
+        instructs vasm to output all dependencies into a new file, instead
         of stdout. Additionally, code will be generated in parallel to the
         dependencies output.
 
@@ -59,9 +99,9 @@ or additional options.
         source level debugging. When the version specification is missing,
         DWARF V3 will be emitted. The only difference to V2 is that it
         creates a @code{.debug_ranges} section, with address ranges for all
-        sections, instead of a bad workaround specifying
+        sections, instead of using a workaround by specifying
         @code{DW_AT_low_pc=0} and @code{DW_AT_high_pc=~0}.
-        Note, that when you build vasm from source, you may have to specify
+        Note, that when you build vasm from source, you may have to set
         your host operating system with @code{-Dname} in the Makefile to
         include the appropriate code which can determine the current
         work directory. Otherwise the default would be to set the current
@@ -73,14 +113,9 @@ or additional options.
         Enable escape character sequences. This will make vasm treat the
         escape character \ in string constants similar as in the C language.
 
-@item -F<fmt>
-        Use module <fmt> as output driver. See the chapter on output
-        drivers for available formats and options.
-
-@item -I<path>
-        Define another include path. They are searched in the order of
-        occurrence on the command line, and always before any include paths
-        defined in the source.
+@item -ibe
+        Use big-endian order when reading target-bytes with more than
+        8 bits per byte from the host's file system (default).
 
 @item -ignore-mult-inc
         When the same file is included multiple times, using the same path,
@@ -88,20 +123,20 @@ or additional options.
         once. Note, that you can still include the same file twice when
         using different paths to access it.
 
-@item -L <listfile>
-        Enables generation of a listing file and directs the output into
-        the file <listfile>.
+@item -ile
+        Use little-endian order when reading target-bytes with more than
+        8 bits per byte from the host's file system.
 
 @item -Lall
         List all symbols, including unused equates. Default is to list
         all labels and all used expressions only.
 
 @item -Lbpl=<n>
-        Set the maximum number of bytes per line in a listing file to <n>.
+        Set the maximum number of bytes per line in a listing file to @code{<n>}.
         Defaults to 8 (fmt=@code{wide}).
 
 @item -Lfmt=<fmt>
-        Set the listing file format to <fmt>. Defaults to wide.
+        Set the listing file format to @code{<fmt>}. Defaults to wide.
         Available are: @code{wide}, @code{old}.
 
 @item -Llo
@@ -116,7 +151,7 @@ or additional options.
 
 @item -maxerrors=<n>
         Sets the maximum number of errors to display before assembly
-        is aborted. When <n> is 0 then there is no limit. Defaults to 5.
+        is aborted. When @code{<n>} is 0 then there is no limit. Defaults to 5.
 
 @item -maxmacrecurs=<n>
         Defines the maximum number of recursion levels within a macro.
@@ -125,11 +160,6 @@ or additional options.
 @item -maxpasses=<n>
         Adjusts the maximum number of passes while resolving a section.
         Defaults to 1500.
-
-@item -nocase
-        Disables case-sensitivity for everything - identifiers, directives
-        and instructions. Note that directives and instructions may already
-        be case-insensitive by default in some modules.
 
 @item -nocompdir
         Do not search for include files relative to the compile directory
@@ -142,25 +172,24 @@ or additional options.
 
 @item -noialign
         Perform no automatic alignment for instructions. Note that
-        unaligned instructions make your code crash when executed!
+        unaligned instructions can make your code crash when executed!
         Only set when you know what you are doing!
 
 @item -nomsg=<n>
-        Disable the informational message <n>. <n> has to be the number
+        Disable the informational message @code{<n>}. @code{<n>} has to be the number
         of a valid informational message, like an optimization message.
 
-@item -nosym
-        Strips all local symbols from the output file and doesn't include
-        any other symbols than those which are required for external
-        linkage.
-
 @item -nowarn=<n>
-        Disable warning message <n>. <n> has to be the number of a valid
+        Disable warning message @code{<n>}. @code{<n>} has to be the number of a valid
         warning message, otherwise an error is generated.
 
-@item -o <ofile>
-        Write the generated assembler output to <ofile> rather than
-        @file{a.out}.
+@item -obe
+        Write target-bytes with more than 8 bits per byte in big-endian
+        order to the host's file system (default).
+
+@item -ole
+        Write target-bytes with more than 8 bits per byte in little-endian
+        order to the host's file system.
 
 @item -pad=<value>
         The given padding value can be one or multiple bytes (up to the
@@ -169,23 +198,30 @@ or additional options.
         binary output module. Defaults to a zero-byte.
 
 @item -pic
-        Try to generate position independent code. Every relocation entry is
-        flagged by an error message.
+        Try to generate position independent code. Every relocation
+        position is flagged by an error message.
 
-@item -quiet      
-        Do not print the copyright notice and the final statistics.
+@item -relpath
+        Do not interpret a source path starting with '/' or '\', or including
+        a colon, as absolute, but always attach it relative to defined
+        include paths first.
+
+@item -underscore
+        Add a leading underscore in front of all imported and exported
+        (also common, weak) symbol names, just before writing the
+        output file.
 
 @item -unnamed-sections
         Sections are no longer distinguished by their name, but only by
         their attributes. This has the effect that when defining a second
         section with a different name but same attributes as a first one,
         it will switch to the first, instead of starting a new section.
-        Is set automatically, when using an output-module which doesn't
+        Is enabled automatically, when using an output-module which doesn't
         support section names. For example: aout, tos, xfile.
 
 @item -unsshift
         The shift-right operator (@code{>>}) treats the value to shift as
-        unsigned, which has the effect that only 0-bits are inserted on the
+        unsigned, which has the effect that only 0 bits are inserted on the
         left side. The number of bits in a value depend on the target
         address type (refer to the appropriate cpu module documentation).
 
@@ -204,20 +240,14 @@ or additional options.
 @item -v
         Print version and copyright messages from the assembler and all
         its modules, then exit.
-
-@item -x
-        Show an error message, when referencing an undefined symbol.
-        The default behaviour is to declare this symbol as externally
-        defined.
-
 @end table
 
 Note, that while most options allow an argument without any separating blank,
-some others require it (e.g. @option{-o} and @option{-L}).
+some do require it (e.g. @option{-o} and @option{-L}).
 
 @section Expressions
 
-Standard expressions are usually evaluated by the main part of vasm
+Standard expressions are usually evaluated by vasm's core routines
 rather than by one of the modules (unless this is necessary).
 
 All expressions evaluated by the frontend are calculated in terms
@@ -263,12 +293,12 @@ priorities, from highest to lowest, are:
 @item @code{+ - ! ~} (unary +/- sign, not, complement)
 @item @code{<< >>} (shift left, shift right)
 @item @code{&} (bitwise and)
-@item @code{^ ~} (bitwise exclusive-or)
-@item @code{| !} (bitwise inclusive-or)
-@item @code{* / % //} (multiply, divide, modulo)
+@item @code{^ ~} (two forms of bitwise exclusive-or)
+@item @code{| !} (two forms bitwise inclusive-or)
+@item @code{* / % //} (multiply, divide, modulo, modulo)
 @item @code{+ -} (plus, minus)
 @item @code{< > <= >=} (less, greater, less or equal, greater or equal)
-@item @code{== = != <>} (equality, inequality)
+@item @code{== = != <>} (two forms of equality and inequality)
 @item @code{&&} (logical and)
 @item @code{||} (logical or)
 @end enumerate
@@ -367,8 +397,8 @@ format of the paths in the host file system. Currently there may be one of:
 @item __AMIGAFS
       Host file system uses AmigaDOS-style paths.
 @end table
-Note that such a path-style symbol only depends on a @code{-D} option
-given while compiling vasm from source. Refer to the section about
+Note that such a path-style symbol must be configured by a @code{-D} option
+while compiling vasm from source. Refer to the section about
 building vasm (Interface chapter) for a listing of all supported host
 OS options.
 
@@ -408,7 +438,7 @@ Macros are supported by vasm, but the directives for defining them have
 to be implemented in the syntax module. The assembler core supports 9
 macro arguments by default to be passed in the operand field,
 which can be extended to any number by the syntax module.
-They can be referenced inside the macro either by name (@code{\name}) or by
+They can be referenced within the macro either by name (@code{\name}) or by
 number (@code{\1} to @code{\9}), or both, depending on the syntax module.
 Recursions and early exits are supported.
 
@@ -446,6 +476,8 @@ Has to be provided completely by the syntax module.
     @item Frank Wille
     @item Jim Westfall
     @item Bernard Thibault
+    @item Dimitri Theulings
+    @item Yannick Stamm
     @item Jens Sch@"onfeld
     @item Ross
     @item Henryk Richter
@@ -484,7 +516,7 @@ Has to be provided completely by the syntax module.
     @item Daniel Gerdgren
     @item Fran@,cois Galea
     @item Tom Duin
-    @item Adrian Destugues
+    @item Adrien Destugues
     @item Kieran Connell
     @item Fernando Cabrera
     @item Patrick Bricout
@@ -514,7 +546,7 @@ The frontend has the following error messages:
 @item 13: could not open <%s> for input
 @item 14: could not open <%s> for output
 @item 15: unknown option <%s>
-@item 16:
+@item 16: %s module doesn't support %d-bit bytes
 @item 17: could not initialize output module <%s>
 @item 18: out of memory
 @item 19: symbol <%s> recursively defined
@@ -587,4 +619,5 @@ The frontend has the following error messages:
 @item 86: external symbol <%s> must not be defined
 @item 87: missing definition for symbol <%s>
 @item 88: additional macro arguments ignored (expecting %d)
+@item 89: macro previously defined at line %d of %s
 @end itemize

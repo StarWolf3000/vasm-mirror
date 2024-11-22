@@ -12,7 +12,7 @@ selected with the @option{-Fcdef} option.
 
 @section General
 
-This output module outputs the values of absolute symbols as a series of
+This output module outputs the values of global absolute symbols as a series of
 @code{#define} directives that can be included in a C compiler. No code is generated.
 
 @section Known Problems

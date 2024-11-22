@@ -3,6 +3,7 @@
 
 #define LITTLEENDIAN 1
 #define BIGENDIAN 0
+#define BITSPERBYTE 8
 #define VASM_CPU_TEST 1
 
 /* maximum number of operands in one mnemonic */
@@ -10,8 +11,6 @@
 
 /* maximum number of mnemonic-qualifiers per mnemonic */
 #define MAX_QUALIFIERS 1
-
-/* maximum number of additional command-line-flags for this cpu */
 
 /* data type to represent a target-address */
 typedef int32_t taddr;

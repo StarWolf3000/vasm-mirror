@@ -1,6 +1,6 @@
 /*
 ** cpu.c x86 cpu-description file
-** (c) in 2005-2006,2011,2015-2019 by Frank Wille
+** (c) in 2005-2006,2011,2015-2019,2024 by Frank Wille
 */
 
 #include "vasm.h"
@@ -10,9 +10,8 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-const char *cpu_copyright = "vasm x86 cpu backend 0.7a (c) 2005-2006,2011,2015-2019 Frank Wille";
+const char *cpu_copyright = "vasm x86 cpu backend 0.7c (c) 2005-2006,2011,2015-2019,2024 Frank Wille";
 const char *cpuname = "x86";
-int bitsperbyte = 8;
 int bytespertaddr = 4;
 
 /* cpu options */
@@ -52,14 +51,7 @@ static char *l_str = "l";
 static char *q_str = "q";
 /*static char *x_str = "x";*/
 
-/* assembler mode: 16, 32 or 64 bit */
-enum codetype {
-  CODE_32BIT,
-  CODE_16BIT,
-  CODE_64BIT
-};
-
-static enum codetype mode_flag = CODE_32BIT;  /* 32 bit is default */
+static enum codetype mode_flag = CODE_32BIT;  /* may change with cpu_type */
 
 /* operand types for printing */
 static const char *operand_type_str[] = {
@@ -73,6 +65,35 @@ static const char *operand_type_str[] = {
 /* scale factors log2(scale) -> original scale factor */
 static const int scale_factor_tab[4] = { 1, 2, 4, 8 };
 
+
+
+void cpu_opts(void *opts)
+/* set cpu options for following atoms */
+{
+  mode_flag = ((cpuopts *)opts)->mode;
+}
+
+
+void cpu_opts_init(section *s)
+/* add a current cpu opts atom */
+{
+  if (s || current_section) {
+    cpuopts *new = mymalloc(sizeof(cpuopts));
+
+    new->mode = mode_flag;
+    add_atom(s,new_opts_atom(new));
+  }
+}
+
+
+void print_cpu_opts(FILE *f,void *opts)
+{
+  static const int addrbits[] = {  /* following order of enum codetype */
+    32, 16, 64
+  };
+
+  fprintf(f,"opts: %d-bit mode",addrbits[((cpuopts *)opts)->mode]);
+}
 
 
 operand *new_operand(void)
@@ -524,7 +545,7 @@ static int find_next_mnemonic(instruction *ip)
   uint32_t chksuffix = suffix_flag(ip);
 
   if ((cpudebug & 32) && !(cpudebug & 4)) {
-    printf("Finding next matching instruction for (opcode=0x%x):",
+    printf("Finding next matching instruction for (opcode=%#x):",
            ip->ext.base_opcode);
     print_operands(ip,-1);
   }
@@ -581,7 +602,7 @@ static int find_next_mnemonic(instruction *ip)
         ip->ext.base_opcode = mnemo->ext.base_opcode;
         assign_suffix(ip);
         if (cpudebug & 32)
-          printf("\tNew opcode=0x%x!\n",ip->ext.base_opcode);
+          printf("\tNew opcode=%#x!\n",ip->ext.base_opcode);
         return 1;
       }
     }
@@ -644,7 +665,7 @@ static void optimize_imm(instruction *ip,operand *op,section *sec,
 
   if (!eval_expr(op->value,&val,sec,pc)) {
     /* reloc or unknown symbols have always full size until they are known */
-    ot = Imm32;  /* @@@ fixme? gas also allows Imm8-references */
+    ot = Imm8|Imm16|Imm32|Imm64;  /* @@@ FIXME */
   }
   else {
     /* set valid operand types for this number */
@@ -687,6 +708,8 @@ static void optimize_imm(instruction *ip,operand *op,section *sec,
 static void optimize_jump(instruction *ip,operand *op,section *sec,
                           taddr pc,int final)
 {
+  char suffix = ip->qualifiers[0] ?
+                tolower((unsigned char)ip->qualifiers[0][0]) : '\0';
   mnemonic *mnemo = &mnemonics[ip->code];
   int mod = mnemo->ext.opcode_modifier;
   int label_in_sec;
@@ -713,18 +736,25 @@ static void optimize_jump(instruction *ip,operand *op,section *sec,
     }
   }
   else if (mod & JmpDword) {
-    if (mode_flag == CODE_16BIT)
-      op->type &= ~(Disp32|Disp32S);
-    else
-      op->type &= ~Disp16;
+    switch (suffix) {
+      case 'w':
+        op->type &= ~(Disp32|Disp32S);
+        break;
+      case 'l':
+        op->type &= ~Disp16;
+        break;
+      default:
+        op->type &= (mode_flag==CODE_16BIT) ? ~(Disp32|Disp32S) : ~Disp16;
+        break;
+    }
     if (final && label_in_sec) {
       diff = val - (pc + ip->ext.last_size);
-      if (mode_flag == CODE_16BIT) {
-        if (diff<-0x8000 || diff>0x7fff)
+      if (op->type & (Disp32|Disp32S)) {
+        if (diff<-0x80000000LL || diff>0x7fffffffLL)
           cpu_error(22,diff);  /* jump destination out of range */
       }
       else {
-        if (diff<-0x80000000LL || diff>0x7fffffffLL)
+        if (diff<-0x8000 || diff>0x7fff)
           cpu_error(22,diff);  /* jump destination out of range */
       }
     }
@@ -919,6 +949,11 @@ static int make_modrm(instruction *ip,mnemonic *mnemo,int final)
 
       else if (memop->basereg->reg_type & Reg16) {
         /* 16-bit mode base register */
+        if (mode_flag == CODE_32BIT)
+          add_ip_prefix(ip,OC_ADDR_PREFIX);  /* set 16-bit addressing prefix */
+        else if (mode_flag == CODE_64BIT)
+          cpu_error(23);  /* operand size not supported */
+
         switch (memop->basereg->reg_num) {
           case 3:  /* %bx */
             if (memop->indexreg)  /* (%bx,%si) or (%bx,%di) */
@@ -951,6 +986,8 @@ static int make_modrm(instruction *ip,mnemonic *mnemo,int final)
         /* 32/64 bit mode base register */
         if (mode_flag==CODE_64BIT && (memop->type & Disp))
           memop->type = (memop->type&Disp8) ? Disp8|Disp32S : Disp32S;
+        else if (mode_flag != CODE_32BIT)    /* @@@ else? What about 64 bit? */
+          add_ip_prefix(ip,OC_ADDR_PREFIX);  /* set 32-bit addressing prefix */
 
         ip->ext.rm.regmem = memop->basereg->reg_num;
         ip->ext.sib.base = memop->basereg->reg_num;
@@ -1343,8 +1380,9 @@ static unsigned char *output_disp(dblock *db,unsigned char *d,
             }
             else {
               /* reloc for a normal absolute displacement */
-              add_extnreloc(&db->relocs,base,val,REL_ABS,0,bits,
-                            (int)(d-(unsigned char *)db->data));
+              add_extnreloc_masked(&db->relocs,base,val,REL_ABS,0,bits,
+                                   (int)(d-(unsigned char *)db->data),
+                                   MAKEMASK(bits));  /* @@@ always mask? */
             }
           }
           else
@@ -1392,8 +1430,9 @@ static unsigned char *output_imm(dblock *db,unsigned char *d,
           symbol *base;
 
           if (find_base(op->value,&base,sec,pc) == BASE_OK) {
-            add_extnreloc(&db->relocs,base,val,REL_ABS,0,bits,
-                          (int)(d-(unsigned char *)db->data));
+            add_extnreloc_masked(&db->relocs,base,val,REL_ABS,0,bits,
+                                 (int)(d-(unsigned char *)db->data),
+                                 MAKEMASK(bits));  /* @@@ always mask? */
           }
           else
             general_error(38);  /* illegal relocation */
@@ -1418,17 +1457,21 @@ char *parse_cpu_special(char *start)
       s++;
     if (dotdirs && *name=='.')
       name++;
-    if (s-name==6 && !strncmp(name,"code16",6)) {
-      mode_flag = CODE_16BIT;
-      return s;
-    }
-    else if (s-name==6 && !strncmp(name,"code32",6)) {
-      mode_flag = CODE_32BIT;
-      return s;
-    }
-    else if (s-name==6 && !strncmp(name,"code64",6)) {
-      mode_flag = CODE_64BIT;
-      return s;
+    if (s-name==6 && !strncmp(name,"code",4)) {
+      enum codetype last_mode = mode_flag;
+
+      if (!strncmp(name+4,"16",2))
+        mode_flag = CODE_16BIT;
+      else if (!strncmp(name+4,"32",2))
+        mode_flag = CODE_32BIT;
+      else if (!strncmp(name+4,"64",2))
+        mode_flag = CODE_64BIT;
+      else
+        return start;
+      if (mode_flag != last_mode)
+        cpu_opts_init(NULL);  /* emit atom to switch mode */
+      eol(s);
+      return skip_line(s);
     }
   }
   return start;
@@ -1494,14 +1537,17 @@ char *parse_instruction(char *s,int *inst_len,char **ext,int *ext_len,
       if (len >= 2) {
         char x = *(s-1);
 
-        if (x=='b' || x=='w' || x=='l' || x=='s' || x=='q' || x=='x') {
-          /* a potential suffix found, save it */
-          int cnt = *ext_cnt;
+        if ((x=='b' || x=='w' || x=='l' || x=='s' || x=='q' || x=='x') &&
+            find_namelen(mnemohash,inst,len-1,&data)) {
+          if ((mnemonics[data.idx].ext.opcode_modifier&NOSUF) != NOSUF) {
+            /* a potential suffix found, save it */
+            int cnt = *ext_cnt;
 
-          ext[cnt] = s-1;
-          ext_len[cnt] = 1;
-          *ext_cnt = ++cnt;
-          --len;
+            ext[cnt] = s-1;
+            ext_len[cnt] = 1;
+            *ext_cnt = ++cnt;
+            --len;
+          }
         }
       }
     }
@@ -1839,11 +1885,14 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
       int btype;
     
       btype = find_base(op->value,&base,sec,pc);
-      if (base)
-        add_extnreloc(&db->relocs,base,val,
-                      btype==BASE_PCREL?REL_PC:REL_ABS,
-                      0,bitsize,0);
-      else if (btype != BASE_NONE)
+      if (base) {
+        if (btype == BASE_PCREL)
+          add_extnreloc(&db->relocs,base,val,REL_PC,0,bitsize,0);
+        else
+          add_extnreloc_masked(&db->relocs,base,val,REL_ABS,0,bitsize,0,
+                               MAKEMASK(bitsize));  /* @@@ always mask? */
+      }
+      else
         general_error(38);  /* illegal relocation */
     }
     write_taddr(db->data,val,bitsize);
@@ -1853,7 +1902,7 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
 }
 
 
-int init_cpu()
+int init_cpu(void)
 {
   int i;
   regsym *r;
@@ -1931,7 +1980,17 @@ int cpu_args(char *p)
       cpu_type = CPUAny|CPU64;
       bytespertaddr = 8;
     }
-    else return 0;
+    else
+      return 0;
+    /* set sensible default for selected cpu type */
+    if (cpu_type & CPU64)
+      mode_flag = CODE_64BIT;
+    else if (cpu_type & CPU386)
+      mode_flag = CODE_32BIT;
+    else
+      mode_flag = CODE_16BIT;
   }
+  else
+    return 0;
   return 1;
 }

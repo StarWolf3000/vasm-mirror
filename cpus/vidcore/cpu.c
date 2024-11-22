@@ -3,7 +3,7 @@
 
 #include "vasm.h"
 
-const char *cpu_copyright="VideoCore IV cpu backend 0.1 (c) in 2013 Volker Barthelmann";
+const char *cpu_copyright="VideoCore IV cpu backend 0.1a (c) in 2013/2024 Volker Barthelmann";
 const char *cpuname="vidcore";
 
 mnemonic mnemonics[]={
@@ -12,7 +12,6 @@ mnemonic mnemonics[]={
 
 const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-int bitsperbyte=8;
 int bytespertaddr=4;
 
 static char *ccs[]={"eq","ne","cs","cc","mi","pl","vs","vc",
@@ -528,7 +527,8 @@ static taddr dooffset(int rel,expr *tree,section *sec,taddr pc,rlist **relocs,in
       add_nreloc_masked(relocs,base,addend,rel,size,roffset,mask);
       return 0;
     }
-  }
+  }else if(rel==REL_PC)
+    val-=pc;
 #if 0
   if(val<-(1<<(size-1))||val>((1<<(size-1))-1))
     cpu_error(1,size);
@@ -1133,7 +1133,7 @@ size_t instruction_size(instruction *p,section *sec,taddr pc)
   return oplen(mnemonics[c].ext.encoding);
 }
 
-operand *new_operand()
+operand *new_operand(void)
 {
   operand *new=mymalloc(sizeof(*new));
   new->type=-1;
@@ -1141,7 +1141,7 @@ operand *new_operand()
 }
 
 /* return true, if initialization was successful */
-int init_cpu()
+int init_cpu(void)
 {
   return 1;
 }

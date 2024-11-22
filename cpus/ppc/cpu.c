@@ -1,6 +1,6 @@
 /*
 ** cpu.c PowerPC cpu-description file
-** (c) in 2002-2019 by Frank Wille
+** (c) in 2002-2019,2024 by Frank Wille
 */
 
 #include "vasm.h"
@@ -12,9 +12,8 @@ mnemonic mnemonics[] = {
 
 const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-const char *cpu_copyright="vasm PowerPC cpu backend 3.1 (c) 2002-2019 Frank Wille";
+const char *cpu_copyright="vasm PowerPC cpu backend 3.2 (c) 2002-2019,2024 Frank Wille";
 const char *cpuname = "PowerPC";
-int bitsperbyte = 8;
 int bytespertaddr = 4;
 int ppc_endianess = 1;
 
@@ -425,12 +424,12 @@ static taddr make_reloc(int reloctype,operand *op,section *sec,
           if (ppcop->bits == 26) {
             size = 24;
             pos = 6;
-            mask = 0x3fffffc;
+            mask = ~3;
           }
           else {
             size = 14;
             offset = 2;
-            mask = 0xfffc;
+            mask = ~3;
           }
           addend = (btype == BASE_PCREL) ? val + offset : val;
         }
@@ -461,7 +460,7 @@ static taddr make_reloc(int reloctype,operand *op,section *sec,
       add_extnreloc_masked(reloclist,base,addend,reloctype,
                            pos,size,offset,mask);
     }
-    else if (btype != BASE_NONE) {
+    else {
 illreloc:
       general_error(38);  /* illegal relocation */
     }
@@ -771,12 +770,34 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
 }
 
 
-operand *new_operand()
+operand *new_operand(void)
 {
   operand *new = mymalloc(sizeof(*new));
   new->type = -1;
   new->mode = OPM_NONE;
   return new;
+}
+
+
+size_t cpu_reloc_size(rlist *rl)
+{
+  return 0;  /* no special cpu relocs, all are nreloc */
+}
+
+
+void cpu_reloc_print(FILE *f,rlist *rl)
+{
+  static const char *rname[(LAST_CPU_RELOC+1)-FIRST_CPU_RELOC] = {
+    "sd2","sd21","sdi16","drel","brel"
+  };
+  fprintf(f,"r%s",rname[rl->type-FIRST_CPU_RELOC]);
+  print_nreloc(f,rl->reloc,1);
+}
+
+
+void cpu_reloc_write(FILE *f,rlist *rl)
+{
+  /* nothing to do, all are nreloc */
 }
 
 
@@ -813,7 +834,7 @@ static void define_regnames(void)
 }
 
 
-int init_cpu()
+int init_cpu(void)
 {
   if (regnames)
     define_regnames();

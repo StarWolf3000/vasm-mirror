@@ -8,14 +8,13 @@
 /* maximum number of mnemonic-qualifiers per mnemonic */
 #define MAX_QUALIFIERS 0
 
-/* maximum number of additional command-line-flags for this cpu */
-
 /* data type to represent a target-address */
 typedef int32_t taddr;
 typedef uint32_t utaddr;
 
 #define LITTLEENDIAN 1
 #define BIGENDIAN 0
+#define BITSPERBYTE 8
 #define VASM_CPU_C16X 1
 
 /* minimum instruction alignment */

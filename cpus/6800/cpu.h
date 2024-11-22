@@ -5,6 +5,7 @@
 
 #define BIGENDIAN 1
 #define LITTLEENDIAN 0
+#define BITSPERBYTE 8
 #define VASM_CPU_6800 1
 #define MNEMOHTABSIZE 0x2000
 

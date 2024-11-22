@@ -3,18 +3,79 @@ selected with the @option{-Fvobj} option.
 
 @section Legal
 
-    This module is written in 2002-2014 by Volker Barthelmann and
+    This module is written in 2002-2023 by Volker Barthelmann and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
-None.
+@table @option
+    @item -vobj2
+        Use vobj format version 2 which generally reduces file size.
+
+@end table
+
 
 @section General
 
 This output module outputs the @code{vobj} object format, a simple
 portable proprietary object file format of @code{vasm}.
 
-As this format is not yet fixed, it is not described here.
+The Format is defined as follows:
+
+@example
+
+Header
+  .byte 0x56,0x4f,0x42,0x4a
+  .byte flags
+    Bits 0-1:
+     1: BIGENDIAN
+     2: LITTLENDIAN
+    Bits 2-7:
+     VOBJ-Version (0-based)
+  .number bitsperbyte 
+  .number bytespertaddr
+  .string cpu
+  .number nsections [1-based]
+  .number nsymbols [1-based]
+  
+nsymbols
+  .string name
+  .number type
+  .number flags
+  .number secindex
+  .number val
+  .number size
+
+nsections
+  .string name
+  .string attr
+  .number flags
+  .number align
+  .number size
+  .number nrelocs
+  .number databytes
+  .byte[databytes]
+
+nrelocs [standard|special]
+standard
+   .number type
+   .number byteoffset
+   .number bitoffset
+   .number size
+   .number mask
+   .number addend
+   .number symbolindex | 0 (sectionbase)
+
+special
+    .number type
+    .number size
+    .byte[size]
+
+.number:[taddr]
+    .byte 0--127 [0--127]
+    .byte 128-191 [x-0x80 bytes little-endian], fill remaining with 0
+    .byte 192-255 [x-0xC0 bytes little-endian], fill remaining with 0xff [vobj version 2+]
+
+@end example
 
 @section Restrictions
 

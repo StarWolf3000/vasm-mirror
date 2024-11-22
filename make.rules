@@ -1,7 +1,7 @@
 PRE = obj$(TARGET)/$(CPU)_$(SYNTAX)_
 
-OUTFMTS = -DOUTAOUT -DOUTBIN -DOUTELF -DOUTGST -DOUTHUNK -DOUTIHEX \
-          -DOUTO65 -DOUTSREC -DOUTTOS -DOUTVOBJ -DOUTWOZ -DOUTXFIL
+OUTFMTS = -DOUTAOUT -DOUTBIN -DOUTELF -DOUTGST -DOUTHANS -DOUTHUNK -DOUTIHEX \
+          -DOUTO65 -DOUTPAP -DOUTSREC -DOUTTOS -DOUTVOBJ -DOUTWOZ -DOUTXFIL
 
 OBJS = $(PRE)vasm.o $(PRE)atom.o $(PRE)expr.o $(PRE)symtab.o $(PRE)symbol.o \
        $(PRE)error.o $(PRE)parse.o $(PRE)reloc.o $(PRE)hugeint.o \
@@ -12,7 +12,8 @@ OBJS = $(PRE)vasm.o $(PRE)atom.o $(PRE)expr.o $(PRE)symtab.o $(PRE)symbol.o \
        $(PRE)output_vobj.o $(PRE)output_hunk.o $(PRE)output_aout.o \
        $(PRE)output_tos.o $(PRE)output_xfile.o $(PRE)output_srec.o \
        $(PRE)output_cdef.o $(PRE)output_ihex.o $(PRE)output_o65.o \
-       $(PRE)output_gst.o $(PRE)output_woz.o
+       $(PRE)output_gst.o $(PRE)output_woz.o $(PRE)output_pap.o \
+       $(PRE)output_hans.o
 
 VODOBJS = obj$(TARGET)/vobjdump.o
 
@@ -124,6 +125,12 @@ $(PRE)output_gst.o: output_gst.c vasm.h symbol.h supp.h atom.h
 
 $(PRE)output_woz.o: output_woz.c vasm.h symbol.h supp.h atom.h
 	$(CC) $(INCLUDES) $(CFLAGS) output_woz.c $(CCOUT)$(PRE)output_woz.o
+
+$(PRE)output_pap.o: output_pap.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(CFLAGS) output_pap.c $(CCOUT)$(PRE)output_pap.o
+
+$(PRE)output_hans.o: output_hans.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(CFLAGS) output_hans.c $(CCOUT)$(PRE)output_hans.o
 
 $(PRE)cpu.o: cpus/$(CPU)/cpu.c cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h vasm.h symbol.h expr.h error.h supp.h reloc.h hugeint.h tfloat.h parse.h atom.h
 	$(CC) $(INCLUDES) $(CFLAGS) cpus/$(CPU)/cpu.c $(CCOUT)$(PRE)cpu.o

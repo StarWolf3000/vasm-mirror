@@ -74,7 +74,7 @@ or name:
       written (@code{aurw}).
 @item zero, sections which have uninitialized data, may be read
       and written, and do not have the string @code{"bss"} anywhere in
-      their name (@code{aurw}).
+      their name (@code{aurwz}).
 @end itemize
 
 Up to two absolute sections (@code{ORG} directive) can be stored in
@@ -116,5 +116,6 @@ This module has the following error messages:
 @item 3004: section attributes <attr> not supported
 @item 3008: output module doesn't allow multiple sections of the same type (%s)
 @item 3011: weak symbol <%s> not supported by output format, treating as global
+@item 3013: reloc type %d, mask %#lx to symbol %s + %#lx does not fit into %u bits
 @item 3015: file option %d max size exceeded: %lu
 @end itemize

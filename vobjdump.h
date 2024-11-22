@@ -9,6 +9,10 @@
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <limits.h>
+
+/* maximum VOBJ version to support */
+#define VOBJ_MAX_VERSION 2
 
 /* symbol types */
 #define LABSYM 1
@@ -45,4 +49,8 @@ struct vobj_section {
   taddr dsize,fsize;
 };
 
-#define makemask(x) ((taddr)(1LL<<(x))-1)
+#define STD_REL_TYPE(t) ((t)&0x1f)
+#define REL_MOD_S 0x20
+#define REL_MOD_U 0x40
+#define FIRST_CPU_RELOC 0x80
+#define makemask(x) (((x)>=sizeof(unsigned long long)*CHAR_BIT)?(~(unsigned long long)0):((((unsigned long long)1)<<(x))-1u))

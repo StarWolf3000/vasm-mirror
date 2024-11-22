@@ -2,7 +2,7 @@ This chapter documents the backend for the Atari Jaguar GPU/DSP RISC processor.
 
 @section Legal
 
-    This module is written in 2014-2017,2020,2021 by Frank Wille and
+    This module is written in 2014-2017,2020,2021,2024 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 

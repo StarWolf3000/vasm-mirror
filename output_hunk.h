@@ -1,9 +1,10 @@
 /* hunk.h header file for AmigaOS hunk format */
-/* (c) in 2002-2019 by Frank Wille */
+/* (c) in 2002-2019,2024 by Frank Wille */
 
 /* hunk-format relocs */
 struct hunkreloc {
   struct node n;
+  atom *a;
   rlist *rl;
   uint32_t hunk_id;
   uint32_t hunk_index;

@@ -5,7 +5,7 @@ It is mainly intended for Atari's 6502, 68000 and Jaguar systems.
 
 @section Legal
 
-    This module is written in 2015-2021 by Frank Wille and
+    This module is written in 2015-2023 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section General Syntax
@@ -233,7 +233,7 @@ equals-character, may be optionally preceded by a dot (@code{.}).
       the following source to assemble.
 
 @item nlist
-      The following lines will not be visible in a listing file.
+      This line and the following lines will not be visible in a listing file.
 
 @item nolist
       The following lines will not be visible in a listing file.
@@ -311,7 +311,7 @@ supported.
 @item Expressions are not evaluated left-to-right, but mathematically
 correct.
 
-@item Square-brackets (@code{[]}) are currently not supported to
+@item Square-brackets (@code{[ ]}) are currently not supported to
 prioritize terms, as an alternative for parentheses.
 
 @item Functions (@code{^^func}) are currently not supported.

@@ -1,10 +1,11 @@
 /*
 ** cpu.h 650x/65C02/6280/45gs02/65816 cpu-description header-file
-** (c) in 2002,2008,2009,2014,2018,2020,2021,2022 by Frank Wille
+** (c) in 2002,2008,2009,2014,2018,2020,2021,2022,2024 by Frank Wille
 */
 
 #define BIGENDIAN 0
 #define LITTLEENDIAN 1
+#define BITSPERBYTE 8
 #define VASM_CPU_650X 1
 
 /* maximum number of operands for one mnemonic */
@@ -21,8 +22,8 @@ typedef uint32_t utaddr;
 #define HAVE_CPU_OPTS 1
 typedef struct {
   uint16_t dpage;
-  char asize;
-  char xsize;
+  uint8_t asize;
+  uint8_t xsize;
 } cpuopts;
 
 /* minimum instruction alignment */
@@ -43,19 +44,6 @@ typedef struct {
 /* parse cpu-specific directives with label */
 #define PARSE_CPU_LABEL(l,s) parse_cpu_label(l,s)
 
-/* we define three additional unary operations, '<', '>' and '^' */
-int ext_unary_name(char *);
-int ext_unary_type(char *);
-int ext_unary_eval(int,taddr,taddr *,int);
-int ext_find_base(symbol **,expr *,section *,taddr);
-#define LOBYTE (LAST_EXP_TYPE+1)
-#define HIBYTE (LAST_EXP_TYPE+2)
-#define BANKBYTE (LAST_EXP_TYPE+3)
-#define EXT_UNARY_NAME(s) ext_unary_name(s)
-#define EXT_UNARY_TYPE(s) ext_unary_type(s)
-#define EXT_UNARY_EVAL(t,v,r,c) ext_unary_eval(t,v,r,c)
-#define EXT_FIND_BASE(b,e,s,p) ext_find_base(b,e,s,p)
-
 /* type to store each operand */
 typedef struct {
   int type;
@@ -64,10 +52,11 @@ typedef struct {
 } operand;
 
 /* operand flags */
-#define OF_LO (1<<0)
-#define OF_HI (1<<1)
-#define OF_BK (1<<2)
-#define OF_PC (1<<3)
+#define OF_LO (1<<0)  /* '<' selects low-byte or 8-bit addressing */
+#define OF_HI (1<<1)  /* '>' selects high-byte or 16/24-bit addressing */
+#define OF_BK (1<<2)  /* '^' or '`' selects bank-byte */
+#define OF_WA (1<<3)  /* '!' or '|' selects 16-bit addressing */
+#define OF_PC (1<<4)  /* PC-relative */
 
 
 /* additional mnemonic data */
@@ -79,19 +68,22 @@ typedef struct {
 } mnemonic_extension;
 
 /* available */
-#define M6502    1       /* standard 6502 instruction set */
-#define ILL      2       /* illegal 6502 instructions */
-#define DTV      4       /* C64 DTV instruction set extension */
-#define M65C02   8       /* basic 65C02 extensions on 6502 instruction set */
-#define WDC02    16      /* basic WDC65C02 extensions on 65C02 instr. set */
-#define WDC02ALL 32      /* all WDC65C02 extensions on 65C02 instr. set */
-#define CSGCE02  64      /* CSG65CE02 extensions on WDC65C02 instruction set */
-#define HU6280   128     /* HuC6280 extensions on WDC65C02 instruction set */
-#define M45GS02  256     /* MEGA65 45GS02 extensions on basic WDC02 instr.set */
-#define WDC65816 512     /* WDC65816/65802 extensions on WDC65C02 instr. set */
+#define M6502    (1<<0)   /* standard 6502 instruction set */
+#define ILL      (1<<1)   /* illegal 6502 instructions */
+#define DTV      (1<<2)   /* C64 DTV instruction set extension */
+#define M65C02   (1<<3)   /* basic 65C02 extensions on 6502 instruction set */
+#define WDC02    (1<<4)   /* basic WDC65C02 extensions on 65C02 instr. set */
+#define WDC02ALL (1<<5)   /* all WDC65C02 extensions on 65C02 instr. set */
+#define CSGCE02  (1<<6)   /* CSG65CE02 extensions on WDC65C02 instruction set */
+#define HU6280   (1<<7)   /* HuC6280 extensions on WDC65C02 instruction set */
+#define M45GS02  (1<<8)   /* MEGA65 45GS02, extends WDC02 instruction set */
+#define M45GS02Q (1<<9)   /* MEGA65 quad instr., extends WDC02 instr.set */
+#define WDC65816 (1<<10)  /* WDC65816/65802 extensions on WDC65C02 instr. set */
 
 
-/* addressing modes */
+/* Addressing modes (operand type) */
+/* CAUTION: Order is important! */
+/* See macros below and adapt the opsize[] array in cpu.c accordingly! */
 enum {
   IMPLIED=0,    /* no operand, must be zero */
   DATAOP,       /* data operand */
@@ -126,21 +118,20 @@ enum {
   IMMED16,      /* #$1234 */
   WBIT,         /* bit-number (WDC65C02) */
   MVBANK,       /* memory bank number for WDC65816 MVN/MVP */
-  ACCU          /* A - all following addressing modes don't need a value! */
+  ACCU,         /* A - all following addressing modes don't need a value! */
+  NUM_OPTYPES
 };
+#define IS_INDIR(x) ((x)>=INDIR && (x)<=INDIRX)
+#define IS_SQIND(x) ((x)>=LINDIR && (x)<=LDPIND)
 #define IS_ABS(x) ((x)>=ABS && (x)<=ABSZ)
-/* check for a MEGA65 quad instruction - maybe make that nicer some time ... */
-#define ISQINST(c) (mnemonics[c].name[3]=='q' || (mnemonics[c].name[2] == 'q' && mnemonics[c].name[0] != 'b'))
-#define FIRST_INDIR INDIR
-#define LAST_INDIR INDIRX
-#define FIRST_SQIND LINDIR
-#define LAST_SQIND LDPIND
 /* CAUTION:
+   - opsize[] gives the size in bytes for each addressing mode listed above!
    - Do not change the order of ABS,ABSX/Y/Z, LABS/X and DPAGE,DPAGEX/Y/Z
    - All addressing modes >=ACCU (and IMPLIED) do not require a value!
-   - All indirect addressing modes are between FIRST_INDIR and LAST_INDIR!
-   - All indirect long (square brackets) addressing modes are between
-     FIRST_SQIND and LAST_SQIND
+   - All indirect addressing modes are defined by IS_INDIR()
+   - All indirect long (square brackets) addr.modes are defined by IS_SQIND()
+   - All absolute addressing modes which can be converted to zero/direct-page
+     or long (24-bit) are defined by IS_ABS()
 */
 
 /* cpu-specific symbol-flags */

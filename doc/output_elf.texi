@@ -25,12 +25,12 @@ the following architectures:
 
 @itemize @minus
 
-@item PowerPC
-@item M68k
 @item ARM
 @item i386
-@item x86_64
 @item Jaguar RISC
+@item M68k
+@item PowerPC
+@item x86_64
 
 @end itemize
 

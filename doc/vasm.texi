@@ -8,13 +8,13 @@
 @setfilename index.texi
 @settitle vasm manual
 @setchapternewpage odd
-@set UPDATED September 2023
+@set UPDATED October 2024
 
 @ifinfo
 
 This is the manual for the vasm assembler system.
 
-Copyright 2002-2023 Volker Barthelmann
+Copyright 2002-2024 Volker Barthelmann
 
 @end ifinfo
 
@@ -42,9 +42,12 @@ Different CPU-, syntax and output-modules are supported.
 Most common directives/pseudo-opcodes are supported (depending on the
 syntax module) as well as CPU-specific extensions.
 
-The assembler supports optimizations and relaxations (e.g. choosing
+The assembler supports optimizations and relaxations. For example, choosing
 the shortest possible branch instruction or addressing mode as well as
-converting a branch to an absolute jump if necessary).
+converting a branch to an absolute jump if necessary.
+
+It also supports target CPUs with more than 8 bits per byte
+(word-addressing) but requires that the host system has 8-bit bytes.
 
 The concept is that you get a special vasm binary for any combination of
 CPU- and syntax-module. All output modules, which make sense for the
@@ -56,7 +59,7 @@ debugging or analyzing the output.
 
 @section Legal
 
-    vasm is copyright in 2002-2023 by Volker Barthelmann.
+    vasm is copyright in 2002-2024 by Volker Barthelmann.
 
     This archive may be redistributed without modifications and used
     for non-commercial purposes.
@@ -76,9 +79,9 @@ case of bug reports or support requests:
 @itemize @minus
   @item Volker Barthelmann (vb@@compilers.de)
   @item Frank Wille (frank@@phoenix.owl.de)
+@end itemize
 In case you have an issue with a specific cpu-, syntax- or output-module,
 please contact the module's author first, if possible.
-@end itemize
 
 
 @section Installation
@@ -88,7 +91,7 @@ installation is necessary. To use vasm with vbcc, copy the
 binary to @file{vbcc/bin} after following the installation instructions
 for vbcc.
 
-The vasm binaries are named @code{vasm<cpu>_<syntax>} with 
+The vasm binaries are named @code{vasm<cpu>_<syntax>} with
 @code{<cpu>} representing the CPU-module and @code{<syntax>}
 the syntax-module, e.g. vasm for PPC with the standard syntax
 module is called @code{vasmppc_std}.
@@ -169,9 +172,17 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @chapter C #define output module
 @include output_cdef.texi
 
+@node Project Hans custom output module
+@chapter Project Hans custom output module
+@include output_hans.texi
+
 @node Wozmon output module
 @chapter Wozmon output module
 @include output_woz.texi
+
+@node MOS paper tape output module
+@chapter MOS paper tape output module
+@include output_pap.texi
 
 @node m68k cpu module
 @chapter m68k cpu module
@@ -216,6 +227,14 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @node PDP11 cpu module
 @chapter PDP11 cpu module
 @include cpu_pdp11.texi
+
+@node unSP cpu module
+@chapter unSP cpu module
+@include cpu_unsp.texi
+
+@node HANS cpu module
+@chapter HANS cpu module
+@include cpu_hans.texi
 
 @node Trillek TR3200 cpu module
 @chapter Trillek TR3200 cpu module

@@ -5,7 +5,7 @@
 #include "vasm.h"
 
 #if defined(OUTO65) && defined(VASM_CPU_650X)
-static char *out_copyright="vasm o65 output module 0.2a (c) 2021,2022 Frank Wille";
+static char *out_copyright="vasm o65 output module 0.3 (c) 2021,2022,2024 Frank Wille";
 
 #define S_ZERO (S_BSS+1)
 #define NSECS (S_ZERO+1)        /* o65 supports text, data, bss, zero */
@@ -275,19 +275,29 @@ static void o65_header(FILE *f)
 
 static int o65_rtype(rlist *rl)
 {
-  if (rl->type == REL_ABS) {
+  if (std_reloc(rl) == REL_ABS) {
     nreloc *r = (nreloc *)rl->reloc;
 
     if (r->bitoffset)
       return 0;
 
-    if ((r->mask & 0xffffff) != 0xffffff && r->size==8) {
-      if ((r->mask & 0xffffff) == 0xff0000)
-        return 0xa0;  /* segment-byte of 24-bit address */
-      else if ((r->mask & 0xffff) == 0xff00)
-        return 0x40;  /* high-byte of 16-bit address */
-      else if (r->mask == 0xff)
-        return 0x20;  /* low-byte of 16-bit address */
+    if ((r->mask & 0xffffff) != 0xffffff) {
+      if (r->size == 8) {
+        if ((r->mask & 0xffffff) == 0xff0000)
+          return 0xa0;  /* segment-byte of 24-bit address */
+        else if ((r->mask & 0xffff) == 0xff00)
+          return 0x40;  /* high-byte of 16-bit address */
+        else if (r->mask == 0xff)
+          return 0x20;  /* low-byte of 16-bit address */
+      }
+      else if (r->size == 16) {
+        if (r->mask == 0xffff)
+          return 0x80;  /* 16-bit address */
+        else if ((r->mask & 0xffff) == 0xff00)
+          return 0x40;  /* high-byte of 16-bit address to low-byte */
+        else if (r->mask == 0xff)
+          return 0x20;  /* low-byte of 16-bit address to low-byte */
+      }
     }
     else if (r->size == 8)
       return 0x21;  /* probably an 8-bit xref to an absolute value */
@@ -380,26 +390,27 @@ static void do_relocs(int secno,taddr offs,atom *p)
       switch (type) {
         case 0x21:  /* 8-bit reference (zero page or immediate) */
           if (a<-0xff || a>0xff)
-            output_atom_error(12,p,rl->type,(unsigned long)r->mask,sym->name,
+            output_atom_error(12,p,STD_REL_TYPE(rl->type),
+                              (unsigned long)r->mask,sym->name,
                               (unsigned long)a,r->size);
           type = 0x20;
         case 0x20:  /* address low-byte */
-          patch_nreloc(p,rl,0,a&0xff,0);
+          patch_nreloc(p,rl,a&0xff,0);
           break;
         case 0x40:  /* address high-byte */
-          patch_nreloc(p,rl,0,(a&0xff00)>>8,0);
+          patch_nreloc(p,rl,(a&0xff00)>>8,0);
           break;
         case 0xa0:  /* segment-byte of 24-bit address */
-          patch_nreloc(p,rl,0,(a&0xff0000)>>16,0);
+          patch_nreloc(p,rl,(a&0xff0000)>>16,0);
           break;
         default:
-          patch_nreloc(p,rl,1,a,0);
+          patch_nreloc(p,rl,a,0);
           break;
       }
       add_o65reloc(secno,offs+r->byteoffset,type,segid,import,a);
     }
     else
-      unsupp_reloc_error(rl);
+      unsupp_reloc_error(p,rl);
   }
 }
 

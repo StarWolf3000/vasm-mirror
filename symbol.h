@@ -79,7 +79,8 @@ void restore_symbols(void);
 
 int check_symbol(const char *);
 const char *set_last_global_label(const char *);
-int is_local_label(const char *);
+int is_local_symbol_name(const char *);
+const char *real_symbol_name(symbol *);
 strbuf *make_local_label(int,const char *,int,const char *,int);
 symbol *new_abs(const char *,expr *);
 symbol *new_equate(const char *,expr *);

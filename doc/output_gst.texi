@@ -20,7 +20,7 @@ For example by the GST assembler and Devpac.
 
 @itemize @minus
 @item Although there can be multiple sections, they don't have a type.
-@item Maximum size of section and symbol names is 255 characters.
+@item Maximum length of section and symbol names is 255 characters.
 @item Only absolute, pc-relative and common-symbol relocations are
       supported at the moment.
 @item Possible relocation sizes are 8, 16 and 32 bits.
@@ -42,5 +42,4 @@ This module has the following error messages:
 @itemize @minus
 @item 3002: output module doesn't support cpu %s
 @item 3011: weak symbol <%s> not supported by output format, treating as global
-@item 3013: reloc type %d, mask 0x%lx to symbol %s + 0x%lx does not fit into %u bits
 @end itemize

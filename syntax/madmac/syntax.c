@@ -154,7 +154,7 @@ static void handle_equ(char *s)
 
   sym = new_equate(labname,parse_expr_tmplab(&s));
   if (exp) {
-    if (is_local_label(labname))
+    if (is_local_symbol_name(labname))
       syntax_error(1);  /* cannot export local symbol */
     sym->flags |= EXPORT;
   }
@@ -517,6 +517,7 @@ static void handle_list(char *s)
 
 static void handle_nlist(char *s)
 {
+  del_last_listing();  /* hide directive in listing */
   set_listing(0);
   eol(s);
 }
@@ -1049,7 +1050,7 @@ int expand_macro(source *src,char **line,char *d,int dlen)
 }
 
 
-int init_syntax()
+int init_syntax(void)
 {
   size_t i;
   hashdata data;

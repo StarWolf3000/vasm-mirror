@@ -101,7 +101,7 @@ This backend provides the following specific extensions:
  and @code{>} for the high-byte. It has to be the first character before
  an expression.
 
-@item When applying the operation @code{/256}, @code{%256} or @code{&256}
+@item When applying the operation @code{/256}, @code{%256} or @code{&255}
  on a label, an appropriate lo/hi-byte relocation will automatically be
  generated.
 

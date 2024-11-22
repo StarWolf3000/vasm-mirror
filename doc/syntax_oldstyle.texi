@@ -1,11 +1,13 @@
 This chapter describes the oldstyle syntax module suitable
-for some 8-bit CPUs (6502, 680x, 68HC1x, Z80, etc.),
+for some 8-bit CPUs (6502, 65816, 680x, 68HC1x, Z80, etc.),
 which is available with the extension @code{oldstyle}.
+
 
 @section Legal
 
-    This module is written in 2002-2023 by Frank Wille and
+    This module is written in 2002-2024 by Frank Wille and
     is covered by the vasm copyright without modifications.
+
 
 @section Additional options for this module
  
@@ -48,39 +50,42 @@ This syntax module provides the following additional options:
 
 @end table
 
+
 @section General Syntax
 
 Labels always start at the first column and may be terminated by a
-colon (@code{:}), but don't need to. In the latter case the mnemonic
-has to be separated from the label by whitespace (not required in
+colon (@code{:}), but don't need to. In the latter case the mnemonic or
+directive has to be separated from the label by whitespace (not required in
 any case, e.g. with @code{=}).
 
-Local labels are preceded by '@code{.}' or terminated by '@code{$}'.
-For the rest, any alphanumeric character including '@code{_}' is allowed.
+Local labels are introduced by '@code{.}' or terminated by '@code{$}'.
+For the rest, any alphanumeric character, including '@code{_}', is allowed.
 Local labels are valid between two global label definitions.
 
 It is allowed, but not recommended, to refer to any local symbol starting with
-'@code{.}' in the source, by preceding its name with the name of the last
+'@code{.}' in the source, by prefixing it with the name of the last
 previously defined global symbol: @code{global_name.local_name}.
+
+The option @option{-ldots} allows dots (@code{.}) within labels and other
+identifiers, but disables the above mentioned feature.
 
 Anonymous labels are supported by defining them with a single '@code{:}'
 at the beginning of a line. They may be referenced by '@code{:}' followed
 directly by one or more '@code{+}' or '@code{-}' signs. A @code{+} selects
 the first anonymous label following the point of reference. A @code{++}
-select the second anonymous label in that direction, and so on. A @code{-}
+selects the second anonymous label in that direction, and so on. A @code{-}
 selects the first anonymous label before the point of reference. Example:
 @example
 :       jmp     :-    ;infinite loop
 @end example
 
-The option @option{-ldots} allows dots (@code{.}) within labels and other
-identifiers, but disables the above mentioned feature.
-
 The operands are separated from the mnemonic by whitespace. Multiple
-operands are separated by comma (@code{,}).
+operands are separated by comma (@code{,}), or in some backends by
+whitespace.
 
 Make sure that you don't define a label on the same line as a
-directive for conditional assembly (if, else, endif)! This is not supported.
+directive for conditional assembly (if, else, endif)! This is not supported
+and leads to undefined behaviour.
 
 Some CPU backends may support multiple statements (directives or
 mnemonics) per line, separated by a special character (e.g. @code{:} for Z80).
@@ -110,9 +115,17 @@ binary. Hexadecimal intel-style constants must start with a digit (prepend
 Also C-style prefixes are supported for hexadecimal (@code{0x}) and
 binary (@code{0b}).
 All other numbers starting with a digit are decimal, e.g. @code{1239}.
+The one character following a @code{'} or @code{"} is converted into
+ASCII code. A closing quote behind that character is optional in
+expressions. Not optional for strings.
 
 
 @section Directives
+
+Note that data directives, like @code{byt}, @code{dfb}, @code{db},
+@code{word}, @code{dfw}, @code{dw}, etc. may optionally be written
+without any operand. In this case they are treated like space directives,
+which just increment the program counter by 1 or 2 bytes.
 
 The following directives are supported by this syntax module (if the
 CPU- and output-module allow it):
@@ -122,23 +135,27 @@ CPU- and output-module allow it):
       Equivalent to @code{<symbol> equ <expression>}.
 
 @item abyte <modifier>,<exp1>[,<exp2>,"<string1>"...]
-      Write the integer or string constants into successive bytes
-      of memory in the current section while modifying each expression
+      Write the integer or string constants into successive 8-bit memory
+      cells in the current section while modifying each expression
       (and string-character) by the modifier expression.
       When the modifier contains the special @code{._} symbol, then it
       is a placeholder for any expression from the line. Otherwise the
       modifier will be just added to each element.
-      Any combination of integer and character string constants is permitted.
+      Any combination of integer and character string constants is
+      permitted.
 
 @item addr <exp1>[,<exp2>...]
       Assign the values of the operands into successive words
       of memory in the current section, using the target's endianness
-      and address size.
+      and address pointer size.
+      Note that @code{addr} is not available for 6809. You may use the
+      alternative directive @code{da} instead.
 
 @item align <bitcount>
-      Insert as much zero bytes as required to reach an address where
+      Insert as many zero bytes as required to reach an address where
       <bit_count> low order bits are zero. For example @code{align 2} would
-      make an alignment to the next 32-bit boundary.
+      make an alignment to the next 32-bit boundary on a target with
+      8-bit addressable memory.
 
 @item asc <exp1>[,<exp2>,"<string1>"...]
       Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
@@ -160,9 +177,17 @@ CPU- and output-module allow it):
 @item blk <exp>[,<fill>]
       Insert <exp> zero or <fill> bytes into the current section.
 
+@item blkl <exp>[,<fill>]
+      Insert <exp> zero or <fill> 32-bit long words into the current section,
+      using the endianness of the target CPU.
+
 @item blkw <exp>[,<fill>]
       Insert <exp> zero or <fill> 16-bit words into the current section,
       using the endianness of the target CPU.
+
+@item bss <exp>
+      Equivalent to @code{blk <exp>,0}.
+      (Not available with option @option{-sect}.)
 
 @item bss
       With option @option{-sect}:
@@ -173,12 +198,15 @@ CPU- and output-module allow it):
 
 @item byt <exp1>[,<exp2>,"<string1>"...]
       Assign the integer or string constant operands into successive
-      bytes of memory in the current section. Any combination of integer
+      8-bit memory cells in the current section. Any combination of integer
       and character string constant operands is permitted.
-      Without any operands the program counter is just icremented by one.
+      Without any operands the program counter is just incremented by one.
 
 @item byte <exp1>[,<exp2>,"<string1>"...]
       Equivalent to @code{byt <exp1>[,<exp2>,"<string1>"...]}.
+
+@item da <exp1>[,<exp2>...]
+      Equivalent to @code{addr <exp1>[,<exp2>...]}.
 
 @item data <exp1>[,<exp2>,"<string1>"...]
       Equivalent to @code{byt <exp1>[,<exp2>,"<string1>"...]}.
@@ -250,6 +278,9 @@ CPU- and output-module allow it):
       Such an offsect-section block is closed by the @code{dend} directive,
       which restores the previous 'real' section.
 
+@item dsl <exp>[,<fill>]
+      Equivalent to @code{blkl <exp>[,<fill>]}.
+
 @item dsw <exp>[,<fill>]
       Equivalent to @code{blkw <exp>[,<fill>]}.
 
@@ -307,6 +338,13 @@ CPU- and output-module allow it):
       the value of <expression>. Defining <symbol> twice will cause
       an error.
 
+@item exitmacro
+      Exit the current macro (proceed to @code{endm}) at this point and
+      continue assembling the parent context.
+      Note, that this directive also resets the level of conditional
+      assembly to a state before the macro was invoked (which means that
+      it works as a 'break' command on all new @code{if} directives).
+
 @item extern  <symbol>[,<symbol>...]
         See @code{global}.
 
@@ -344,6 +382,14 @@ CPU- and output-module allow it):
 
 @item if <expression>
       Conditionally assemble the following lines if <expression> is non-zero.
+
+@item ifblank <something>
+      Conditionally assemble the following lines if there are non-blank
+      characters in the operand, which are not a comment.
+
+@item ifnblank <something>
+      Conditionally assemble the following lines if there are any
+      non-blank, non-comment characters in the operand.
 
 @item ifdef <symbol>
       Conditionally assemble the following lines if <symbol> is defined.
@@ -389,9 +435,17 @@ CPU- and output-module allow it):
 @item incbin <file>[,<offset>[,<nbytes>]]
       Inserts the binary contents of <file> into the object code at
       this position. When <offset> is specified, then the given number
-      of bytes will be skipped at the beginning of the file. The optional
-      <nbytes> argument specifies the maximum number of bytes to be read
+      of 8-bit bytes will be skipped at the beginning of the file. The optional
+      <nbytes> argument specifies the maximum number of 8-bit bytes to be read
       from that file.
+      When the file size (in 8-bit bytes) is not aligned with the size
+      of a target-byte the missing bits are automatically appended and
+      assumed to be zero.
+      As vasm's internal target-byte endianness for more than 8 bits per byte
+      is big-endian, included binary files are assumed to have the same
+      endianness. Otherwise you have to specify @option{-ile} to tell vasm
+      that they use little-endian target-bytes (on your 8-bit bytes host
+      file system).
 
 @item incdir <path>
       Add another path to search for include files to the list of
@@ -406,7 +460,7 @@ CPU- and output-module allow it):
       local labels and those after @code{einline}.
 
 @item mac <name>
-      Equivalent to @code{macro <name>}.
+      Equivalent to @code{macro <name>}. (Not available for unSP CPU)
 
 @item list
       The following lines will appear in the listing file, if it was
@@ -442,7 +496,7 @@ CPU- and output-module allow it):
       Equivalent to @code{symdepend <expression>}.
 
 @item nolist
-      The following lines will not be visible in a listing file.
+      This line and the following lines will not be visible in a listing file.
 
 @item org [#]<expression>
       Sets the base address for the subsequent code. This is equivalent
@@ -510,7 +564,6 @@ CPU- and output-module allow it):
 @end table
 
       Section Protection:
-
 @table @code          
 @item r
          section is readable
@@ -525,6 +578,14 @@ CPU- and output-module allow it):
          section is shareable
 @end table
 
+      Additional Attributes:
+@table @code
+@item f
+         mark section for far-addressing
+@item z
+         mark section for near-addressing (e.g. direct/zero-page for 6502/65816)
+@end table
+
       When attributes are missing they are automatically set for the section
       names @code{text}, @code{data}, @code{rodata}, @code{bss},
       @code{.text}, @code{.data}, @code{.rodata} and @code{.bss}.
@@ -532,8 +593,8 @@ CPU- and output-module allow it):
 
 @item <symbol> set <expression>
       Create a new symbol with the name <symbol> and assign
-      the value of <expression>. If <symbol> is already assigned, it will
-      contain a new value from now on.
+      the value of <expression>. If <symbol> was already assigned by
+      @code{set} before, it will hold the new value from now on.
 
 @item spc <exp>
       Equivalent to @code{blk <exp>,0}.
@@ -565,8 +626,8 @@ CPU- and output-module allow it):
       any actual relocation being performed (@code{R_NONE} in ELF).
 
 @item text "<string>"
-      Puts a single string constant into successive bytes of
-      memory of the current section. The string delimiters may be any
+      Puts a single string constant into successive 8-bit memory cells
+      of the current section. The string delimiters may be any
       printable ASCII character.
       (Not available with option @option{-sect}.)
 
@@ -581,16 +642,16 @@ CPU- and output-module allow it):
       When a weak symbol remains undefined its value defaults to 0.
 
 @item wor <exp1>[,<exp2>...]
+      Equivalent to @code{word <exp1>[,<exp2>...]}.
+
+@item wrd <exp1>[,<exp2>...]
+      Equivalent to @code{word <exp1>[,<exp2>...]}.
+
+@item word <exp1>[,<exp2>...]
       Assign the values of the operands into successive 16-bit words
       of memory in the current section, using the endianness of the target
       CPU.
       Without any operand just the program counter is incremented by two.
-
-@item wrd <exp1>[,<exp2>...]
-      Equivalent to @code{wor <exp1>[,<exp2>...]}.
-
-@item word <exp1>[,<exp2>...]
-      Equivalent to @code{wor <exp1>[,<exp2>...]}.
 
 @item xdef  <symbol>[,<symbol>...]
         See @code{global}.
@@ -677,6 +738,7 @@ point3
 @item Expressions in an @code{if} directive must be constant.
 
 @end itemize
+
 
 @section Error Messages
 

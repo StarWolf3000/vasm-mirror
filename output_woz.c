@@ -88,7 +88,7 @@ static int output_args(char *p)
 
 int init_output_woz(char **cp,void (**wo)(FILE *,section *,symbol *),int (**oa)(char *))
 {
-  if (sizeof(utaddr) > sizeof(uint32_t) || bitsperbyte != 8) {
+  if (bytespertaddr > sizeof(uint32_t)) {
     output_error(1, cpuname); /* output module doesn't support (cpuname) */
     return 0;
   }

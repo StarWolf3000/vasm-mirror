@@ -713,7 +713,6 @@ const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
 const char *cpu_copyright="vasm 8080/gbz80/z80/z180/rcmX000 cpu backend 0.4b (c) 2007,2009 Dominic Morris";
 const char *cpuname = "z80";
-int bitsperbyte = 8;
 int bytespertaddr = 2;
 
 /* Configuration options */
@@ -1820,7 +1819,7 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
                                0, bitsize, 0);
             val = apply_modifier(rl, val);
         }
-        else if (btype != BASE_NONE)
+        else
             general_error(38);  /* illegal relocation */
     }
     if (bitsize < 16 && (val<-0x80 || val>0xff))
@@ -2225,7 +2224,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
 }
 
 
-operand *new_operand()
+operand *new_operand(void)
 {
   operand *new = mymalloc(sizeof(*new));
   new->type = -1;
@@ -2234,7 +2233,7 @@ operand *new_operand()
 }
 
 
-int init_cpu()
+int init_cpu(void)
 {
   current_pc_char = '$';
   return 1;

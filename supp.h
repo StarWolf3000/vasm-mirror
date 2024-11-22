@@ -1,5 +1,5 @@
 /* supp.h miscellaneous support routines */
-/* (c) in 2008-2023 by Frank Wille */
+/* (c) in 2008-2024 by Frank Wille */
 
 #ifndef SUPP_H
 #define SUPP_H
@@ -22,10 +22,16 @@ struct node *remhead(struct list *);
 
 void *mymalloc(size_t);
 void *mycalloc(size_t);
-void *myrealloc(void *,size_t);
+void *myrealloc(const void *,size_t);
 void myfree(void *);
 
-int field_overflow(int,size_t,taddr);
+#if BITSPERBYTE == 8
+#define readbyte(p) (utaddr)(*(uint8_t *)(p))
+#define writebyte(p,v) *((uint8_t *)(p)) = (uint8_t)(v)
+#else
+utaddr readbyte(void *);
+void writebyte(void *,utaddr);
+#endif
 taddr bf_sign_extend(taddr,int);
 uint64_t readval(int,void *,size_t);
 void *setval(int,void *,size_t,uint64_t);
@@ -47,13 +53,18 @@ void fw16(FILE *,uint16_t,int);
 void fw24(FILE *,uint32_t,int);
 void fw32(FILE *,uint32_t,int);
 void fwdata(FILE *,const void *,size_t);
+void fwbytes(FILE *,void *,size_t);
+#if BITSPERBYTE == 8
+#define fwdblock(f,d) fwdata(f,(d)->data,(d)->size)
+#else
+#define fwdblock(f,d) fwbytes(f,(d)->data,(d)->size)
+#endif
 void fwsblock(FILE *,sblock *);
 void fwspace(FILE *,size_t);
 void fwalign(FILE *,taddr,taddr);
-int fwalignpattern(FILE *,taddr,uint8_t *,int);
+int fwpattern(FILE *,taddr,uint8_t *,int);
 taddr fwpcalign(FILE *,atom *,section *,taddr);
 size_t filesize(FILE *);
-int abs_path(const char *);
 
 int stricmp(const char *,const char *);
 int strnicmp(const char *,const char *,size_t);

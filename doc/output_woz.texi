@@ -16,13 +16,13 @@ selected with the @option{-Fwoz} option.
 
 @section Additional options for this module
 
-    There are no additonal options for this module. 
+    There are no additional options for this module. 
  
 @section General
 
     This output module outputs the contents of all sections as
     wozmon monitor commands, which is a simple ASCII output of
-    hexidecimal digits.
+    hexadecimal digits.
 
     The output is suitable for an ascii transfer via serial
     connection to a system running wozmon. Character and/or
@@ -30,7 +30,7 @@ selected with the @option{-Fwoz} option.
     transfer.
 
     The wozmon command parser converts up to sixteen bit
-    hexidecimal values. An error containing the maximum
+    hexadecimal values. An error containing the maximum
     out of range address is reported if a sixteen bit address
     space is exceeded.
 

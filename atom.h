@@ -1,25 +1,14 @@
 /* atom.h - atomic objects from source */
-/* (c) in 2010-2022 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2024 by Volker Barthelmann and Frank Wille */
 
 #ifndef ATOM_H
 #define ATOM_H
 
 /* types of atoms */
-#define VASMDEBUG 0
-#define LABEL 1
-#define DATA  2
-#define INSTRUCTION 3
-#define SPACE 4
-#define DATADEF 5
-#define LINE 6
-#define OPTS 7
-#define PRINTTEXT 8
-#define PRINTEXPR 9
-#define ROFFS 10
-#define RORG 11
-#define RORGEND 12
-#define ASSERT 13
-#define NLIST 14
+enum {
+  VASMDEBUG,LABEL,DATA,INSTRUCTION,SPACE,DATADEF,LINE,OPTS,
+  PRINTTEXT,PRINTEXPR,ROFFS,RORG,RORGEND,ASSERT,NLIST
+};
 
 /* a machine instruction */
 typedef struct instruction {
@@ -42,7 +31,7 @@ typedef struct defblock {
 
 struct dblock {
   size_t size;
-  unsigned char *data;
+  uint8_t *data;
   rlist *relocs;
 };
 
@@ -50,7 +39,7 @@ struct sblock {
   size_t space;
   expr *space_exp;  /* copied to space, when evaluated as constant */
   size_t size;
-  uint8_t fill[MAXPADBYTES];
+  uint8_t fill[MAXPADSIZE];
   expr *fill_exp;   /* copied to fill, when evaluated - may be NULL */
   rlist *relocs;
   taddr maxalignbytes;
@@ -71,11 +60,9 @@ typedef struct printexpr {
   short type;  /* hex, signed, unsigned */
   short size;  /* precision in bits */
 } printexpr;
-#define PEXP_HEX 0
-#define PEXP_SDEC 1
-#define PEXP_UDEC 2
-#define PEXP_BIN 3
-#define PEXP_ASC 4
+enum {
+  PEXP_HEX,PEXP_SDEC,PEXP_UDEC,PEXP_BIN,PEXP_ASC
+};
 
 typedef struct assertion {
   expr *assert_exp;
@@ -125,7 +112,7 @@ enum {
 };
 instruction *new_inst(const char *,int,int,char **,int *);
 instruction *copy_inst(instruction *);
-dblock *new_dblock();
+dblock *new_dblock(void);
 sblock *new_sblock(expr *,size_t,expr *);
 
 atom *new_atom(int,taddr);
@@ -136,11 +123,12 @@ void print_atom(FILE *,atom *);
 void atom_printexpr(printexpr *,section *,taddr);
 atom *clone_atom(atom *);
 
+/* this group is currently used by dwarf.c only */
 atom *add_data_atom(section *,size_t,taddr,taddr);
-void add_leb128_atom(section *,taddr);
+void add_leb128_atom(section *,utaddr);
 void add_sleb128_atom(section *,taddr);
-atom *add_bytes_atom(section *,const void *,size_t);
-#define add_string_atom(s,p) add_bytes_atom(s,p,strlen(p)+1)
+atom *add_char_atom(section *,const void *,size_t);
+#define add_string_atom(s,p) add_char_atom(s,p,strlen(p)+1)
 
 atom *new_inst_atom(instruction *);
 atom *new_data_atom(dblock *,taddr);

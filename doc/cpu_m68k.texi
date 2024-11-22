@@ -3,7 +3,7 @@ microprocessor family.
 
 @section Legal
 
-    This module is written in 2002-2023 by Frank Wille and
+    This module is written in 2002-2024 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 
@@ -19,7 +19,7 @@ This module provides the following additional options:
 @subsection CPU selections
 @table @option
     @item -m68000
-        Generate code for the MC68000 CPU.
+        Generate code for the MC68000 CPU (default).
 
     @item -m68008
         Generate code for the MC68008 CPU.
@@ -98,7 +98,7 @@ This module provides the following additional options:
     @item -no-fpu
         Ignore any FPU options or directives, which has the effect that
         no 68881/2 FPU instructions will be accepted. This option can
-        override the default of @option{-gas} to enable the FPU.
+        override the default behaviour of @option{-gas} enabling the FPU.
 @end table
 
 @subsection Optimization options
@@ -134,9 +134,10 @@ This module provides the following additional options:
     @item -opt-fconst
         Floating point constants are loaded with the lowest precision
         possible. This means that @code{FMOVE.D #1.0,FP0} would be
-        optimized to @code{FMOVE.S #1.0,FP0}, because it is faster and
-        shorter at the same precision. The optimization will be performed
-        on all FPU instructions with immediate addressing mode.
+        optimized to @code{FMOVE.S #1.0,FP0}, or even @code{FMOVE.W #1,FP0},
+        because it is faster and shorter at the same precision.
+        The optimization will be performed on all FPU instructions with
+        immediate addressing mode.
         When an FDIV-family instruction (@code{FSDIV}, @code{FDDIV},
         @code{FSGLDIV}) is detected it will additionally be checked if the
         immediate constant is a power of 2 and then converted into
@@ -151,7 +152,7 @@ This module provides the following additional options:
         Allows optimization of @code{LSL #1} into @code{ADD}. It is also
         needed to optimize @code{ASL #2} and @code{LSL #2} into two @code{ADD}
         instructions (together with @option{-opt-speed}).
-        These optimizations may modify the V-flag, which might not be intended.
+        These optimizations can modify the V-flag, which may not be intended.
 
     @item -opt-movem
         Enables optimization from @code{MOVEM <ea>,Rn} into
@@ -172,7 +173,7 @@ This module provides the following additional options:
         This optimization will leave the flags in a different state as
         can normally be expected after a multiplication instruction, and
         the size of the optimized code may be bigger than before in some
-        situations (e.g. @code{MULS.W #4,Dn}). The latter will additionally
+        situations (e.g. @code{MULS.W #4,Dn}). So the latter will additionally
         require the @option{-opt-speed} flag.
 
     @item -opt-nmoveq
@@ -186,22 +187,29 @@ This module provides the following additional options:
         This optimization will leave the flags unmodified, which might
         not be intended.
 
-    @item -opt-speed
-        Optimize for speed, even if this would increase code size.
-        For example it enables optimization of @code{ASL.W #2,Dn} into two
-        @code{ADD.W Dn,Dn} instructions. Or @code{MULS.W #-4,Dn} into
-        @code{EXT.L Dn + ASL.L #2,Dn + NEG.L Dn}.
-
     @item -opt-size
         Optimize for size, even if this would make the code slower.
         This enables for example optimization of @code{MOVE.L #x,Dn}
         into @code{MOVEQ #x>>n,Dn + LSL.W #n,Dn}. It is mostly used
         together with other optimization flags.
 
+    @item -opt-speed
+        Optimize for speed, even if this would increase code size.
+        For example it enables optimization of @code{ASL.W #2,Dn} into two
+        @code{ADD.W Dn,Dn} instructions. Or @code{MULS.W #-4,Dn} into
+        @code{EXT.L Dn + ASL.L #2,Dn + NEG.L Dn}.
+
     @item -opt-st
         Enables optimization from @code{MOVE.B #-1,<ea>} into @code{ST <ea>}.
         This optimization will leave the flags unmodified, which might
         not be intended.
+
+    @item -opt-<option>
+        Alternatively, you can use @option{-opt-} followed by a
+        Devpac-compatible option, as described under the @code{OPT}
+        directive. Example: @option{-opt-o1-} disables branch optimization
+        in the same way as an @code{OPT o1-} directive would do at the
+        top of the source text.
 
     @item -sc
         Small code model.
@@ -209,9 +217,9 @@ This module provides the following additional options:
         will be converted into 16-bit PC-relative jumps.
 
     @item -sd
-        References to absolute symbols in a
-        small data section (named "__MERGED") are optimized into a
-        base-relative addressing mode using the current base register set
+        References to labels in a
+        small data section (named "__MERGED") are optimized into
+        base-relative addressing mode, using the current base register set
         by an active @code{NEAR} directive.
         This option is automatically enabled in @option{-phxass} mode.
 
@@ -223,6 +231,13 @@ This module provides the following additional options:
     @item -showopt
         Print all optimizations and translations vasm is doing
         (same as @code{opt ow+}).
+
+    @item -warnabs16
+        Show a warning for every access to an absolute 16-bit address.
+
+    @item -warnabs32
+        Show a warning for every access to an absolute 32-bit address.
+        This doesn't include section labels.
 @end table
 
 In its default setting (no @option{-devpac} or @option{-phxass} option)
@@ -239,7 +254,7 @@ vasm performs the following optimizations:
 @table @option
     @item -conv-brackets
         Brackets (@code{'['} and @code{']'}) in an operand are automatically
-        converted into parentheses (@code{'('} and @code{')'}) as long as
+        treated like parentheses (@code{'('} and @code{')'}) as long as
         the CPU is 68000 or 68010. This is a compatibility option for some
         old assemblers.
 
@@ -253,7 +268,7 @@ vasm performs the following optimizations:
         Other options are the same as vasm's defaults.
         The symbol @code{__G2} is defined, which contains information
         about the selected cpu type.
-        The symbol @code{__LK} reflects the type of output file generated.
+        The symbol @code{__LK} reflects the type of output file to generate.
         Which is 0 for TOS executables, 1 for DRI objects, 2 for GST objects,
         3 for AmigaDOS objects and 4 for AmigaDOS executables.
         All other formats are represented by 99, as they are unknown to Devpac.
@@ -261,7 +276,7 @@ vasm performs the following optimizations:
         @option{-nodpc}.
 
     @item -elfregs
-        Register names are preceded by a '%' to prevent confusion
+        Register names have to be prefixed by a '%' to prevent confusion
         with symbol names.
 
     @item -extsd
@@ -305,9 +320,8 @@ vasm performs the following optimizations:
         @option{-sd} and @option{-guess-ext}.
 
     @item -rangewarnings
-        Values which are out of range usually produce an error. With this
-        option the errors 2026, 2030, 2033 and 2037 will be displayed as
-        a warning, allowing the user to create an object file.
+        Recognized for backwards-compatibility only.
+        No longer needed since V2.0.
 
     @item -regsymredef
         Allow redefining register symbols with @code{EQUR}. This should
@@ -340,11 +354,18 @@ The mask flag in @code{MAC} instructions is written as @code{&} and is
 appended directly to the effective address operand. Example:
 @code{mac d0,d1,(a0)&,d2}.
 
-The target address type is 32bit. Floating point constants in
+The register list in @code{MOVEM}, @code{FMOVEM}, etc. instructions
+may optionally be specified by an immediate addressing mode, using a
+16 or 8 (@code{FMOVEM}) bit register mask constant.
+Example (push no registers): @code{movem.l #0,-(sp)}.
+
+The target address type is 32 bit. Floating point constants in
 instructions and data are supported and encoded in IEEE format.
 
 Default alignment for instructions is 2 bytes. The default alignment for
-data is 2 bytes, when the data size is larger than 8 bits.
+data is 2 bytes, when the data size is larger than 8 bits. Note, that
+data is not auto-aligned unless you specify the @option{-align} option
+(or use Devpac-compatibility mode: @option{-devpac}).
 
 @section Internal symbols
 
@@ -445,7 +466,8 @@ directives:
 @item initnear
       Initializes the selected small data base register. In contrast to
       PhxAss, where this directive comes from, just a reference to
-      @code{_LinkerDB} is generated, which has to be resolved by a linker.
+      @code{_LinkerDB} is generated, which has to be resolved by a linker:
+      @code{lea _LinkerDB,An}
 
 @item machine <cpu_type>
       Makes the assembler generate code for <cpu_type>, which can be
@@ -511,6 +533,15 @@ directives:
         Generate a linkable object file. The default is defined by the
         selected output format via the assembler's @option{-F} option.
         This option was supported by Devpac-Amiga only.
+      @item l0
+      @itemx l1
+      @itemx l2
+        Nonzero selects object file, zero selects executable file format,
+        when Atari-TOS (@option{-Ftos}) or Amiga-hunk output format
+        (@option{-Fhunk}) was set on the command line.
+        This option was supported by Devpac-Atari only and its original
+        function was to select TOS-executable (0), DRI-object (1) or
+        GST-object (2) output. For GST objects use (@option{-Fgst}) instead.
       @item o
         Enable all optimizations (o1 to o12), or disable all optimizations.
         The default is that all are disabled in Devpac-compatibility mode
@@ -532,8 +563,10 @@ directives:
       @item o6
         No effect in vasm.
       @item o7
-        Convert @code{bra.b} to @code{nop}, when branching to the next
-        instruction.
+        Replace @code{bra.b} by a 2-byte no-operation instruction, like
+        @code{lea (a6),a6}, when branching to the next instruction.
+        Note: @code{nop} is not really a no-operation instruction on 68040
+        and higher.
       @item o8
         Optimize 68020+ base displacements to 16 bit.
       @item o9
@@ -549,7 +582,7 @@ directives:
         Default is on in Devpac-compatibility mode, otherwise off.
       @item p
         Check if code is position independent. This will cause an error on
-        each relocation being required.
+        every relocation entry being required.
         Default is off.
       @item s
         Include symbols in listing file.
@@ -570,11 +603,18 @@ directives:
 
    Devpac options without +/- suffix:
    @table @code
-      @item l<n>
-        Sets the output format (Devpac Atari only). Currently without effect.
+      @item l0
+      @itemx l1
+      @itemx l2
+        Nonzero selects object file, zero selects executable file format,
+        when Atari-TOS (@option{-Ftos}) or Amiga-hunk output format
+        (@option{-Fhunk}) was set on the command line.
+        This option was supported by Devpac-Atari only and its original
+        function was to select TOS-executable (0), DRI-object (1) or
+        GST-object (2) output. For GST objects use (@option{-Fgst}) instead.
       @item p=<type>[/<type>]
-        Sets the CPU type to any model vasm supports (original Devpac
-        only allowed 68000-68040, 68332, 68881, 68882 and 68851).
+        Sets the CPU type to any model vasm supports (Devpac only allows
+        68000-68040, 68332, 68881, 68882 and 68851).
    @end table
 
    Also the following Devpac3-style options are supported:
@@ -617,6 +657,9 @@ directives:
    writing portable source. Using @code{opt o+} or @code{opt o-} in
    Devpac mode only toggles @code{og} and @code{of}.
    @table @code
+      @item oa
+        Automatically optimize absolute Apollo destination operands to
+        PC-relative references (requires 68080 code-generation enabled).
       @item ob
         Convert absolute jumps to external labels into long-branches
         (refer to @option{-opt-jbra}).
@@ -690,15 +733,21 @@ module:
       Defines a new symbol named <symbol> and assign the FPU register
       list <reglist> to it. Registers in a list must be separated
       by a slash (@code{/}) and ranges or registers can be defined
-      by using a hyphen (@code{-}). Examples for valid FPU register
-      lists are: @code{fp0-fp7}, @code{fp1-3/fp5/fp7}, @code{fpiar/fpcr}.
+      by using a hyphen (@code{-}). No character at all represents
+      an empty regiser list. Optionally you may specify the <reglist>
+      as an 8-bit register mask constant (@code{fp0} is bit 0, @code{fp7}
+      is bit 7). Examples for valid FPU register lists are: @code{fp0-fp7},
+      @code{fp1-3/fp5/fp7}, @code{fpiar/fpcr}.
 
 @item <symbol> reg <reglist>
       Defines a new symbol named <symbol> and assign the register
       list <reglist> to it. Registers in a list must be separated
       by a slash (@code{/}) and ranges or registers can be defined
-      by using a hyphen (@code{-}). Examples for valid register lists
-      are: @code{d0-d7/a0-a6}, @code{d3-6/a0/a1/a4-5}.
+      by using a hyphen (@code{-}). No character at all represents
+      an empty regiser list. Optionally you may specify the <reglist>
+      as a 16-bit register mask constant (@code{d0} is bit 0, @code{a7}
+      is bit 15). Examples for valid register lists are: @code{d0-d7/a0-a6},
+      @code{d3-6/a0/a1/a4-5}.
 
 @end table
 
@@ -946,8 +995,9 @@ the options @option{-opt-speed} and @option{-opt-lsl} are given.
  @code{$ffff0001<=x<=$ffff0080} and the option @option{-opt-nmoveq} was set.
 
 @item @code{MOVE.L #x,Dn} optimized to the sequence of @code{MOVEQ #x>>n,Dn}
- and @code{LSL.W #n,Dn}, when @code{$0100<=x<=$7f00} and the LSB is zero
- and @option{-opt-size} was set together with standard optimizations.
+ and @code{LSL.W #n,Dn}, when @code{0<=x<=$7fff} and the difference between
+ the highest and lowest bit set is less than 8.
+ @option{-opt-size} needs to be set together with standard optimizations.
 
 @item @code{MOVE.L #x,<ea>} optimized to @code{MOV3Q #x,<ea>}, for ColdFire
  ISA_B and ISA_C, when @code{x} is -1 or between 1 and 7.
@@ -1109,11 +1159,11 @@ This module has the following error messages:
 @item 2064: "%s" directive was replaced by an instruction with the same name
 @item 2065: Addr.reg. operand at level #0 causes F-line exception
 @item 2066: Dr and Dq are identical, transforming DIVxL.L effectively into DIVx.L
-@item 2067: not a valid register list symbol
 @item 2068: trailing garbage in operand
 @item 2069: encoding absolute displacement directly
 @item 2070: internal symbol %s has been modified
 @item 2071: instruction too large for bank prefix
 @item 2072: bad FPU id %d for selected cpu type
-
+@item 2073: absolute k-factor without '#'
+@item 2074: %d-bit access to absolute address
 @end itemize

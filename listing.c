@@ -1,5 +1,5 @@
 /* listing.h - listing file */
-/* (c) in 2020-2023 by Volker Barthelmann and Frank Wille */
+/* (c) in 2020-2024 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -15,10 +15,17 @@ int produce_listing,listena,listnosyms;
 int listformfeed=1,listlinesperpage=40;
 listing *first_listing,*last_listing,*cur_listing;
 
-static int listbpl=8;
-static int listnoinc,listformat,listtitlecnt,listall,listlabelsonly;
+static listing *prev_listing;
+static int listbpl,listnoinc,listformat,listtitlecnt,listall,listlabelsonly;
 static char **listtitles;
 static int *listtitlelines;
+
+
+int init_listing(void)
+{
+  listbpl = 64 / BITSPERBYTE;
+  return 1;
+}
 
 
 int listing_option(char *arg)
@@ -28,11 +35,13 @@ int listing_option(char *arg)
     return 1;
   }
   if (!strncmp("bpl=",arg,4)) {
-    sscanf(&arg[4],"%i",&listbpl);
-    if (listbpl<1 || listbpl>64) {
-      listbpl = 8;
+    int val;
+
+    sscanf(&arg[4],"%i",&val);
+    if (val<1 || val>512/BITSPERBYTE)
       general_error(78,"-Lbpl");
-    }
+    else
+      listbpl = val;
     return 1;
   }
   if (!strncmp("fmt=",arg,4)) {
@@ -77,12 +86,23 @@ listing *new_listing(source *src,int line)
 
   if (first_listing) {
     last_listing->next = new;
+    prev_listing = last_listing;
     last_listing = new;
   }
   else
     first_listing = last_listing = new;
   cur_listing = new;
   return new;
+}
+
+/* used for example to suppress output of NOLIST directives */
+void del_last_listing(void)
+{
+  if (listena && prev_listing!=NULL) {
+    myfree(last_listing);
+    last_listing = prev_listing;
+    prev_listing = NULL;
+  }
 }
 
 void set_listing(int on)
@@ -309,6 +329,7 @@ static void write_listing_old(char *listname,section *first_section)
 #else
 static void write_listing_old(char *listname,section *first_section)
 {
+  int bytew = (BITSPERBYTE + 3) / 4;
   unsigned long i,maxsrc=0;
   FILE *f;
   int nsecs;
@@ -341,7 +362,8 @@ static void write_listing_old(char *listname,section *first_section)
         for(i=0;i<size&&i<32;i++){
           if((i&15)==0)
             fprintf(f,"\n               S%02d:%08lX: ",(int)(p->sec?p->sec->idx:0),(unsigned long)(pc));
-          fprintf(f," %02X",(unsigned char)a->content.db->data[i]);
+          fprintf(f," %0*llX",bytew,
+                  (unsigned long long)readbyte(a->content.db->data+OCTETS(i)));
           pc++;
         }
         if(a->content.db->relocs)
@@ -387,7 +409,8 @@ static void write_listing_old(char *listname,section *first_section)
 
 static void write_listing_wide(char *listname,section *first_section)
 {
-  int addrw = bytespertaddr*(bitsperbyte/8)*2;  /* width of address field */
+  int addrw = (bytespertaddr*BITSPERBYTE+3)/4;  /* width of address field */
+  int bytew = (BITSPERBYTE+3)/4;
   source *lastsrc = NULL;
   FILE *f;
   section *secp;
@@ -450,7 +473,8 @@ static void write_listing_wide(char *listname,section *first_section)
                     (unsigned)(l->sec?l->sec->idx:0),
                     addrw,MADDR(pc));
           }
-          fprintf(f,"%02X",(unsigned)a->content.db->data[i]);
+          fprintf(f,"%0*llX",bytew,
+                  (unsigned long long)readbyte(a->content.db->data+OCTETS(i)));
         }
       }
       else if (a->type == SPACE) {
@@ -470,14 +494,16 @@ static void write_listing_wide(char *listname,section *first_section)
                       (unsigned)(l->sec?l->sec->idx:0),
                       addrw,MADDR(pc));
             }
-            fprintf(f,"%02X",(unsigned)a->content.sb->fill[i]);
+            fprintf(f,"%0*llX",bytew,
+                    (unsigned long long)readbyte(a->content.sb->fill+OCTETS(i)));
           }
           spc -= dlen;
         }
       }
       if (i) {
         if (!flag) {
-          fprintf(f,"%*c%6d%c %s",2*(listbpl-i)+1,'\t',l->line,stype,l->txt);
+          fprintf(f,"%*c%6d%c %s",
+                  bytew*(listbpl-i)+1,'\t',l->line,stype,l->txt);
           if (spc) {
             fprintf(f,"\n%02X:%0*llX *",
                     (unsigned)(l->sec?l->sec->idx:0),
@@ -498,9 +524,10 @@ static void write_listing_wide(char *listname,section *first_section)
         a = NULL;
     }
     if (!flag)  /* no data generated for this source line */
-      fprintf(f,"%*c%6d%c %s\n",4+addrw+2*listbpl+1,'\t',l->line,stype,l->txt);
+      fprintf(f,"%*c%6d%c %s\n",
+              4+addrw+bytew*listbpl+1,'\t',l->line,stype,l->txt);
     if (l->error)
-      fprintf(f,"%*c     ^-ERROR:%04d\n",4+addrw+2*listbpl+1,'\t',l->error);
+      fprintf(f,"%*c     ^-ERROR:%04d\n",4+addrw+bytew*listbpl+1,'\t',l->error);
   }
 
   if (!listnosyms) {

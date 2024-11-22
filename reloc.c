@@ -1,5 +1,5 @@
 /* reloc.c - relocation support functions */
-/* (c) in 2010-2016,2020,2022,2023 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2016,2020,2022-2024 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -77,6 +77,18 @@ int is_pc_reloc(symbol *sym,section *cur_sec)
 }
 
 
+int std_reloc(rlist *rl)
+/* return reloc type (without REL_MOD_U/S bits), when rl has a reloc-type
+   between FIRST_STANDARD_RELOC and LAST_STANDARD_RELOC, -1 otherwise */
+{
+  if (rl->type<FIRST_CPU_RELOC &&
+      STD_REL_TYPE(rl->type) >= FIRST_STANDARD_RELOC &&
+      STD_REL_TYPE(rl->type) <= LAST_STANDARD_RELOC)
+    return STD_REL_TYPE(rl->type);
+  return -1;
+}
+
+
 void do_pic_check(rlist *rl)
 /* generate an error on a non-PC-relative relocation */
 {
@@ -106,51 +118,54 @@ taddr nreloc_real_addend(nreloc *nrel)
 }
 
 
-void unsupp_reloc_error(rlist *rl)
+void unsupp_reloc_error(atom *a,rlist *rl)
 {
-  if (rl->type <= LAST_STANDARD_RELOC) {
+  if (rl->type < FIRST_CPU_RELOC) {
     nreloc *r = (nreloc *)rl->reloc;
 
     /* reloc type not supported */
-    output_error(4,rl->type,r->size,(unsigned long)r->mask,
-                 r->sym->name,(unsigned long)r->addend);
+    output_atom_error(4,a,STD_REL_TYPE(rl->type),
+                      r->size,(unsigned long)r->mask,
+                      r->sym->name,
+                      (unsigned long)r->addend);
   }
   else
-    output_error(5,rl->type);
+    output_atom_error(5,a,rl->type);
 }
 
 
-void print_reloc(FILE *f,int type,nreloc *p)
+void print_nreloc(FILE *f,nreloc *p,int prtpos)
 {
-  if (type==REL_NONE)
-    fprintf(f,"rnone(");
-  else if (type<=LAST_STANDARD_RELOC){
-    static const char *rname[] = {
-      "abs","pc","got","gotrel","gotoff","globdat","plt","pltrel",
-      "pltoff","sd","uabs","localpc","loadrel","copy","jmpslot","secoff"
-    };
-    fprintf(f,"r%s(%u,%u-%u,0x%llx,0x%llx,",rname[type-1],
+  if (prtpos)
+    fprintf(f,"(%u,%u-%u,%#llx,%#llx,",
             (unsigned)p->byteoffset,(unsigned)p->bitoffset,
             (unsigned)(p->bitoffset+p->size-1),
             ULLTADDR(p->mask),ULLTADDR(p->addend));
-  }
-#ifdef VASM_CPU_PPC
-  else if (type<=LAST_PPC_RELOC){
-    static const char *rname[] = {
-      "sd2","sd21","sdi16","drel","brel"
-    };
-    fprintf(f,"r%s(%u,%u-%u,0x%llx,0x%llx,",
-            rname[type-(LAST_STANDARD_RELOC+1)],
-            (unsigned)p->byteoffset,(unsigned)p->bitoffset,
-            (unsigned)(p->bitoffset+p->size-1),
-            ULLTADDR(p->mask),ULLTADDR(p->addend));
-  }
-#endif
   else
-    fprintf(f,"unknown reloc(");
-
+    fputc('(',f);
   print_symbol(f,p->sym);
   fprintf(f,") ");
+}
+
+
+void print_reloc(FILE *f,rlist *rl)
+{
+  int type;
+
+  if ((type = std_reloc(rl)) >= 0) {
+    static const char *rname[LAST_STANDARD_RELOC+1] = {
+      "none","abs","pc","got","gotrel","gotoff","globdat","plt","pltrel",
+      "pltoff","sd","uabs","localpc","loadrel","copy","jmpslot","secoff"
+    };
+    fprintf(f,"r%s",rname[type]);
+    print_nreloc(f,rl->reloc,type!=REL_NONE);
+  }
+#ifdef LAST_CPU_RELOC
+  else if (rl->type>=FIRST_CPU_RELOC && rl->type<=LAST_CPU_RELOC)
+    cpu_reloc_print(f,rl);
+#endif
+  else
+    fprintf(f,"unknown reloc(%d) ",rl->type);
 }
 
 
@@ -167,34 +182,55 @@ rlist *get_relocs(atom *a)
 static void *get_nreloc_ptr(atom *a,nreloc *nrel)
 {
   if (a->type == DATA)
-    return (char *)a->content.db->data + nrel->byteoffset;
+    return (char *)a->content.db->data + OCTETS(nrel->byteoffset);
   else if (a->type == SPACE)
     return (char *)a->content.sb->fill;  /* @@@ ignore offset completely? */
   return NULL;
 }
 
 
-int patch_nreloc(atom *a,rlist *rl,int signedflag,taddr val,int be)
+static int reloc_field_overflow(int rtype,size_t numbits,taddr bitval)
+/* tests if bitval fits into a relocation field with numbits and std_rtype */
+{
+  uint64_t val = (int64_t)bitval;
+
+  if (rtype<FIRST_CPU_RELOC && (rtype & REL_MOD_S)) {
+    uint64_t mask = ~MAKEMASK(numbits - 1);
+    return (bitval < 0) ? (val & mask) != mask : (val & mask) != 0;
+  }
+  else if (rtype<FIRST_CPU_RELOC && (rtype & REL_MOD_U)) {
+    return (val & ~(uint64_t)MAKEMASK(numbits)) != 0;
+  }
+  else {  /* unspecified, allow full signed and unsigned range */
+    uint64_t mask = ~MAKEMASK(numbits - 1);
+    return (bitval < 0) ? (val & mask) != mask :
+                          (val & ~(uint64_t)MAKEMASK(numbits)) != 0;
+  }
+}
+
+
+int patch_nreloc(atom *a,rlist *rl,taddr val,int be)
 /* patch relocated value into the atom, when rlist contains an nreloc */
 {
   nreloc *nrel;
   char *p;
 
-  if (rl->type > LAST_STANDARD_RELOC) {
-    unsupp_reloc_error(rl);
+  if (!is_nreloc(rl)) {
+    unsupp_reloc_error(a,rl);
     return 0;
   }
   nrel = (nreloc *)rl->reloc;
 
-  if (field_overflow(signedflag,nrel->size,val)) {
-    output_atom_error(12,a,rl->type,(unsigned long)nrel->mask,nrel->sym->name,
-                      (unsigned long)nrel->addend,nrel->size);
+  if (reloc_field_overflow(rl->type,nrel->size,val)) {
+    output_atom_error(12,a,rl->type,(unsigned long)nrel->mask,
+                      nrel->sym->name,(unsigned long)nrel->addend,nrel->size);
     return 0;
   }
 
   if (p = get_nreloc_ptr(a,nrel)) {
-    setbits(be,p,(nrel->bitoffset+nrel->size+7)&~7,
-            nrel->bitoffset,nrel->size,val);
+    setbits(be,p,
+        ((nrel->bitoffset+nrel->size+(BITSPERBYTE-1))/BITSPERBYTE)*BITSPERBYTE,
+        nrel->bitoffset,nrel->size,val);
   }
   return 1;
 }

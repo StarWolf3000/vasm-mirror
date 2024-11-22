@@ -2,7 +2,7 @@ This chapter documents the Backend for the 80x86 microprocessor family.
 
 @section Legal
 
-    This module is written in 2005-2006,2011,2015-2016 by Frank Wille and
+    This module is written in 2005-2006,2011,2015-2019,2024 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 

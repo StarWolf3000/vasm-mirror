@@ -64,10 +64,10 @@ enum {
 
 enum {
   OP_D8=1,OP_D16,OP_D32,OP_D64,OP_F32,OP_F64,OP_F96,OP_FPD,
-  D_,A_,B_,AI,IB,R_,RM,DD,CS,VR2,VB2,VDR2,VDR4,PA,AP,DP,
+  D_,A_,B_,AI,IB,R_,RM,DD,CS,RR,VR2,VB2,VDR2,VDR4,PA,AP,DP,
   F_,FF,FR,FPIAR,IM,IQ,QI,IR,BR,DB,AB,VA,M6,RL,FL,FS,
   AY,AM,MA,MI,FA,CF,MAQ,CFAM,CM,AL,DA,DN,DI,CFDA,CT,AC,AD,CFAD,
-  BD,BS,AK,MS,MR,CFMM,CFMN,ND,NI,NJ,NK,BY,BI,BJ,OF_,
+  BD,BS,AK,MS,MR,CFMM,CFMN,ND,NI,NJ,BY,BI,BJ,OF_,
   _CCR,_SR,_USP,_CACHES,_ACC,_MACSR,_MASK,_CTRL,_ACCX,_AEXT,
   _VAL,_FC,_RP_030,_RP_851,_TC,_AC,_M1_B,_BAC,_BAD,_PSR,_PCSR,
   _TT,SH,VX,VXR2,VXR4,OVX,VXBF
@@ -127,10 +127,13 @@ struct optype optypes[] = {
 /* CS        any double data or address register indirect (cas2) */
   _(0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0),FL_DoubleReg,0,0,
 
-/* VR2       (Apollo) Rn:Rn+1 */
+/* RR        double register (address or data) */
+  _(1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0),FL_DoubleReg,0,0,
+
+/* VR2       (Apollo) Rn:Rn+1 @@@FIXME: currently unused! */
   _(1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0),OTF_VXRNG2|FL_DoubleReg,0,0,
 
-/* VB2       (Apollo) Bn:Bn+1 */
+/* VB2       (Apollo) Bn:Bn+1 @@@FIXME: currently unused! */
   _(0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0),OTF_VXRNG2|FL_BnReg|FL_DoubleReg,0,0,
 
 /* VDR2      (Apollo) Dn:Dn+1 */
@@ -273,16 +276,13 @@ struct optype optypes[] = {
   _(0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0),0,0,0,
 
 /* ND        (Apollo) all except Dn, 1-6,7.0-4 */
-  _(0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0),0,0,0,
+  _(0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0),0,0,0,
 
 /* NI        (Apollo) all except immediate, 0-6,7.0-3 */
   _(1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0),0,0,0,
 
 /* NJ        (Apollo) all except Dn and immediate, 1-6,7.0-3 */
   _(0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0),0,0,0,
-
-/* NK        (Apollo) all except An and immediate, 0,2-6,7.0-3 */
-  _(1,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0),0,0,0,
 
 /* BY        (Apollo) all addressing modes 0-6,7.0-4 with An replaced by Bn */
   _(1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0),FL_BnReg,0,0,
@@ -416,6 +416,12 @@ static void insert_tbl(unsigned char *d,struct oper_insert *i,operand *o)
   *(d+3) |= (o->reg & 0x70) >> 4;
 }
 
+static void insert_mv2(unsigned char *d,struct oper_insert *i,operand *o)
+{
+  *(d+2) |= ((o->reg&0x0f) << 4) | ((o->reg&0xc0) >> 6);
+  *(d+3) |= (o->reg&0x30) << 2;
+}
+
 static void insert_fp(unsigned char *d,struct oper_insert *i,operand *o)
 {
   *(d+2) |= ((o->reg&7) << 2) | ((o->reg&7) >> 1);
@@ -455,7 +461,7 @@ static void insert_ammx(unsigned char *d,struct oper_insert *i,operand *o)
 /* place to put an operand */
 enum {
   NOP=0,NEA,SEA,MEA,BEA,KEA,REA,EAM,BRA,DBR,RHI,RLO,RL4,R2H,R2M,R2L,R2P,
-  FPN,FPM,FMD,C2H,A2M,A2L,R3H,AXA,AXB,AXD,AX0,CS1,CS2,CS3,MDL,DVL,TBL,
+  FPN,FPM,FMD,C2H,A2M,A2L,R3H,AXA,AXB,AXD,AX0,CS1,CS2,CS3,MDL,DVL,TBL,MV2,
   FPS,FPC,RMM,RMW,RMY,RMX,ACX,ACR,DL8,DL4,D3Q,DL3,CAC,D16,S16,D2R,ELC,
   EL8,E8R,EL3,EL4,EM3,EM4,EH3,BAX,FCR,F13,M3Q,MSF,ACW,AHI,ALO,LIN
 };
@@ -562,6 +568,9 @@ struct oper_insert insert_info[] = {
 
 /* TBL 3 bit Dym to 1st w. bits 2-0, Dyn to 2nd w. 2-0 */
   M_func,0,0,0,insert_tbl,
+
+/* MV2 (Rn:Rm) 4 bit Rn to 2nd word bits 15-12, Rm to bits 9-6 */
+  M_func,0,0,0,insert_mv2,
 
 /* FPS 3 bit FPn to 2nd word bits 12-10 (FPm) and 9-7 (FPn) */
   M_func,0,0,0,insert_fp,

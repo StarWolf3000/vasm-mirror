@@ -29,7 +29,7 @@
 #define TFLD(p,s) (BIGENDIAN?(size==(s)&&(pos&15)==(p)):(size==(s)&&(pos&15)==(16-(p)-(s))))
 
 
-  if ((*rl)->type <= LAST_STANDARD_RELOC) {
+  if (is_std_reloc(*rl)) {
     nreloc *r = (nreloc *)(*rl)->reloc;
 
     *refsym = r->sym;
@@ -39,7 +39,7 @@
     *roffset = r->byteoffset;
     mask = r->mask;
 
-    switch ((*rl)->type) {
+    switch (STD_REL_TYPE((*rl)->type)) {
 
       case REL_NONE:
         t = R_ARM_NONE;
@@ -54,9 +54,9 @@
           else if (size == 8)
             t = R_ARM_ABS8;
         }
-        else if (AFLD(8,24) && mask==0xffffff)
+        else if (AFLD(8,24) && mask==~0)
           t = R_ARM_SWI24;
-        else if (AFLD(20,12) && mask==0xfff)
+        else if (AFLD(20,12) && mask==~0)
           t = R_ARM_ABS12;
         else if (TFLD(8,8) && mask==0xff)
           t = R_ARM_THM_SWI8;
@@ -67,9 +67,9 @@
       case REL_PC:
         if (size==32 && pos==0 && mask==~0)
           t = R_ARM_REL32;
-        else if (AFLD(8,24) && mask==0x3fffffc)
+        else if (AFLD(8,24) && mask==~3)
           t = R_ARM_PC24;
-        else if (AFLD(20,12) && mask==0x1fff)
+        else if (AFLD(20,12) && mask==~0)
           t = R_ARM_PC13;
         else if (AFLD(24,8) && mask==0xff)
           t = R_ARM_ALU_PCREL_7_0;

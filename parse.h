@@ -1,5 +1,5 @@
 /* parse.h - global parser support functions */
-/* (c) in 2009-2023 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2024 by Volker Barthelmann and Frank Wille */
 
 #ifndef PARSE_H
 #define PARSE_H 
@@ -57,7 +57,8 @@ strbuf *get_raw_string(char **,char);
 char *skip_string(char *,char,size_t *);
 char *read_string(char *,char *,char,int);
 dblock *parse_string(char **,char,int);
-char *parse_symbol(char **);
+char *parse_symbol_strbuf(int,char **);
+#define parse_symbol(s) parse_symbol_strbuf(0,s)
 char *parse_labeldef(char **,int);
 int check_indir(char *,char *);
 int real_line(void);

@@ -3,7 +3,7 @@ Hitachi 6309.
 
 @section Legal
 
-    This module is written in 2020-2021 by Frank Wille
+    This module is written in 2020-2024 by Frank Wille
     and is covered by the vasm copyright without modifications.
 
 
@@ -31,6 +31,8 @@ This module provides the following additional options:
         labels to indexed, PC-relative addressing. Also translates
         absolute @code{jmp}/@code{jsr} instructions into PC-relative
         @code{lbra}/@code{lbsr} (or better).
+    @item -turbo9
+        Generate code for the TURBO9 CPU.
 @end table
 
 @section General

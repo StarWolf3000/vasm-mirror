@@ -24,7 +24,6 @@ const char *cpu_copyright="vasm test cpu backend (c) in 2002 Volker Barthelmann"
 */
 
 const char *cpuname="test";
-int bitsperbyte=8;
 int bytespertaddr=4;
 
 mnemonic mnemonics[]={
@@ -277,7 +276,7 @@ size_t instruction_size(instruction *p,section *sec,taddr pc)
   return size;    
 }
 
-operand *new_operand()
+operand *new_operand(void)
 {
   operand *new=mymalloc(sizeof(*new));
   new->type=-1;
@@ -285,7 +284,7 @@ operand *new_operand()
 }
 
 /* return true, if initialization was successful */
-int init_cpu()
+int init_cpu(void)
 {
   return 1;
 }

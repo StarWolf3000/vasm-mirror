@@ -1,6 +1,139 @@
 vasm history
 =============
 
+- 2.0 (13.10.24)
+o Support for architectures which have bytes with more than 8 bits.
+o Output formats bin, ihex, srec, test and vobj currently support >8-bit bytes.
+o New options -obe and -ole to define the endianess of target-bytes in
+  binary output.
+o New options -ibe and -ile to define the endianess of target-bytes in
+  binary includes (incbin).
+o New option -underscore adds a leading underscore to all imported and
+  exported symbol names.
+o New option -relpath to treat all include paths as relative first,
+  even when starting with '/' or '\'.
+o Reworked relocations and added the option to define their signedness.
+o New CPU backend for unSP (micro-nSP), having 16-bit bytes. Contributed
+  by Adrien Destugues.
+o New CPU backend for the FPGA-CPU HANS, using 32-bit bytes. Contributed
+  by Yannick Stamm.
+o New output module "pap", which outputs MOS Paper Tape files, as
+  documented in the KIM-1 User's Manual. Contributed by Dimitri Theulings.
+o When printing error messages in macros, also print the source text line
+  calling the macro.
+o A macro redefinition prints a warning with the previous definition.
+  The old macro is correctly replaced.
+o Also warn about initialized space atoms (.space, etc.) in BSS sections.
+o Workaround for a Windows bug, when reading a source text from stdin
+  directly via the terminal.
+o Fixed output of 64-bit symbol values in vobjdump.
+o Directives to suppress listing file output (like NOLIST) will no longer
+  appear in the listing file.
+o Fixed string constants (in immediate addressing modes) with non-ASCII
+  characters.
+o Fixed potential buffer overflow when generating a section name for
+  ORG directives (since V1.9f).
+o Output modules now show the source line for unknown relocation errors.
+o m68k: Most out of range errors have now become warnings.
+o m68k: Out of range 8-bit immediate constants write to all 16 bits of
+  the extension word, with a warning (to be able to simulate the behaviour
+  of some old, faulty assemblers).
+o m68k: Improved -opt-size optimization for move.l->moveq/lsl, which now
+  optimizes all values below 0x8000 where the highest and lowest bit set
+  does not span more than 7 bits (suggested by Erik Hemming).
+o m68k: Float-constant optimization (OPT of, enabled by default) now also
+  supports integer constant optimization to 16-bit.
+o m68k: Command line options of the form -opt-<option> execute a
+  Devpac-style option in the same way as an OPT directive at the top
+  of the source text.
+o m68k: New options -warnabs16 and -warnabs32 to show a warning when
+  accessing absolute 16- oder 32-bit addresses.
+o m68k: Fixed assigning another register list symbol with REG/EQURL, which
+  was broken since V1.9a.
+o m68k: REG/EQURL directives optionally allow to specify register lists as a
+  register mask constant (BAsm compatibility).
+o m68k: Add Apollo E-register banking for negx, swap, movex, sCC,
+  addiw.l, cmpiw.l, rol, ror, roxl, roxr, and perm.
+o m68k: Apollo instructions pabsb, pabsw are gone (opcode space will be
+  reused in future).
+o m68k: Apollo fmove.{b/w/l/s/d} En,Em is replaced by floadi and fstorei to
+  make clear whether the Em target is an integer or floating point register.
+o m68k: New Apollo instructions: fmoverz, fmoveurz, moveiw, mov3q, movs,
+  movz, move2 (updated), clr.q.
+o m68k: Do not allow Bcc.B with branch distance -130 for Apollo, as it
+  would encode as $6xff (opcode for 32-bit branch).
+o 6502: Added al/as/xl/xs as aliases for a16/a8/x16/x8 directives.
+  Added longa/longi as WDC-style aliases for theses directives (65816).
+o 6502: Absolute 16-bit addressing modes ignore the bank by default for 65816.
+o 6502: Optionally allow alternative syntax with immediate operands for MVN,
+  MVP and PEA (65816).
+o 6502: Out of range errors turned into warnings.
+o 6502: CPU directive, to define the cpu model.
+o 6502: Byte-selector operators are gone and turned into operand prefixes,
+  according to the official WDC syntax.
+o 6502: New option -am to mask all immediate and data values to their
+  specified size.
+o 6502: Hu6280 uses SETDP $2000 to move the zero page for automatic code
+  optimizations.
+o 6502: New option -dpo to generate offset-relocs for zero- or direct-page
+  accesses.
+o x86: Default to 16-bit addressing when -m selects a CPU below 386.
+  Default to 64-bit addressing with -m64.
+o x86: Let the mnemonic's suffix always decide about the operation size,
+  even when the operand is a label (gas seems to do the same).
+o x86: Mask all immediate operand relocations according to their size
+  (to allow something like movb $label,dest or movw $label,dest).
+o x86: Fix macros with size-suffixes (b,w,l,s,q,x). Size qualifiers are
+  no longer allowed in x86-macros.
+o x86: Allow multiple alternating .codeNN directives in the source.
+o x86: Add missing prefix when using 32-bit registers in 16-bit mode.
+o x86: Fixed relative calls with size suffix (callw, calll) in 16/32-bit mode.
+o mot-syntax: Fixed non-zero offset in CNOP, which was broken since V1.7c.
+o mot-syntax: TTL sets the listing file page title and not the unit name.
+o oldstyle-syntax: MACRO (written in upper case) didn't work with arguments.
+o oldstyle-syntax: New ifblank and ifnblank directives may be used to
+  check whether a macro argument was given.
+o oldstyle-syntax: New directive exitmacro to exit recursive macro
+  invocations.
+o oldstyle-syntax: New directive da as an alias for addr.
+o oldstyle-syntax: New directive bss to reserve space, like ds or reserve.
+o oldstyle-syntax: New directives blkl and dsl for defining space with a
+  32-bit pattern.
+o oldstyle-syntax: Section attributes 'f' and 'z' may be used to designate
+  a section for far- or near-addressing (e.g. direct/zero-page).
+o oldstyle-syntax: Fixed FCC for single characters (no expressions allowed).
+o oldstyle-syntax: The closing quote-character (' or ") in single-character
+  expressions is now optional (compatibility with old Motorola sources).
+o oldstyle-syntax: Broken hex-constants with the minus-operator following
+  the '$' are supported for compatibility reasons.
+o oldstyle-syntax: Allow optional colon after a label for macro, equ
+  and set directives.
+o std-syntax: The "true" result of logical operations should be 1 not -1.
+o std-syntax: Allow XY' (alternate) registers with Z80.
+o std-syntax: The .org directive always defines the absolute address for
+  subsequent code, as long as no relocatable section was defined (or -gas).
+o std-syntax: .ifc and .ifnc directives for comparing strings.
+o hunk-output: New option -noabspath to refrain from creating absolute
+  paths for source line debugging (LINE debug format).
+o hunk-output: Automatic source line debugging output (-linedebug) also
+  includes BSS sections now, unless Devpac-compatibility was specified
+  (-devpac).
+o hunk-output: New options -dbg-local and -dbg-globloc to include local
+  labels into the debug symbol hunk (HUNK_SYMBOL).
+o hunk-output: Warn about odd relocation offsets, which might crash the
+  AmigaOS loader on 68000 and 68010 systems (suggested by Erik Hemming).
+o o65-output: Support low-word relocs in 65816 mode.
+o bin-output: Fixed overlapping misdetection with empty org-sections.
+o bin-output: Foenix PGX format supports 65C02 and PGZ format supports 32-bit.
+o bin-output: New option -coalesced to output org-blocks without padding.
+o cdef-output: Do not output internal symbols.
+o elf-output: Fixed advancing by more than 63 lines in the DWARF output
+  (patch by arcanist/EAB).
+o tos-output: Fixed alignment problem with DRI object file relocs.
+o tos-output: New option -zfile to output Sharp X68000 Z-file executables.
+o xfile-output: New option -exec to define the execution label.
+o xfile-output: New option -loadhigh to load the executable into high memory.
+
 - 1.9f (10.11.23)
 o Fix relative section offset directives, which must be unsigned to work
   correctly over the whole target's address space.

@@ -6,6 +6,7 @@
 extern int jag_big_endian;
 #define BIGENDIAN (jag_big_endian)
 #define LITTLEENDIAN (!jag_big_endian)
+#define BITSPERBYTE 8
 #define VASM_CPU_JAGRISC 1
 
 /* maximum number of operands for one mnemonic */

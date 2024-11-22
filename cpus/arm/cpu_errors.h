@@ -3,9 +3,9 @@
   "label from current section required",ERROR,
   "branch offset (%ld) is out of range",ERROR,
   "PC-relative load/store (offset %ld) out of range",ERROR,
-  "cannot make rotated immediate from PC-relative offset (0x%lx)",ERROR,/*05*/
+  "cannot make rotated immediate from PC-relative offset (%#lx)",ERROR,/*05*/
   "constant integer expression required",ERROR,
-  "constant (0x%lx) not suitable for 8-bit rotated immediate",ERROR,
+  "constant (%#lx) not suitable for 8-bit rotated immediate",ERROR,
   "branch to an unaligned address (offset %ld)",ERROR,
   "not a valid ARM register",ERROR,
   "PC (r15) not allowed in this mode",ERROR,                            /*10*/

@@ -33,45 +33,45 @@ static void print_type(FILE *f,symbol *p)
 
 void print_symbol(FILE *f,symbol *p)
 {
-  if (p==NULL)
+  if (p == NULL)
     ierror(0);	/* this is usually an error in a cpu-backend, don't crash! */
 
   fprintf(f,"%s ",p->name);
 
-  if (p->type==LABSYM)
-    fprintf(f,"LAB (0x%llx) ",ULLTADDR(p->pc));
-  if (p->type==IMPORT)
+  if (p->type == LABSYM)
+    fprintf(f,"LAB (%#llx) ",ULLTADDR(p->pc));
+  if (p->type == IMPORT)
     fprintf(f,"IMP ");
-  if (p->type==EXPRESSION){
+  if (p->type == EXPRESSION){
     fprintf(f,"EXPR(");
     print_expr(f,p->expr);
     fprintf(f,") ");
   }
-  if (!(p->flags&(USED|VASMINTERN)))
+  if (!(p->flags & (USED|VASMINTERN)))
     fprintf(f,"UNUSED ");
-  if (p->flags&VASMINTERN)
+  if (p->flags & VASMINTERN)
     fprintf(f,"INTERNAL ");
-  if (p->flags&EXPORT)
+  if (p->flags & EXPORT)
     fprintf(f,"EXPORT ");
-  if (p->flags&COMMON)
+  if (p->flags & COMMON)
     fprintf(f,"COMMON ");
-  if (p->flags&WEAK)
+  if (p->flags & WEAK)
     fprintf(f,"WEAK ");
-  if (p->flags&LOCAL)
+  if (p->flags & LOCAL)
     fprintf(f,"LOCAL ");
-  if (p->flags&XREF)
+  if (p->flags & XREF)
     fprintf(f,"XREF ");
-  if (p->flags&XDEF)
+  if (p->flags & XDEF)
     fprintf(f,"XDEF ");
-  if (p->flags&PROTECTED)
+  if (p->flags & PROTECTED)
     fprintf(f,"PROT ");
-  if (p->flags&REFERENCED)
+  if (p->flags & REFERENCED)
     fprintf(f,"REF ");
-  if (p->flags&ABSLABEL)
+  if (p->flags & ABSLABEL)
     fprintf(f,"ABS ");
-  if (p->flags&EQUATE)
+  if (p->flags & EQUATE)
     fprintf(f,"EQU ");
-  if (p->flags&REGLIST)
+  if (p->flags & REGLIST)
     fprintf(f,"REGL ");
   if (TYPE(p))
     print_type(f,p);
@@ -89,11 +89,11 @@ void print_symbol(FILE *f,symbol *p)
 
 const char *get_bind_name(symbol *p)
 {
-  if (p->flags&EXPORT)
+  if (p->flags & EXPORT)
     return "global";
-  else if (p->flags&WEAK)
+  else if (p->flags & WEAK)
     return "weak";
-  else if (p->flags&LOCAL)
+  else if (p->flags & LOCAL)
     return "local";
   return "unknown";
 }
@@ -192,10 +192,18 @@ const char *set_last_global_label(const char *name)
 }
 
 
-int is_local_label(const char *name)
-/* returns true when name belongs to a label with local scope */
+int is_local_symbol_name(const char *name)
+/* returns true when name belongs to a symbol with local scope */
 {
-  return *name == ' ';
+  return *name==' ' && strchr(name+1,' ')!=NULL;
+}
+
+
+const char *real_symbol_name(symbol *sym)
+/* return local symbol name or NULL if symbol is not local */
+{
+  return is_local_symbol_name(sym->name) ?
+         (strchr(sym->name+1,' ') + 1) : sym->name;
 }
 
 
@@ -203,7 +211,7 @@ strbuf *make_local_label(int n,
                          const char *glob,int glen,const char *loc,int llen)
 /* construct a local label of the form:
    " " + global_label_name + " " + local_label_name
-   return pointer a one of two static string buffers */
+   return a pointer to one of two static string buffers */
 {
   static strbuf buf[EXPBUFNO+1];
   char *p;
@@ -233,7 +241,7 @@ symbol *new_abs(const char *name,expr *tree)
   int add;
 
   if (new) {
-    if (new->flags&EQUATE)
+    if (new->flags & EQUATE)
       general_error(67,name); /* repeatedly defined symbol (error) */
     if (new->type!=IMPORT && new->type!=EXPRESSION)
       general_error(5,name);  /* symbol redefined (warning) */
@@ -314,7 +322,7 @@ symbol *new_labsym(section *sec,const char *name)
 
   sec->flags |= HAS_SYMBOLS;
 
-  if (sec->flags&LABELS_ARE_LOCAL) {
+  if (sec->flags & LABELS_ARE_LOCAL) {
     strbuf *buf;
     buf = make_local_label(1,sec->name,strlen(sec->name),name,strlen(name));
     name = buf->str;

@@ -12,7 +12,7 @@ char *chkidend(char *,char *);
 #endif
 
 /* result of a boolean operation */
-#define BOOLEAN(x) -(x)
+#define BOOLEAN(x) (x)
 
 #ifndef CPU_DEF_ALIGN
 #define CPU_DEF_ALIGN 2	 /* power2-alignment is default for .align */

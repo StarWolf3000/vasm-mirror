@@ -12,7 +12,6 @@ mnemonic mnemonics[]={
 
 const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-int bitsperbyte=8;
 int bytespertaddr=4;
 
 static char *skip_reg(char *s,int *reg)
@@ -278,7 +277,7 @@ size_t instruction_size(instruction *p,section *sec,taddr pc)
   return sz;
 }
 
-operand *new_operand()
+operand *new_operand(void)
 {
   operand *new=mymalloc(sizeof(*new));
   new->type=-1;
@@ -286,7 +285,7 @@ operand *new_operand()
 }
 
 /* return true, if initialization was successful */
-int init_cpu()
+int init_cpu(void)
 {
   return 1;
 }

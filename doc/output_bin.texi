@@ -3,7 +3,7 @@ selected with the @option{-Fbin} option.
 
 @section Legal
 
-    This module is written in 2002-2023 by Volker Barthelmann and
+    This module is written in 2002-2024 by Volker Barthelmann and
     Frank Wille and is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -18,6 +18,9 @@ selected with the @option{-Fbin} option.
         a standard header (@code{0xFFFF}), which is followed by any
         number of sections. Each section starts with two little-endian
         words defining the address of the first and last byte in memory.
+    @item -coalesced
+        Do not pad the space between separate org-blocks, but output
+        all of them in a coalesced manner (sorted by address).
     @item -cbm-prg
         Writes a Commodore PRG header preceding the output file, which
         consists of two bytes in little-endian order, defining the load
@@ -39,14 +42,16 @@ selected with the @option{-Fbin} option.
         Omitting this option will usually define the execution address
         to be the same as the load address.
     @item -foenix-pgx
-        Writes a simple, single-segment format for the 65816-based Foenix
-        computers. The header defines the program's load address, which is
-        also the start address.
+        Writes a simple, single-segment format for the 65C02- and 65816-based
+        Foenix computers. The header defines the program's load address,
+        which is also the start address.
     @item -foenix-pgz
-        Write a multi-segment format for the 65816-based Foenix computers.
+        Write a multi-segment format for Foenix computers.
         The format is derived from binary format used by Western Design
         Center's C compiler. Every segment is stored with load address and
         size, and there is also a start address defined.
+        There is a 24-bit (@code{'Z'}) and a 32-bit (@code{'z'}) format
+        which will be selected according to the target CPU.
     @item -oric-mc
         Writes a machine code file header for Oric-1, Oric-Atmos and
         compatible systems. It includes the file type and name, as well as
@@ -66,8 +71,9 @@ selected with the @option{-Fbin} option.
 This output module outputs the contents of all sections as simple
 binary data, by default without any header or additional information.
 When there are multiple sections, they must not overlap. Gaps between
-sections are filled with zero bytes, when not using a special header
-format, like Atari COM. Undefined  symbols are not allowed.
+sections or org-blocks are filled with zero bytes, when not using a
+special header format, like Atari COM. The padding can be avoided by
+option @option{-coalesced}. Undefined symbols are not allowed.
 
 @section Known Problems
 
@@ -86,7 +92,6 @@ This module has the following error messages:
 @itemize @minus
 @item 3001: sections <%s>:%llx-%llx and <%s>:%llx-%llx must not overlap
 @item 3007: undefined symbol <%s>
-@item 3009: undefined symbol <%s> at %s+0x%lx, reloc type %d
 @item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
 @item 3013: reloc type %d, mask 0x%lx to symbol %s + 0x%lx does not fit into %u bits
 @item 3021: all sections are absolute, nothing to relocate

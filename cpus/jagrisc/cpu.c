@@ -1,6 +1,6 @@
 /*
  * cpu.c Jaguar RISC cpu description file
- * (c) in 2014-2017,2020,2021 by Frank Wille
+ * (c) in 2014-2017,2020,2021,2024 by Frank Wille
  */
 
 #include "vasm.h"
@@ -10,9 +10,8 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-const char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.5 (c) 2014-2017,2020,2021 Frank Wille";
+const char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.6 (c) 2014-2017,2020,2021,2024 Frank Wille";
 const char *cpuname = "jagrisc";
-int bitsperbyte = 8;
 int bytespertaddr = 4;
 
 int jag_big_endian = 1;  /* defaults to big-endian (Atari Jaguar 68000) */
@@ -378,7 +377,7 @@ static int32_t eval_oper(instruction *ip,operand *op,section *sec,
   symbol *base = NULL;
   int optype = op->type;
   int btype;
-  taddr val,loval,hival,mask;
+  taddr val,loval,hival,mask=0x1f;
 
   switch (optype) {
     case PC:
@@ -398,19 +397,18 @@ static int32_t eval_oper(instruction *ip,operand *op,section *sec,
     case IR15D:
     case REL:
     case CC:
-      mask = 0x1f;
       if (!eval_expr(op->val,&val,sec,pc))
         btype = find_base(op->val,&base,sec,pc);
 
       if (optype==IMM0 || optype==CC || optype==IMM1 || optype==SIMM) {
         if (base != NULL) {
-          loval = -32;
-          hival = 32;
+          loval = -16;
+          hival = optype==SIMM ? 15 : 31;
           if (btype != BASE_ILLEGAL) {
             if (db) {
-              add_extnreloc_masked(&db->relocs,base,val,
-                                   btype==BASE_PCREL?REL_PC:REL_ABS,
-                                   jag_big_endian?6:5,5,0,0x1f);
+              add_extnreloc(&db->relocs,base,val,
+                            btype==BASE_PCREL?REL_PC:REL_ABS,
+                            jag_big_endian?6:5,5,0);
               base = NULL;
             }
           }
@@ -467,8 +465,10 @@ static int32_t eval_oper(instruction *ip,operand *op,section *sec,
         }
         else if (btype == BASE_OK) {
           /* external label or from a different section (distance / 2) */
-          add_extnreloc_masked(&db->relocs,base,val-2,REL_PC,
-                               jag_big_endian?6:5,5,0,0x3e);
+          val -= 2;
+          add_extnreloc_masked(&db->relocs,base,val,REL_PC,
+                               jag_big_endian?6:5,5,0,~1);
+          val /= 2;
         }
         base = NULL;
       }
@@ -593,7 +593,7 @@ dblock *eval_data(operand *op, size_t bitsize, section *sec, taddr pc)
           add_extnreloc(&db->relocs,base,val,
                         btype==BASE_PCREL?REL_PC:REL_ABS,0,bitsize,0);
       }
-      else if (btype != BASE_NONE)
+      else
         general_error(38);  /* illegal relocation */
     }
 

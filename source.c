@@ -1,14 +1,18 @@
 /* source.c - source files, include paths and dependencies */
-/* (c) in 2020,2022 by Volker Barthelmann and Frank Wille */
+/* (c) in 2020,2022,2024 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 #include "osdep.h"
 #include "dwarf.h"
 
+#ifdef _WIN32
+#define SRCREADINC 0x7000
+#else
 #define SRCREADINC (64*1024)  /* extend buffer in these steps when reading */
+#endif
 
 char *compile_dir;
-int ignore_multinc,nocompdir,depend,depend_all;
+int ignore_multinc,relpath,nocompdir,depend,depend_all;
 
 static struct include_path *first_incpath;
 static struct source_file *first_source;
@@ -104,7 +108,7 @@ static FILE *locate_file(char *filename,char *mode,struct include_path **ipath_u
   struct include_path *ipath;
   FILE *f;
 
-  if (abs_path(filename)) {
+  if (!relpath && abs_path(filename)) {
     /* file name is absolute, then don't use any include paths */
     if (f = fopen(filename,mode)) {
       if (depend_all)
@@ -301,31 +305,59 @@ source *include_source(char *inc_name)
 }
 
 
-void include_binary_file(char *inname,long nbskip,unsigned long nbkeep)
-/* locate a binary file and convert into a data atom */
+void include_binary_file(char *inname,size_t nbskip,size_t nbkeep)
+/* Locate a binary file and convert into a data atom. */
 {
-  char *filename;
+  char *filename = convert_path(inname);
   FILE *f;
 
-  filename = convert_path(inname);
   if (f = locate_file(filename,"rb",NULL)) {
     size_t size = filesize(f);
 
     if (size > 0) {
-      if (nbskip>=0 && (size_t)nbskip<=size) {
+      if (nbskip <= size) {
         dblock *db = new_dblock();
 
-        if (nbkeep > (unsigned long)(size - (size_t)nbskip) || nbkeep==0)
-          db->size = size - (size_t)nbskip;
+        if (nbkeep > (size-nbskip) || nbkeep==0)
+          size -= nbskip;
         else
-          db->size = nbkeep;
+          size = nbkeep;
 
-        db->data = mymalloc(db->size);
+        db->size = (size + octetsperbyte - 1) / octetsperbyte;
+        db->data = mymalloc(OCTETS(db->size));
+
         if (nbskip > 0)
           fseek(f,nbskip,SEEK_SET);
 
-        if (fread(db->data,1,db->size,f) != db->size)
-          general_error(29,filename);  /* read error */
+        if (octetsperbyte>1 && input_bytes_le) {
+          /* we have to swap all target-bytes to the internal BE format */
+          uint8_t *p;
+          size_t i;
+          int j,b;
+
+          for (i=0,p=db->data; i<db->size; i++,p+=octetsperbyte) {
+            for (j=octetsperbyte-1; j>=0; j--) {
+              b = fgetc(f);
+              if (b == EOF) {
+                if (feof(f))
+                  p[j] = 0;
+                else
+                  general_error(29,filename);  /* read error */
+              }
+              else
+                p[j] = (uint8_t)b;
+            }
+          }
+        }
+        else {
+          if (fread(db->data,1,size,f) == size) {
+            if (OCTETS(db->size) > size)
+              memset(db->data+size,0,OCTETS(db->size)-size);
+          }
+          else
+            general_error(29,filename);  /* read error */
+        }
+
         add_atom(0,new_data_atom(db,1));
       }
       else
