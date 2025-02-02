@@ -8,13 +8,13 @@
 struct include_path {
   struct include_path *next;
   char *path;
-  int compdir_based;
 };
 
 /* source files */
 struct source_file {
   struct source_file *next;
   struct include_path *incpath;
+  int compdir_based;  /* path and file name based on compile directory */
   int index;
   char *name;
   char *text;

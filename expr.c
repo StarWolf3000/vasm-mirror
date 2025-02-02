@@ -1284,6 +1284,8 @@ int eval_expr_huge(expr *tree,thuge *result)
       tree->c.sym->flags&=~INEVAL;
       if(!ok) return 0;
     }
+    else if(tree->c.sym->type==LABSYM&&(tree->c.sym->flags&ABSLABEL))
+      val=huge_from_int(tree->c.sym->pc);  /* allow absolute labels */
 #if 0 /* all relocations should be representable by taddr */
     else if(EXTREF(tree->c.sym))
       val=huge_zero();

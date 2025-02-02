@@ -27,7 +27,8 @@
 #define REL_COPY (REL_LOADREL+1)     /* copy from shared object */
 #define REL_JMPSLOT (REL_COPY+1)     /* procedure linkage table entry */
 #define REL_SECOFF (REL_JMPSLOT+1)   /* symbol's offset to start of section */
-#define LAST_STANDARD_RELOC REL_SECOFF
+#define REL_MEMID (REL_SECOFF+1)     /* ID of section's destination memory */
+#define LAST_STANDARD_RELOC REL_MEMID
 #if LAST_STANDARD_RELOC>0x1f
 #error too many standard relocation types
 #endif

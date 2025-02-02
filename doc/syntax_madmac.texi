@@ -182,12 +182,26 @@ equals-character, may be optionally preceded by a dot (@code{.}).
       on equate-symbols.
 
 @item if <expression>
-      Start of block of conditional assembly. If <expression> is true, the
-      block between '@code{if}' and the matching '@code{endif}' or
+      Start of block of conditional assembly. If @code{<expression>} is true, 
+      the block between '@code{if}' and the matching '@code{endif}' or
       '@code{else}' will be assembled. When false, ignore all lines until
       an '@code{else}' or '@code{endif}' directive is encountered.
       It is possible to leave such a block early from within an include
       file (with @code{end}) or a macro (with @code{endm}).
+      Note, that @code{<expression>} must be constant and defined during
+      the first pass, otherwise this is an error.
+
+@item ifdef <symbol>
+      Conditionally assembles the following lines when the symbol is defined
+      at this point during the first pass.
+      Note, that this is no official Madmac directive and makes your source
+      incompatible.
+
+@item ifndef <symbol>
+      Conditionally assembles the following lines when the symbol is undefined
+      at this point during the first pass.
+      Note, that this is no official Madmac directive and makes your source
+      incompatible.
 
 @item iif <expression>, <statement>
       A single-line conditional assembly. The <statement> will be parsed

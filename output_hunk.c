@@ -5,7 +5,7 @@
 #include "osdep.h"
 #include "output_hunk.h"
 #if defined(OUTHUNK) && (defined(VASM_CPU_M68K) || defined(VASM_CPU_PPC))
-static char *copyright="vasm hunk format output module 2.17a (c) 2002-2024 Frank Wille";
+static char *copyright="vasm hunk format output module 2.17e (c) 2002-2024 Frank Wille";
 int hunk_xdefonly,hunk_devpac;
 
 static uint32_t sec_cnt;
@@ -673,7 +673,7 @@ static void add_linedebug(struct list *ldblist,source *src,int line,
 
     pathbuf[0] = '\0';
     if (src->srcfile->incpath != NULL) {
-      if (src->srcfile->incpath->compdir_based)
+      if (src->srcfile->compdir_based)
         strcpy(pathbuf,compile_dir);
       strcat(pathbuf,src->srcfile->incpath->path);
     }
@@ -696,12 +696,15 @@ static void add_linedebug(struct list *ldblist,source *src,int line,
   else
     ldbblk = (struct linedb_block *)ldblist->last;
 
-  /* append line/offset pair as a new entry for the debug block */
-  ldbent = mymalloc(sizeof(struct linedb_entry));
-  ldbent->line = (uint32_t)line;
-  ldbent->offset = off - ldbblk->offset;
-  addtail(&ldbblk->lines,&ldbent->n);
-  ldbblk->entries++;
+  ldbent = (struct linedb_entry *)ldbblk->lines.last;
+  if (ldbent->n.pred==NULL || (int)ldbent->line!=line) {
+    /* append line/offset pair as a new entry for the debug block */
+    ldbent = mymalloc(sizeof(struct linedb_entry));
+    ldbent->line = (uint32_t)line;
+    ldbent->offset = off - ldbblk->offset;
+    addtail(&ldbblk->lines,&ldbent->n);
+    ldbblk->entries++;
+  }
 }
 
 
@@ -867,6 +870,16 @@ static void report_bad_relocs(struct list *reloclist)
 }
 
 
+static uint32_t hunk_size(section *sec)
+{
+  uint64_t sz = get_sec_size(sec);
+
+  if (sz > 0xfffffffc)
+    output_error(23,sec->name,0xfffffffcULL,(unsigned long long)sz);
+  return (sz+3) >> 2;
+}
+
+
 static void write_object(FILE *f,section *sec,symbol *sym)
 {
   int wrotesec = 0;
@@ -903,7 +916,7 @@ static void write_object(FILE *f,section *sec,symbol *sym)
           type = HUNK_DATA;  /* default */
         }
         fwmemflags(f,sec,type);
-        fw32(f,(get_sec_size(sec)+3)>>2,1);  /* size */
+        fw32(f,hunk_size(sec),1);  /* size */
 
         if (type != HUNK_BSS) {
           /* write contents */
@@ -1003,7 +1016,7 @@ static void write_exec(FILE *f,section *sec,symbol *sym)
     /* write section sizes and memory flags */
     for (s=sec; s; s=s->next) {
       if (!(s->flags & SEC_DELETED))
-        fwmemflags(f,s,(get_sec_size(s)+3)>>2);
+        fwmemflags(f,s,hunk_size(s));
     }
 
     /* section hunk loop */
@@ -1030,7 +1043,7 @@ static void write_exec(FILE *f,section *sec,symbol *sym)
           size = databss ? file_size(sec) : sect_size(sec);
           fw32(f,(size+3)>>2,1);
           for (a=sec->first,pc=0; a; a=a->next) {
-            npc = fwpcalign(f,a,sec,pc);
+            npc = pc<size ? fwpcalign(f,a,sec,pc) : pcalign(a,pc);
 
             if (genlinedebug && (a->type==DATA || a->type==SPACE))
               add_linedebug(&linedblist,a->src,a->line,npc);
@@ -1046,14 +1059,14 @@ static void write_exec(FILE *f,section *sec,symbol *sym)
 
             pc = npc + atom_size(a,sec,npc);
           }
-          if (type == HUNK_CODE && (pc&1) == 0 && a == NULL)
-            fwnopalign(f,pc);
+          if (type == HUNK_CODE && (size&1) == 0 && a == NULL)
+            fwnopalign(f,size);
           else
-            fwalign(f,pc,4);
+            fwalign(f,size,4);
         }
         else {
           /* HUNK_BSS */
-          uint32_t len = (get_sec_size(sec) + 3) >> 2;
+          uint32_t len = hunk_size(sec);
           utaddr pc;
 
           if (kick1 && len > 0x10000)

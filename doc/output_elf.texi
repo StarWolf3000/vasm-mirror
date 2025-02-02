@@ -28,7 +28,7 @@ the following architectures:
 @item ARM
 @item i386
 @item Jaguar RISC
-@item M68k
+@item M68k, ColdFire
 @item PowerPC
 @item x86_64
 

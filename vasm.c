@@ -10,7 +10,7 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 2.0"
+#define _VER "vasm 2.0a"
 const char *copyright = _VER " (c) in 2002-2024 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
@@ -1112,17 +1112,24 @@ void print_section(FILE *f,section *sec)
   }
 }
 
+void set_syntax_default(void)
+{
+  /* set the syntax module's default section */
+  if(!syntax_defsect()){
+    /* still undefined, then default to a code-section named ".text" */
+    defsectname=".text";
+    defsecttype="acrx";
+  }
+}
+
 static void set_defaults(void)
 {
   /* When the output format didn't set a default section, then
-     let the syntax-module do it. */
-  if(defsecttype==NULL){
-    if (!syntax_defsect()){
-      /* still undefined, then default to a code-section named ".text" */
-      defsectname=".text";
-      defsecttype="acrx";
-    }
-  }
+     let the syntax-module do it.
+     Also use the syntax-module's default section when PIC is requested,
+     because a binary output may have set absolute ORG-mode as default. */
+  if(defsecttype==NULL||(pic_check&&defsectname==NULL))
+    set_syntax_default();
 }
 
 int main(int argc,char **argv)

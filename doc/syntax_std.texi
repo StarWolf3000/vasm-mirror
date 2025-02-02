@@ -367,10 +367,9 @@ See @code{.string}.
       <expression> number of times. <expression> has to be positive.
 
 @item .section <name>[,"<attributes>"][[,@@<type>]|[,%<type>]|[,<mem_flags>]]
-      Starts a new section named @code{<name>} or reactivate an old one. If
-      attributes are given for an already existing section, they must
-      match exactly. The section's name will also be defined as a new
-      symbol, which represents the section's start address.
+      Starts a new section named @code{<name>} or reactivates an old one.
+      When attributes are given for an already existing section, they must
+      match exactly.
       The @code{"<attributes>"} string may consist of the following characters:
 
       Section Contents:

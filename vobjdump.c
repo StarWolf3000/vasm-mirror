@@ -68,7 +68,7 @@ static const char unknown[] = "UNKNOWN";
 
 static const char *std_reloc_name[] = {
   "NONE","ABS","PC","GOT","GOTPC","GOTOFF","GLOBDAT","PLT","PLTPC","PLTOFF",
-  "SD","UABS","LOCALPC","LOADREL","COPY","JMPSLOT","SECOFF"
+  "SD","UABS","LOCALPC","LOADREL","COPY","JMPSLOT","SECOFF","MEMID"
 };
 static const int num_std_relocs = sizeof(std_reloc_name)/sizeof(std_reloc_name[0]);
 

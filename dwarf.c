@@ -83,7 +83,7 @@ static void make_file_lists(struct source_file *first_source)
     pathbuf[0] = '\0';
 
     if ((incnode = srcnode->incpath) != NULL) {
-      if (incnode->compdir_based) {
+      if (srcnode->compdir_based) {
         if (compile_dir != NULL)
           strcpy(pathbuf,compile_dir);
         else

@@ -73,8 +73,8 @@ special
 .number:[taddr]
     .byte 0--127 [0--127]
     .byte 128-191 [x-0x80 bytes little-endian], fill remaining with 0
-    .byte 192-255 [x-0xC0 bytes little-endian], fill remaining with 0xff [vobj version 2+]
-
+    .byte 192-255 [x-0xC0 bytes little-endian], fill remaining with 0xff
+    (.byte 192-255 is supported by vobj version 2+ only.)
 @end example
 
 @section Restrictions

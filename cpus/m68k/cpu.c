@@ -25,7 +25,7 @@ const struct cpu_models models[] = {
 static const int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.7 (c) 2002-2024 Frank Wille";
+const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.7b (c) 2002-2024 Frank Wille";
 const char *cpuname = "M68k";
 int bytespertaddr = 4;
 
@@ -3817,7 +3817,7 @@ dontswap:
         man &= 0x7fffffLL;
         fval = (tfloat)(man + 0x800000LL) / (tfloat)0x800000;
         fval = ldexptfloat(buf[0]&0x80?-fval:fval,exp);
-        intwopt = roundtfloat(fval)==fval && fval>=-32768.0 && fval<32768.0;
+        intwopt = fval>=-32768.0 && fval<32768.0 && (int)fval==fval;
       }
       else {  /* special case 0.0, when exponent and mantissa is all zero */
         fval = 0.0;
@@ -5732,6 +5732,20 @@ int set_default_qualifiers(char **q,int *q_len)
 }
 
 
+static void leave_abs_mode(void)
+{
+  set_syntax_default();  /* overwrite output-module's ORG-default */
+
+  if (current_section && (current_section->flags & ABSOLUTE)) {
+    try_end_rorg();  /* end a potential RORG block */
+    if (current_section->flags & ABSOLUTE) {
+      /* leave absolute mode by setting the syntax-module's default section */
+      set_section(new_section(defsectname,defsecttype,1));
+    }
+  }
+}
+
+
 static char validchar(char *s)
 {
   return ISEOL(s) ? 0 : *s;
@@ -5851,6 +5865,7 @@ static char *devpac_option(char *s)
     return s+4;
   }
   else if (!strnicmp(s,"chkpc",5)) {
+    leave_abs_mode();
     add_cpu_opt(0,OCMD_CHKPIC,flag);
     return s+5;
   }
@@ -6039,6 +6054,7 @@ static char *devpac_option(char *s)
           }
           break;
         case 'p':
+          leave_abs_mode();
           add_cpu_opt(0,OCMD_CHKPIC,flag);
           break;
         case 's':

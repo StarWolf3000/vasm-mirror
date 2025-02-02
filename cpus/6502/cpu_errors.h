@@ -13,3 +13,5 @@
   "absolute-long addressing not available",ERROR,
   "cpu must be defined before any code is generated",ERROR,
   "unknown cpu model: %s",ERROR,
+  "unsuitable addressing mode for retrieving memory id",ERROR,        /* 15 */
+  "no memory id defined, assuming 0",WARNING,

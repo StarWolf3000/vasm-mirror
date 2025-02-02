@@ -4,7 +4,7 @@
 #include "vasm.h"
 #include "output_xfile.h"
 #if defined(OUTXFIL) && defined(VASM_CPU_M68K)
-static char *copyright="vasm xfile output module 0.4 (c) 2018,2020,2021,2024 Frank Wille";
+static char *copyright="vasm xfile output module 0.4a (c) 2018,2020,2021,2024 Frank Wille";
 
 static char *exec_symname;
 static uint32_t exec_offs;
@@ -46,10 +46,15 @@ static void xfile_initwrite(section *sec,symbol *sym)
         i = S_TEXT;
       }
       if (!sections[i]) {
-        sections[i] = sec;
-        secsize[i] = (get_sec_size(sec) + SECT_ALIGN - 1) /
-                     SECT_ALIGN * SECT_ALIGN;
+        uint64_t sz = get_sec_size(sec);
+
         sec->idx = i;  /* section index 0:text, 1:data, 2:bss */
+        sections[i] = sec;
+        if (sz+SECT_ALIGN <= 0x100000000ULL)
+          secsize[i] = (sz + SECT_ALIGN - 1) / SECT_ALIGN * SECT_ALIGN;
+        else
+          output_error(23,sec->name,
+                       0x100000000ULL-SECT_ALIGN,(unsigned long long)sz);
       }
       else
         output_error(7,sec->name);

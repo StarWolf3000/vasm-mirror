@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm oldstyle syntax module 0.20 (c) 2002-2024 Frank Wille";
+const char *syntax_copyright="vasm oldstyle syntax module 0.20a (c) 2002-2024 Frank Wille";
 hashtable *dirhash;
 int dotdirs;
 
@@ -1904,6 +1904,7 @@ char *const_prefix(char *s,int *base)
       *base = 16;
       return s+1;
     }
+#if !defined(VASM_CPU_Z80)
     else if (isxdigit((unsigned char)s[2]) && s[1]=='-') {
       /* requires BROKEN_HEXCONST in expr.c */
       *base = 16;
@@ -1914,6 +1915,7 @@ char *const_prefix(char *s,int *base)
       *base = 0;
       return s+1;
     }
+#endif
   }
 #if defined(VASM_CPU_Z80)
   if ((*s=='&' || *s=='#') && isxdigit((unsigned char)s[1])) {

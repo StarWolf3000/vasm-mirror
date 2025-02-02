@@ -8,7 +8,7 @@
 @setfilename index.texi
 @settitle vasm manual
 @setchapternewpage odd
-@set UPDATED October 2024
+@set UPDATED December 2024
 
 @ifinfo
 
@@ -140,8 +140,8 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @chapter GST output module
 @include output_gst.texi
 
-@node Amiga output module
-@chapter Amiga output module
+@node Hunk-format output module
+@chapter Hunk-format output module
 @include output_hunk.texi
 
 @node X68k output module
@@ -160,12 +160,12 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @chapter Simple binary output module
 @include output_bin.texi
 
-@node Motorola srecord output module
-@chapter Motorola srecord output module
+@node Motorola S-Record output module
+@chapter Motorola S-Record output module
 @include output_srec.texi
 
-@node Intel hex output module
-@chapter Intel hex output module
+@node Intel Hex output module
+@chapter Intel Hex output module
 @include output_ihex.texi
 
 @node C #define output module
@@ -184,8 +184,8 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @chapter MOS paper tape output module
 @include output_pap.texi
 
-@node m68k cpu module
-@chapter m68k cpu module
+@node M68k cpu module
+@chapter M68k cpu module
 @include cpu_m68k.texi
 
 @node PowerPC cpu module
@@ -208,8 +208,8 @@ Detailed instructions how to build vasm can be found in the last chapter.
 @chapter 80x86 cpu module
 @include cpu_x86.texi
 
-@node z80 cpu module
-@chapter z80 cpu module
+@node Z80 cpu module
+@chapter Z80 cpu module
 @include cpu_z80.texi
 
 @node 6800 cpu module

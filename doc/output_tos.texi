@@ -88,4 +88,5 @@ This module has the following error messages:
 @item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
 @item 3011: weak symbol <%s> not supported by output format, treating as global
 @item 3020: too many symbols for selected output file format
+@item 3024: section <%s>: maximum size of 0x%llx bytes exceeded (0x%llx)
 @end itemize

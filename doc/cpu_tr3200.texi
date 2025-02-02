@@ -17,13 +17,13 @@ Default alignment for sections is 4 bytes. Instructions alignment is 4 bytes.
 Data is aligned to its natural alignment by default, i.e. 2 byte wide data
 alignment is 2 bytes and 4 byte wide data alignment is 4 byte.
 
-The backend uses TR3200 syntax! This means the left operands are always the
+The backend uses TR3200 syntax! This means the left operand is always the
 destination and the right operand is the source (except for single operand
 instructions). Register names have to be prefixed by a '@code{%}'
 (@code{%bp}, @code{%r0}, etc.)
 This means that it should accept WaveAsm assembly files if oldstyle syntax module
-is being used. The instructions are lowercase, @option{-dotdir} option is being used
-and directives are not in the first column.
+is being used. The instructions are lower case, @option{-dotdir} option is being
+used and directives are not in the first column.
 
 @section Extensions
 
@@ -40,7 +40,7 @@ Predefined register symbols in this backend:
 
 @itemize @minus
 
-@item This module need to be fully checked, but has been tested building a full
+@item This module needs to be fully checked, but has been tested building a full
       program that could be found here : @uref{https://github.com/Zardoz89/trillek-firmware}
 @item Instruction relocations are missing.
 

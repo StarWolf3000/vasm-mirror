@@ -119,6 +119,8 @@ The one character following a @code{'} or @code{"} is converted into
 ASCII code. A closing quote behind that character is optional in
 expressions. Not optional for strings.
 
+The current-PC symbols is @code{*}, unless redefined by a CPU backend
+(e.g. Z80 sets @code{$}).
 
 @section Directives
 
@@ -732,10 +734,10 @@ point3
 
 @itemize @minus
 
-@item Addresses assigned to @code{org} or to the current pc symbol @code{'*'}
+@item Addresses assigned with @code{org} or to the current pc symbol @code{'*'}
 (on the Z80 the pc symbol is @code{'$'}) must be constant.
 
-@item Expressions in an @code{if} directive must be constant.
+@item Expressions in any form of conditional @code{if} directive must be constant.
 
 @end itemize
 

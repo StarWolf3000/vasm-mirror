@@ -74,7 +74,7 @@ static void print_source_file(FILE *f, source *src)
   if (src->srcfile) {
     if (src->srcfile->incpath != NULL)
       fprintf(f,"\"%s%s%s\"",
-              src->srcfile->incpath->compdir_based
+              src->srcfile->compdir_based
               ? compile_dir : emptystr,
               src->srcfile->incpath->path,
               src->srcfile->name);

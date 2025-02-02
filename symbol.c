@@ -1,5 +1,5 @@
 /* symbol.c - manage all kinds of symbols */
-/* (c) in 2014-2023 by Volker Barthelmann and Frank Wille */
+/* (c) in 2014-2024 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -323,8 +323,16 @@ symbol *new_labsym(section *sec,const char *name)
   sec->flags |= HAS_SYMBOLS;
 
   if (sec->flags & LABELS_ARE_LOCAL) {
+    static strbuf locname;
     strbuf *buf;
-    buf = make_local_label(1,sec->name,strlen(sec->name),name,strlen(name));
+    size_t plen;
+    char *p;
+
+    plen = strlen(name) + 1;
+    p = strbuf_alloc(&locname,plen+1);
+    *p = '.';  /* make local labels starting with a '.' */
+    strcpy(p+1,name);
+    buf = make_local_label(1,sec->name,strlen(sec->name),p,plen);
     name = buf->str;
   }
 

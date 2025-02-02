@@ -199,7 +199,14 @@ Other options:
 
 @item -pic
         Try to generate position independent code. Every relocation
-        position is flagged by an error message.
+        position is flagged by an error message. This option overrides
+        the absolute default mode (@code{ORG 0}) of binary output
+        modules and doesn't work if you force the assembler into
+        absolute mode by such a directive.
+
+ Note, that this means
+        you cannot do any PIC-checks in absolute mode, because no
+        relocations are generated there.
 
 @item -relpath
         Do not interpret a source path starting with '/' or '\', or including
@@ -500,6 +507,7 @@ Has to be provided completely by the syntax module.
     @item Miro Krop@'a@v{c}ek
     @item Olav Kr@"omeke
     @item Christoph Krc
+    @item Chester Kollschen
     @item Richard K@"orber
     @item Mikael Kalms
     @item Mark Jones

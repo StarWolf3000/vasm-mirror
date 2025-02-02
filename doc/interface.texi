@@ -455,7 +455,7 @@ the modules:
         Section has entered relocated-org mode, which also sets the
         @code{ABSOLUTE} flag. In this mode code is written into the current
         section, but relocated to an absolute address. No relocation
-        information are generated.
+        table entries are generated.
 @item NEAR_ADDRESSING
         Section is marked as suitable for cpu-specific "near" addressing
         modes. For example, base-register relative or zero/direct-page.

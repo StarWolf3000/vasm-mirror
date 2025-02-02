@@ -298,7 +298,8 @@ vasm performs the following optimizations:
         This is the default setting in PhxAss and Devpac compatibility mode.
 
     @item -kick1hunks
-        Prevents optimization of JMP/JSR to 32-bit PC-relative (BRA/BSR).
+        Prevents optimization of JMP/JSR to 32-bit PC-relative (BRA/BSR),
+        which requires a relocation type that is missing for Kickstart 1.x.
 
     @item -nodpc
         Do not attempt to encode absolute PC-displacements directly.

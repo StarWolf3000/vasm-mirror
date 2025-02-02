@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-const char *cpu_copyright="vasm 6502 cpu backend 1.0 (c) 2002,2006,2008-2012,2014-2024 Frank Wille";
+const char *cpu_copyright="vasm 6502 cpu backend 1.0a (c) 2002,2006,2008-2012,2014-2024 Frank Wille";
 const char *cpuname = "6502";
 int bytespertaddr = 2;
 
@@ -181,6 +181,10 @@ int parse_operand(char *p,int len,operand *op,int required)
       else if (pfx==1 && (*p=='^' || *p=='`')) {
         p = skip(++p);
         op->flags |= OF_BK;  /* bank-byte */
+      }
+      else if (pfx==1 && *p=='?') {
+        p = skip(++p);
+        op->flags |= OF_ID;  /* retrieve symbol's memory/bank ID-code */
       }
       else if (pfx==2 && (*p=='!' || *p=='|')) {
         p = skip(++p);
@@ -683,11 +687,23 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
               /* relative branch requires no relocation */
               val = val - (pc + offs + (optype==REL8 ? 1 : 2));
             }
+            else if ((op->flags&OF_ID) && optype!=IMMED8 && optype!=IMMED16) {
+              cpu_error(15);  /* unsuitable addressing mode for memory id */
+            }
             else {
-              taddr add = val;  /* reloc addend */
               taddr mask = -1;
-              int type = REL_ABS;
+              taddr add;  /* reloc addend */
+              int type;
               int size;
+
+              if (op->flags & OF_ID) {
+                type = REL_MEMID;
+                if (LOCREF(base))
+                  val -= base->pc;  /* take symbol's offset out of the addend */
+              }
+              else
+                type = REL_ABS;
+              add = val;
 
               switch (optype) {
                 case LABS:
@@ -747,7 +763,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                     type = REL_PC;
                     add += offs;
                     val += offs;
-                    if (op->flags & (OF_LO|OF_HI|OF_BK))
+                    if (op->flags & (OF_LO|OF_HI|OF_BK|OF_ID))
                       cpu_error(2);  /* selector prefix ignored */
                   }
                   else if (op->flags & OF_BK) {
@@ -768,7 +784,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                   if (op->flags & OF_PC) {
                     type = REL_PC;
                     val += offs;
-                    if (op->flags & (OF_LO|OF_HI|OF_BK))
+                    if (op->flags & (OF_LO|OF_HI|OF_BK|OF_ID))
                       cpu_error(2);  /* selector prefix ignored */
                   }
                   else if (op->flags & OF_BK) {
@@ -806,73 +822,84 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
         else {
           /* constant/absolute value */
           base = NULL;
-          switch (optype) {
-            case DPAGE:
-            case DPAGEX:
-            case DPAGEY:
-            case DPAGEZ:
-            case DPINDX:
-            case DPINDY:
-            case DPINDZ:
-            case DPIND:
-            case LDPINDY:
-            case QDPINDZ:
-            case LDPIND:
-              if (op->flags & OF_LO)
-                val &= 0xff;
-              else
-                val -= dpage;
-              if (op->flags & (OF_HI|OF_WA))
-                cpu_error(2);  /* selector prefix ignored */
-              break;
-            case ABS:
-            case ABSX:
-            case ABSY:
-            case ABSZ:
-            case INDIR:
-            case INDIRX:
-            case LINDIR:
-            case RELJMP:
-              if ((cpu_type & WDC65816) || (op->flags&(OF_HI|OF_WA)))
-                val &= 0xffff;  /* ignore the bank, assume DBR is correct */
-              else if (op->flags & OF_LO)
-                cpu_error(2);  /* selector prefix ignored */
-              break;
-            case LABS:
-            case LABSX:
-              val &= 0xffffff;
-              if (op->flags & (OF_LO|OF_WA))
-                cpu_error(2);  /* selector prefix ignored */
-              break;
-            case REL8:
-              val -= pc + offs + 1;
-              break;
-            case REL16:
-              val -= pc + offs + 2;
-              break;
-            case MVBANK:
-              val = (val >> 16) & 0xff;
-            case SR:
-            case SRINDY:
-              if (op->flags & (OF_LO|OF_WA|OF_HI))
-                cpu_error(2);  /* selector prefix ignored */
-              break;
-            case IMMED8:
-              if (op->flags & OF_BK)
+          if (op->flags & OF_ID) {
+            if (optype==IMMED8 || optype==IMMED16) {
+              cpu_error(16);  /* no memory-id for absolute symbols */
+              val = 0;  /* @@@ we should only subtract the symbol's value here */
+            }
+            else
+              cpu_error(15);  /* unsuitable addressing mode for memory id */
+            val = 0;
+          }
+          else {
+            switch (optype) {
+              case DPAGE:
+              case DPAGEX:
+              case DPAGEY:
+              case DPAGEZ:
+              case DPINDX:
+              case DPINDY:
+              case DPINDZ:
+              case DPIND:
+              case LDPINDY:
+              case QDPINDZ:
+              case LDPIND:
+                if (op->flags & OF_LO)
+                  val &= 0xff;
+                else
+                  val -= dpage;
+                if (op->flags & (OF_HI|OF_WA))
+                  cpu_error(2);  /* selector prefix ignored */
+                break;
+              case ABS:
+              case ABSX:
+              case ABSY:
+              case ABSZ:
+              case INDIR:
+              case INDIRX:
+              case LINDIR:
+              case RELJMP:
+                if ((cpu_type & WDC65816) || (op->flags&(OF_HI|OF_WA)))
+                  val &= 0xffff;  /* ignore the bank, assume DBR is correct */
+                else if (op->flags & OF_LO)
+                  cpu_error(2);  /* selector prefix ignored */
+                break;
+              case LABS:
+              case LABSX:
+                val &= 0xffffff;
+                if (op->flags & (OF_LO|OF_WA))
+                  cpu_error(2);  /* selector prefix ignored */
+                break;
+              case REL8:
+                val -= pc + offs + 1;
+                break;
+              case REL16:
+                val -= pc + offs + 2;
+                break;
+              case MVBANK:
                 val = (val >> 16) & 0xff;
-              else if (op->flags & OF_HI)
-                val = (val >> 8) & 0xff;
-              else if ((op->flags & OF_LO) || auto_mask)
-                val &= 0xff;
-              break;
-            case IMMED16:
-              if (op->flags & OF_BK)
-                val = (val >> 16) & 0xffff;
-              else if (op->flags & OF_HI)
-                val = (val >> 8) & 0xffff;
-              else if ((op->flags & OF_LO) || auto_mask)
-                val &= 0xffff;
-              break;
+              case SR:
+              case SRINDY:
+                if (op->flags & (OF_LO|OF_WA|OF_HI))
+                  cpu_error(2);  /* selector prefix ignored */
+                break;
+              case IMMED8:
+                if (op->flags & OF_BK)
+                  val = (val >> 16) & 0xff;
+                else if (op->flags & OF_HI)
+                  val = (val >> 8) & 0xff;
+                else if ((op->flags & OF_LO) || auto_mask)
+                  val &= 0xff;
+                break;
+              case IMMED16:
+                if (op->flags & OF_BK)
+                  val = (val >> 16) & 0xffff;
+                else if (op->flags & OF_HI)
+                  val = (val >> 8) & 0xffff;
+                else if ((op->flags & OF_LO) || auto_mask)
+                  val &= 0xffff;
+                break;
+            }
           }
         }
 
@@ -957,12 +984,27 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
     int btype = find_base(op->value,&base,sec,pc);
 
     if (btype==BASE_OK ||
-        (btype==BASE_PCREL && !(op->flags&(OF_LO|OF_HI|OF_BK)))) {
-      rl = add_extnreloc(&db->relocs,base,val,
-                         btype==BASE_PCREL?REL_PC:REL_ABS,0,bitsize,0);
+        (btype==BASE_PCREL && !(op->flags&(OF_LO|OF_HI|OF_BK|OF_ID)))) {
+      int rtype;
+
+      if (op->flags & OF_ID) {
+        rtype = REL_MEMID;
+        if (LOCREF(base))
+          val -= base->pc;  /* take symbol's offset out of the addend */
+      }
+      else
+        rtype = btype==BASE_PCREL ? REL_PC : REL_ABS;
+
+      rl = add_extnreloc(&db->relocs,base,val,rtype,0,bitsize,0);
     }
     else
       general_error(38);  /* illegal relocation */
+  }
+  else {
+    if (op->flags & OF_ID) {
+      cpu_error(16);  /* no memory-id for absolute symbols */
+      val = 0;  /* @@@ we should only subtract the symbol's value here */
+    }
   }
 
   switch (bitsize) {

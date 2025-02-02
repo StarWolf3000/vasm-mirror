@@ -328,7 +328,7 @@ dblock *parse_string(char **str,char delim,int width)
 
   /* how many bytes do we need for the string? */
   skip_string(s,delim,&size);
-  if (size <= 1)
+  if (size == 1)
     return NULL; /* not a string, so we can use eval_expr() on it */
 
   db = new_dblock();

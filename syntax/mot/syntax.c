@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm motorola syntax module 3.19 (c) 2002-2024 Frank Wille";
+const char *syntax_copyright="vasm motorola syntax module 3.19a (c) 2002-2024 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -2281,9 +2281,13 @@ void parse(void)
       }
       else if (offs_directive(s,"rs") || offs_directive(s,"so")) {
         label = new_setoffset(labname,&s,rs_name,1);
+        if (!devpac_compat && !phxass_compat)
+          label->flags |= symflags;
       }
       else if (offs_directive(s,"fo")) {
         label = new_setoffset(labname,&s,fo_name,-1);
+        if (!devpac_compat && !phxass_compat)
+          label->flags |= symflags;
       }
       else if (!strnicmp(s,"ttl",3) && isspace((unsigned char)*(s+3))) {
         s = skip(s+3);

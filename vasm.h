@@ -177,6 +177,7 @@ int end_rorg(void);
 void try_end_rorg(void);
 void start_rorg(taddr);
 void print_section(FILE *,section *);
+void set_syntax_default(void);
 
 #define setfilename(x) filename=(x)
 #define getfilename() filename

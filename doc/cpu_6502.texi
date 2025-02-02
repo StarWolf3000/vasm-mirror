@@ -54,7 +54,7 @@ This module provides the following additional options:
         whenever possible.
     @item -wdc02
         Recognize all 65C02 instructions and the WDC65C02 extensions
-        (@code{RMB},@code{SMB},@code{BBR},@code{BBS},@code{STP},@code{WAI)}.
+        (@code{RMB}, @code{SMB}, @code{BBR}, @code{BBS}, @code{STP}, @code{WAI)}.
 @end table
 
 @section General
@@ -84,8 +84,8 @@ Instructions consist of one up to three bytes for the standard 6502 family
 (up to 7 bytes for the 6280) and require no alignment.
 There is also no alignment requirement for sections and data.
 
-All known mnemonics for illegal instructions are optionally recognized (e.g.
-@code{dcm} and @code{dcp} refer to the same instruction). Some illegal
+All known mnemonics for illegal 6502 instructions are optionally recognized
+(e.g. @code{dcm} and @code{dcp} refer to the same instruction). Some illegal
 insructions (e.g. @code{$ab}) are known to show unpredictable behaviour,
 or do not always work the same on different CPUs.
 
@@ -96,7 +96,7 @@ have to use immediate addressing syntax. Example: @code{mvn #$7f,#^label}.
 
 @section Extensions
 
-Note that some of these extensions have changed since version 1.0 of
+Note that some of these extensions have changed with version 1.0 of
 this backend. Bitstream-selectors (to get the low-byte, high-byte, etc. of
 an expression) are no longer available as unary operators, to avoid
 inconsistencies, and to better conform with classic assemblers and the
@@ -130,6 +130,11 @@ This backend provides the following specific extensions:
  @code{>} enforces 24-bit (long absolute) addressing in 65816 mode, 16-bit
  otherwise.
  Refer to chapter 6.3.3.5 of the W65C816S datasheet.
+
+@item The prefix character @code{?} can be used in immediate addressing
+ modes and data directives to retrieve a symbol's memory/bank ID. Note,
+ that this feature depends on a special relocation type, which is only
+ supported by @code{vlink} and requires the @code{VOBJ} format.
 
 @end itemize
 

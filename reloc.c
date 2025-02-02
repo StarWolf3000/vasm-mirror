@@ -155,7 +155,8 @@ void print_reloc(FILE *f,rlist *rl)
   if ((type = std_reloc(rl)) >= 0) {
     static const char *rname[LAST_STANDARD_RELOC+1] = {
       "none","abs","pc","got","gotrel","gotoff","globdat","plt","pltrel",
-      "pltoff","sd","uabs","localpc","loadrel","copy","jmpslot","secoff"
+      "pltoff","sd","uabs","localpc","loadrel","copy","jmpslot","secoff",
+      "memid"
     };
     fprintf(f,"r%s",rname[type]);
     print_nreloc(f,rl->reloc,type!=REL_NONE);

@@ -55,8 +55,9 @@ typedef struct {
 #define OF_LO (1<<0)  /* '<' selects low-byte or 8-bit addressing */
 #define OF_HI (1<<1)  /* '>' selects high-byte or 16/24-bit addressing */
 #define OF_BK (1<<2)  /* '^' or '`' selects bank-byte */
-#define OF_WA (1<<3)  /* '!' or '|' selects 16-bit addressing */
-#define OF_PC (1<<4)  /* PC-relative */
+#define OF_ID (1<<3)  /* '?' selects the symbol's memory/bank-id */
+#define OF_WA (1<<4)  /* '!' or '|' selects 16-bit addressing */
+#define OF_PC (1<<5)  /* PC-relative */
 
 
 /* additional mnemonic data */

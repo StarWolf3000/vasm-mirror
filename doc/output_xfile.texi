@@ -54,4 +54,5 @@ This module has the following error messages:
 @item 3008: output module doesn't allow multiple sections of the same type
 @item 3009: undefined symbol <%s> at %s+%#lx, reloc type %d
 @item 3011: weak symbol <%s> not supported by output format, treating as global
+@item 3024: section <%s>: maximum size of 0x%llx bytes exceeded (0x%llx)
 @end itemize
