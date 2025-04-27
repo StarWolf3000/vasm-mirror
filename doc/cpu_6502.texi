@@ -1,6 +1,7 @@
 This chapter documents the backend for the MOS/Rockwell 6502
 microprocessor family. It also supports the Rockwell/WDC 65C02,
-the Hudson Soft HuC6280 and the WDC 65802/65816 instruction sets.
+the 45GS02 from the MEGA65 project, the Hudson Soft HuC6280
+and the WDC 65802/65816 instruction sets.
 
 @section Legal
 

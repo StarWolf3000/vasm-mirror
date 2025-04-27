@@ -1,5 +1,5 @@
 /* listing.h - listing file */
-/* (c) in 2020-2024 by Volker Barthelmann and Frank Wille */
+/* (c) in 2020-2025 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -101,7 +101,7 @@ void del_last_listing(void)
   if (listena && prev_listing!=NULL) {
     myfree(last_listing);
     last_listing = prev_listing;
-    prev_listing = NULL;
+    last_listing->next = prev_listing = NULL;
   }
 }
 

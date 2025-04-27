@@ -138,7 +138,7 @@ int parse_operand(char *p,int len,operand *op,int required)
       }
 
 
-      if (*p == '(' && check_indir(p, start+len)) {
+      if (check_indir(p, start+len, '(', ')')) {
         int   llen;
         char *end;
         p++;

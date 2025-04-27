@@ -107,7 +107,7 @@ Other options:
         work directory. Otherwise the default would be to set the current
         work directory to an empty string. Currently supported are:
         @code{AMIGA}, @code{ATARI}, @code{MSDOS},  @code{UNIX},
-        @code{_WIN32}.
+        @code{_WIN32}. MacOSX works with @code{UNIX}.
 
 @item -esc
         Enable escape character sequences. This will make vasm treat the
@@ -160,6 +160,11 @@ Other options:
 @item -maxpasses=<n>
         Adjusts the maximum number of passes while resolving a section.
         Defaults to 1500.
+
+@item -no-msrcdebug
+        Disable source level debugging within a macro context.
+        When generating output with source level debug information, the
+        debugger will show the invoking source text line instead.
 
 @item -nocompdir
         Do not search for include files relative to the compile directory
@@ -231,6 +236,8 @@ Other options:
         unsigned, which has the effect that only 0 bits are inserted on the
         left side. The number of bits in a value depend on the target
         address type (refer to the appropriate cpu module documentation).
+        This may already be the default for some syntax modules, like for
+        example mot-syntax in Devpac-compatibility mode.
 
 @item -uspc=<value>
         Uninitialized memory regions, declared by "space" directives
@@ -526,6 +533,7 @@ Has to be provided completely by the syntax module.
     @item Tom Duin
     @item Adrien Destugues
     @item Kieran Connell
+    @item Jae Choon Cha
     @item Fernando Cabrera
     @item Patrick Bricout
     @item Matthias Bock

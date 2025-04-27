@@ -1,0 +1,142 @@
+This chapter documents the backend for the SONY SPC700 CPU.
+
+@section Legal
+
+    This module is written in 2025 by Frank Wille
+    and is covered by the vasm copyright without modifications.
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+    @item -am
+        Automatically mask values to match their data size or the size
+        of immediate addressing, which effectively disables any range
+        checks on immediate and data values in the assembler and linker.
+    @item -dpo
+        Generate 8-bit offset instead of absolute relocations when
+        accessing a zero- or direct-page symbol.
+    @item -opt-branch
+        Enables translation of @code{B<cc>} branches into sequences of
+        @code{B<!cc> *+5 ; JMP label} when necessary. @code{BRA}
+        is directly translated into a @code{JMP} when out of range.
+        It also performs optimization of @code{JMP} to @code{BRA},
+        whenever possible.
+@end table
+
+@section General
+
+This backend accepts SPC700 instructions using the official names and
+syntax as provided by Sony.
+
+The target address type is 16 bits.
+
+Instructions consist of one up to three bytes and require no alignment.
+There is also no alignment requirement for sections and data.
+
+@section Extensions
+
+This backend provides the following specific extensions:
+
+@itemize @minus
+
+@item Immediate addressing mode operands and data directives allow
+ bitstream selector prefixes as the first character in the operand.
+ @code{<} selects the least significant bits which fit into the current
+ immediate or data field width (AKA low-byte for 8-bit data).
+ @code{>} selects the same, but shifts the value right by 8 bits first
+ (AKA high-byte for 8-bit data).
+
+@item The prefix character @code{?} can be used in immediate addressing
+ modes and data directives to retrieve a symbol's memory/bank ID. Note,
+ that this feature depends on a special relocation type, which is only
+ supported by @code{vlink} and requires the @code{VOBJ} format.
+
+@item The prefix character @code{!} can be used to enforce 16-bit addressing
+ modes. Otherwise the assembler tries to optimize operands to
+ direct page (8-bit) addressing whenever possible.
+
+@end itemize
+
+This backend extends the selected syntax module by the following
+directives:
+
+@table @code
+@item <symbol> equd <expr>
+      Works exactly like the @code{equ} directive, but marks <symbol>
+      as a direct page symbol and use direct page addressing whenever
+      <symbol> is used in a memory addressing mode.
+
+@item p0
+      Informs the assembler about the current state of the @code{P} flag.
+      @code{P0} assumes the direct page to reside at @code{$0000} (default).
+      This information is used to decide whether absolute address references
+      can be optimized to direct page addressing modes.
+
+@item p1
+      Informs the assembler about the current state of the @code{P} flag.
+      @code{P1} assumes the direct page to reside at @code{$0100}.
+      This information is used to decide whether absolute address references
+      can be optimized to direct page addressing modes.
+
+@item direct
+      Switch to a direct page section called @code{direct} or @code{.direct},
+      which has the type @code{bss} with attributes @code{"aurwz"}.
+      Accesses to symbols from this section will default to direct page
+      addressing mode.
+
+@item dpage <symbol1> [,<symbol2>...]
+      Mark symbols as direct page and use direct page addressing for
+      expressions based on this symbol, unless overridden by the addressing
+      mode selector @code{!}.
+@end table
+
+All these directives are also available in the form starting with a
+dot (@code{.}).
+
+@section Optimizations
+
+This backend performs the following operand optimizations and translations:
+
+@itemize @minus
+
+@item Absolute addressing modes are optimized to direct-page
+  addressing modes, whenever possible.
+@item Conditional branches, where the destination is out of range, are
+  translated into @code{B<!cc> *+5} and an absolute @code{JMP} instruction
+  (@option{-opt-branch}).
+@item @code{JMP} may be optimized to @code{BRA}, when @option{-opt-branch}
+  was given.
+
+@end itemize
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+@item None?
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+
+@item 2001: instruction not supported on selected architecture
+@item 2002: trailing garbage in operand
+@item 2003: selector prefix ignored
+@item 2004: data size %d not supported
+@item 2005: operand doesn't fit into %d bits
+@item 2006: branch destination out of range
+@item 2007: illegal bit number
+@item 2008: identifier expected
+@item 2009: operand not in direct-page range
+@item 2010: unsuitable addressing mode for retrieving memory id
+@item 2011: no memory id defined, assuming 0
+
+@end itemize

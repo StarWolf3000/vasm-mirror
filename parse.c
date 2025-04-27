@@ -1,5 +1,5 @@
 /* parse.c - global parser support functions */
-/* (c) in 2009-2024 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2025 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -383,24 +383,23 @@ char *parse_labeldef(char **line,int needcolon)
 }
 
 
-
-int check_indir(char *p,char *q)
-/* returns true when the whole sequence between p and q starts and ends with */
-/* parentheses and there are no unbalanced parentheses within */
+int check_indir(char *p,char *q,char p1,char p2)
+/* Returns true when the whole sequence between p and q starts with parenthesis p1
+   and ends with parenthesis p2 and there are no unbalanced parentheses within. */
 {
   char c;
   int n;
 
   p = skip(p);
-  if (*p++ != '(')
+  if (*p++ != p1)
     return 0;
-
   n = 1;
+
   while (n>0 && p<q) {
     c = *p++;
-    if (c == '(')
+    if (c == p1)
       n++;
-    else if (c == ')')
+    else if (c == p2)
       n--;
   }
   if (p < q)
@@ -864,17 +863,18 @@ static void start_repeat(char *rept_end)
   if (rept_cnt != 0) {
     sprintf(buf,"REPEAT:%s:line %d",rept_defsrc->name,rept_defline);
     src = new_source(buf,NULL,rept_start,rept_end-rept_start);
-    src->irpname = rept_name;
+    src->reptcntname = NULL;
     src->irpvals = NULL;
     src->defsrc = rept_defsrc;
     src->defline = rept_defline;
-#ifdef REPTNSYM
     src->reptn = 0;
+#ifdef REPTNSYM
     set_internal_abs(REPTNSYM,0);
 #endif
 
     switch (rept_cnt) {
       case REPT_IRP:  /* iterate with comma separated values */
+        src->irpname = rept_name;
         p = rept_vals;
         if (!*p) {
           addmacarg(&src->irpvals,p,p);
@@ -895,6 +895,7 @@ static void start_repeat(char *rept_end)
         break;
 
       case REPT_IRPC:  /* iterate with each character */
+        src->irpname = rept_name;
         p = rept_vals;
         if (!*p) {
           addmacarg(&src->irpvals,p,p);
@@ -918,6 +919,12 @@ static void start_repeat(char *rept_end)
 
       default:  /* iterate rept_cnt times */
         src->repeat = (unsigned long)rept_cnt;
+
+        if (rept_name!=NULL && rept_vals==NULL) {
+          /* iterator symbol name was given */
+          src->reptcntname = rept_name;
+          new_abs(rept_name,number_expr(src->reptn));
+        }
         break;
     }
 
@@ -1067,8 +1074,11 @@ char *read_next_line(void)
           cur_src->irpvals = irpval->argnext;
           myfree(irpval);
         }
+        cur_src->reptn++;
+        if (cur_src->reptcntname != NULL)
+          new_abs(cur_src->reptcntname,number_expr(cur_src->reptn));
 #ifdef REPTNSYM
-        set_internal_abs(REPTNSYM,++cur_src->reptn);
+        set_internal_abs(REPTNSYM,cur_src->reptn);
 #endif
       }
       else {

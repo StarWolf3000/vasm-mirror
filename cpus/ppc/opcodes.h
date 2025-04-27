@@ -1601,8 +1601,6 @@
 
   "lhzx",         { RT, RA, RB }        ,{COM,    X(31,279)},
 
-  "icbt",         { RA, RB }            ,{PPC403,  X(31,262)},
-
   "eqv",          { RA, RS, RB }        ,{COM,    XRC(31,284,0)},
   "eqv.",         { RA, RS, RB }        ,{COM,    XRC(31,284,1)},
 
@@ -1855,7 +1853,7 @@
 
   "lhax",         { RT, RA, RB }        ,{COM,    X(31,343)},
 
-  "dccci",        { RA, RB }            ,{PPC403, X(31,454)},
+  "dccci",        { RAOPT, RBOPT }      ,{PPC43,  X(31,454)},
 
   "abs",          { RT, RA }            ,{M601,   XO(31,360,0,0)},
   "abs.",         { RT, RA }            ,{M601,   XO(31,360,0,1)},
@@ -1940,8 +1938,6 @@
   "mtdmacc3",     { RT }                ,{PPC403, XSPR(31,451,220)},
   "mtdmasr",      { RT }                ,{PPC403, XSPR(31,451,224)},
   "mtdcr",        { SPR, RS }           ,{VLBE403,X(31,451)},
-
-  "dccci",        { RAOPT, RBOPT }      ,{PPC43,  X(31,454)},
 
   "divdu",        { RT, RA, RB }        ,{PPC64,  XO(31,457,0,0)},
   "divdu.",       { RT, RA, RB }        ,{PPC64,  XO(31,457,0,1)},

@@ -43,7 +43,7 @@ This module provides the following additional options:
         Turns on 64180 mode supporting additional 64180 opcodes.
     @item -intel-syntax
         Turns on the older Intel 8080 syntax mode.  When this mode is
-        activated, mnemonics and oprand types from the Intel 8080 syntax 
+        activated, mnemonics and operand types from the Intel 8080 syntax 
         instead of the Zilog Z80 syntax (such as @code{STA 1234h}
         instead of @code{ld (1234h),a}) will be valid.  This option can
         be used in parallel with -8080 to use both sets of mnemonics, 

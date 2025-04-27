@@ -1,5 +1,5 @@
 /* dwarf.h - DWARF debugging sections */
-/* (c) in 2018 by Frank Wille */
+/* (c) in 2018,2025 by Frank Wille */
 
 
 struct dwarf_info {
@@ -19,7 +19,6 @@ struct dwarf_info {
   unsigned char line_range;
   unsigned char opcode_base;
   int max_pcadvance;
-  int max_lnadvance_hipc;
   taddr address;
   int file,line,column,is_stmt,basic_block,end_sequence;
 };
@@ -62,4 +61,4 @@ struct dwarf_info {
 void dwarf_init(struct dwarf_info *,struct include_path *,struct source_file *);
 void dwarf_finish(struct dwarf_info *);
 void dwarf_end_sequence(struct dwarf_info *,section *);
-void dwarf_line(struct dwarf_info *,section *,int,int);
+void dwarf_line(struct dwarf_info *,section *,source *);

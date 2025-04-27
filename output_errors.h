@@ -22,4 +22,5 @@
   "all sections are absolute, nothing to relocate",WARNING|NOLINE,  /* 20 */
   "expression type of symbol %s not supported",ERROR|NOLINE,
   "unaligned relocation offset at %s+%#lx",WARNING,
-  "section <%s>: maximum size of 0x%llx bytes exceeded (0x%llx)",FATAL|ERROR|NOLINE,
+  "section <%s>: maximum size of %#llx bytes exceeded (%#llx)",FATAL|ERROR|NOLINE,
+  "section <%s>: memory flags %#lx have been ignored",WARNING|NOLINE,

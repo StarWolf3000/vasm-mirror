@@ -1,5 +1,5 @@
 /* parse.h - global parser support functions */
-/* (c) in 2009-2024 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2025 by Volker Barthelmann and Frank Wille */
 
 #ifndef PARSE_H
 #define PARSE_H 
@@ -60,7 +60,7 @@ dblock *parse_string(char **,char,int);
 char *parse_symbol_strbuf(int,char **);
 #define parse_symbol(s) parse_symbol_strbuf(0,s)
 char *parse_labeldef(char **,int);
-int check_indir(char *,char *);
+int check_indir(char *,char *,char,char);
 int real_line(void);
 void new_repeat(int,char *,char *,struct namelen *,struct namelen *);
 int find_macarg_name(source *,char *,size_t);

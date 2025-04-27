@@ -1,6 +1,6 @@
 /*
 ** cpu.c Motorola M68k, CPU32 and ColdFire cpu-description file
-** (c) in 2002-2024 by Frank Wille
+** (c) in 2002-2025 by Frank Wille
 */
 
 #include <math.h>
@@ -25,7 +25,7 @@ const struct cpu_models models[] = {
 static const int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.7b (c) 2002-2024 Frank Wille";
+const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.7c (c) 2002-2024 Frank Wille";
 const char *cpuname = "M68k";
 int bytespertaddr = 4;
 
@@ -4999,14 +4999,15 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
 static uint16_t apollo_bank_prefix(instruction *ip)
 /* generate Apollo bank prefix */
 {
+  mnemonic *mnemo = &mnemonics[ip->code];
   uint16_t bank,aaReg=0,bbReg=0,ddddd=0;
   int i;
 
-  /* If the first operand is immediate, and the instruction is already 3
-     operands, we move the bankable operand indices up and prevent an NDD
-     instruction form using ddd-dd */
+  /* if the first operand is immediate, and the instruction has already 3
+     (non-optional) operands, we move the bankable operand indices up by one
+     and prevent an NDD instruction from using ddd-dd */
   if (ip->op[0]->mode==MODE_Extended && ip->op[0]->reg==REG_Immediate &&
-      ip->op[2]!=NULL && ip->op[2]->mode!=-1)
+      ip->op[2]!=NULL && !(optypes[mnemo->operand_type[2]].flags & OTF_OPT))
     i = 1;
   else
     i = 0;
@@ -5022,7 +5023,7 @@ static uint16_t apollo_bank_prefix(instruction *ip)
     else  /* no bbReg but still apply to ddd-dd value */
       ddddd = ip->op[i+1]->reg << 2;
   }
-  else if (mnemonics[ip->code].ext.place[0] == FPS) {
+  else if (mnemo->ext.place[0] == FPS) {
     /* FPU instructions with a single operand really use two */
     bbReg = aaReg;
   }
@@ -5053,7 +5054,7 @@ static uint16_t apollo_bank_prefix(instruction *ip)
 #endif
 
   /* handle optional 3rd operand, but only if there wasn't a non-bankable
-     first operand in an already 3-operand instructions (i=1) */
+     first operand in an already 3-operand instructions (i=1) - see above */
   if (i==0 && ip->op[2]!=NULL) {
     if (ip->op[2]->mode != -1) {
       /* optional operand was not omitted - refer to m68k_operand_optional() */

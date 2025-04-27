@@ -1,16 +1,16 @@
 /* bin.c binary output driver for vasm */
-/* (c) in 2002-2009,2013-2024 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2009,2013-2025 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
 #ifdef OUTBIN
-static char *copyright="vasm binary output module 2.3c (c) 2002-2024 Volker Barthelmann and Frank Wille";
+static char *copyright="vasm binary output module 2.3d (c) 2002-2025 Volker Barthelmann and Frank Wille";
 
 enum {
   BINFMT_RAW,           /* no header */
   BINFMT_CBMPRG,        /* Commodore VIC-20/C-64 PRG format */
   BINFMT_ATARICOM,      /* Atari 800 DOS COM format */
-  BINFMT_APPLEBIN,      /* Apple DOS 3.3 binary file */
+  BINFMT_APPLEBIN,      /* AppleCommander DOS 3.3 header */
   BINFMT_DRAGONBIN,     /* Dragon DOS binary format */
   BINFMT_COCOML,        /* Tandy Color Computer machine lang. file */
   BINFMT_ORICMC,        /* Oric machine code file */
@@ -74,7 +74,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
   /* write an optional header first */
   switch (binfmt) {
     case BINFMT_APPLEBIN:
-      /* Apple DOS binary file header:
+      /* AppleCommander DOS 3.3 binary file header:
        * 00-01: load address (little endian)
        * 02-03: file length (little endian)
        */

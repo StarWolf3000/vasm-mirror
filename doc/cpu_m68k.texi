@@ -46,6 +46,11 @@ This module provides the following additional options:
 
     @item -m68080
         Generate code for the Apollo Core AC68080 CPU.
+        Note, that using register banking (using AMMX registers instead of
+        @code{d0} - @code{d7} or @code{a0} - @code{a7}) in general purpose
+        instructions might not yet work correctly with current Apollo Cores
+        (at least up to 2024). This will change with future Core releases.
+        Register banking for FPU instructions should be final already.
 
     @item -mcpu32
         Generate code for the CPU32 family (MC6833x, MC6834x, etc.).
@@ -991,9 +996,9 @@ the options @option{-opt-speed} and @option{-opt-lsl} are given.
  and @code{SWAP Dn}, when @code{$10000<=x<=$7f0000} or
  @code{$ff80ffff<=x<=$fffeffff}.
 
-@item @code{MOVE.L #x,Dn} optimized to the sequence of @code{MOVEQ #y,Dn}
- and @code{NEG.W Dn}, when @code{$ff81<=x<=$ffff} or
- @code{$ffff0001<=x<=$ffff0080} and the option @option{-opt-nmoveq} was set.
+@item @code{MOVE.L #x,Dn} optimized to the sequence of
+ @code{MOVEQ #-((int16_t)x),Dn} and @code{NEG.W Dn}, when @code{$ff81<=x<=$ffff}
+ or @code{$ffff0001<=x<=$ffff0080} and the option @option{-opt-nmoveq} was set.
 
 @item @code{MOVE.L #x,Dn} optimized to the sequence of @code{MOVEQ #x>>n,Dn}
  and @code{LSL.W #n,Dn}, when @code{0<=x<=$7fff} and the difference between
@@ -1026,7 +1031,7 @@ the options @option{-opt-speed} and @option{-opt-lsl} are given.
  For example, for 68000 and 68010 it is no advantage to optimize
  @code{MOVEM Rm/Rn,-(An)}, and addressing modes with displacements
  or absolute addresses are optimized for 68040 only (may additionally
- require @option{opt-speed}).
+ require @option{-opt-speed}).
 
 @item @code{MULS.?/MULU.? #0,Dn} optimized to @code{MOVEQ #0,Dn}
 (@option{-opt-mul}).

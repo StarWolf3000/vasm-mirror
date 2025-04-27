@@ -69,6 +69,7 @@ make CPU=m68k SYNTAX=mot
 * pdp11
 * ppc
 * qnice
+* spc700
 * test
 * tr3200
 * vidcore

@@ -960,12 +960,11 @@ int parse_operand(char *p, int len, operand *op, int optype)
      * when addressing is not possible. This old behavior created a lot of
      * inexisting instructions and bugs.
      */
-    if ( *p == '(' && optype != OP_DATA && check_indir(p,start+len) ) {
+    if ( optype != OP_DATA && check_indir(p, start+len, '(', ')') ) {
         int   llen;
         char *end;
-        p++;
 
-        p = skip(p);
+        p = skip(++p);
 
         /* Search for the first nonmatching character */
         if ( (end = strpbrk(p, ") +-") ) != NULL ) {

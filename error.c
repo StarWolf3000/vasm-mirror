@@ -1,5 +1,5 @@
 /* error.c - error output and modification routines */
-/* (c) in 2002-2024 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2025 by Volker Barthelmann and Frank Wille */
 
 #include <stdarg.h>
 #include "vasm.h"
@@ -151,7 +151,7 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
   vfprintf(f,errlist[n].text,vl);
   fprintf(f,"\n");
 
-  if (!(flags & NOLINE) && cur_src!=NULL) {
+  if (!(flags & NOLINE) && cur_src!=NULL && cur_src->line>0) {
     if (cur_src->parent != NULL) {
       source *parent,*child;
       int recurs;

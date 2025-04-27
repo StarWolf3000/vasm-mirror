@@ -110,6 +110,7 @@ enum {
   LDPINDY,      /* [$12],Y */
   QDPINDZ,      /* [$12],Z - 45GS02 with prefix */
   LDPIND,       /* [$12] */
+  QDPIND,       /* [$12] - 45GS02 with prefix */
   RELJMP,       /* B!cc/JMP construction */
   REL8,         /* $1234 - 8-bit signed relative branch */
   REL16,        /* $1234 - 16-bit signed relative branch */
@@ -123,7 +124,7 @@ enum {
   NUM_OPTYPES
 };
 #define IS_INDIR(x) ((x)>=INDIR && (x)<=INDIRX)
-#define IS_SQIND(x) ((x)>=LINDIR && (x)<=LDPIND)
+#define IS_SQIND(x) ((x)>=LINDIR && (x)<=QDPIND)
 #define IS_ABS(x) ((x)>=ABS && (x)<=ABSZ)
 /* CAUTION:
    - opsize[] gives the size in bytes for each addressing mode listed above!

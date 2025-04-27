@@ -1,6 +1,44 @@
 vasm history
 =============
 
+- 2.0b (21.04.25)
+o New CPU backend for the SPC700, as used in the SuperFamicom and SNES for
+  sound processing.
+o New option -no-msrcdebug to disable source level debugging within a macro
+  context (MSOURCE directive in mot-syntax).
+o Fixed potential crash with NOLIST directives, when listing file is
+  enabled (new bug since V2.0).
+o Assign a relocated org address to labels already in the parser pass to
+  make conditional assembly (sort of) work.
+o Fixed DWARF output for advancing the state machine by 15 * instruction size.
+o m68k: Allow Apollo immediate FPU instructions with a third operand again
+  (broken since V2.0).
+o 6502: Fixed external branch label references.
+o 6502: Fixed Mega65 32-bit indirect instructions (broken since V1.9a).
+o 6809: Added Konami-6809 support, used on arcade boards (patch submitted
+  by Jim Westfall).
+o 6809: Fixed two-byte opcodes with the MSB in the first byte set (for example
+  HC12 TAP).
+o mot-syntax: The rept directive allows for an optional counter symbol name.
+o oldstyle-syntax: The label field allows preceding whitespace now, provided
+  it is followed by a ':', an '=', or an assignment directive (EQU, SET).
+o oldstyle-syntax: Allow anonymous labels together with multiple statements
+  per line (Z80).
+o oldstyle-syntax: ascii does not null-terminate strings. asc is not the
+  same as byte.
+o oldstyle-syntax: The size of multi-byte data and space directives depends
+  on the target CPU now. For example long is 24 bits for 6502/65816.
+o oldstyle-syntax: defp uses the target's address size, like da and addr.
+o oldstyle-syntax: fdb doesn't define words but double-bytes (whenever that
+  matters).
+o oldstyle-syntax: New directive dl (long word).
+o oldstyle-syntax: New directives with fixed bit-size for forming constant
+  data and space: di8, di16, di24, di32, di64, ds8, ds16, ds24, ds32, ds64.
+o oldstyle-syntax: The rept and repeat directives allow an optional second
+  argument to specify the name of an iteration symbol to use.
+o hunk-output: -kick1hunks ignores section memory flags except CHIP and FAST
+  with a warning.
+
 - 2.0a (30.12.24)
 o Fixed bad path in source level debugging information, when the initial
   source file and an include file were based on the same "compile directory".

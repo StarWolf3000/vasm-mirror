@@ -1,5 +1,5 @@
 /* atom.c - atomic objects from source */
-/* (c) in 2010-2023 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2025 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -44,15 +44,9 @@ instruction *new_inst(const char *inst,int len,
       /* reset all operands for every new mnemonic */
       memset(ops,0,sizeof(ops));
 #endif
-
-#if 0 /* @@@ was ALLOW_EMPTY_OPS */
-      mnemo_opcnt = op_cnt<MAX_OPERANDS ? op_cnt : MAX_OPERANDS;
-#else
-      for (j=0; j<MAX_OPERANDS; j++)
-        if (mnemo->operand_type[j] == 0)
-          break;
-      mnemo_opcnt = j;	/* number of expected operands for this mnemonic */
-#endif
+      for (mnemo_opcnt=0;
+           mnemo_opcnt<MAX_OPERANDS && mnemo->operand_type[mnemo_opcnt];
+           mnemo_opcnt++);  /* number of expected operands for this mnemonic */
       inst_found = 2;
       save_symbols();  /* make sure we can restore symbols to this point */
 

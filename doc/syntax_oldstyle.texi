@@ -5,7 +5,7 @@ which is available with the extension @code{oldstyle}.
 
 @section Legal
 
-    This module is written in 2002-2024 by Frank Wille and
+    This module is written in 2002-2025 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 
@@ -53,10 +53,9 @@ This syntax module provides the following additional options:
 
 @section General Syntax
 
-Labels always start at the first column and may be terminated by a
-colon (@code{:}), but don't need to. In the latter case the mnemonic or
-directive has to be separated from the label by whitespace (not required in
-any case, e.g. with @code{=}).
+Labels starting at the first column may be terminated by a colon (@code{:}).
+Either a terminating colon, or an assign directive like @code{=}, @code{EQU}
+or @code{SET}, is required when the label is preceded by whitespace.
 
 Local labels are introduced by '@code{.}' or terminated by '@code{$}'.
 For the rest, any alphanumeric character, including '@code{_}', is allowed.
@@ -79,8 +78,12 @@ selects the first anonymous label before the point of reference. Example:
 :       jmp     :-    ;infinite loop
 @end example
 
-The operands are separated from the mnemonic by whitespace. Multiple
-operands are separated by comma (@code{,}), or in some backends by
+The opcode field (mnemonics, directives, macros) cannot start at the first
+column and must be separated by whitespace from the label field, except
+the label is followed by a @code{:} or @code{=}.
+
+The operand field is again separated from the opcode field by whitespace.
+Multiple operands are separated by comma (@code{,}), or in some backends by
 whitespace.
 
 Make sure that you don't define a label on the same line as a
@@ -124,10 +127,14 @@ The current-PC symbols is @code{*}, unless redefined by a CPU backend
 
 @section Directives
 
-Note that data directives, like @code{byt}, @code{dfb}, @code{db},
-@code{word}, @code{dfw}, @code{dw}, etc. may optionally be written
-without any operand. In this case they are treated like space directives,
-which just increment the program counter by 1 or 2 bytes.
+Most data directives, like @code{byt}, @code{dfb}, @code{db}, @code{word},
+@code{dfw}, @code{dw}, etc. may optionally be written without any operand.
+In this case they are treated like space directives, which just increment the
+program counter by the appropriate number of bytes.
+
+Note, that the size of multi-byte data directives, like @code{dw}, @code{word},
+@code{dl}, etc., depends on the CPU backend. Exmaple: @code{dl} has 24 bits
+for the 65816.
 
 The following directives are supported by this syntax module (if the
 CPU- and output-module allow it):
@@ -138,7 +145,7 @@ CPU- and output-module allow it):
 
 @item abyte <modifier>,<exp1>[,<exp2>,"<string1>"...]
       Write the integer or string constants into successive 8-bit memory
-      cells in the current section while modifying each expression
+      cells of the current section while modifying each expression
       (and string-character) by the modifier expression.
       When the modifier contains the special @code{._} symbol, then it
       is a placeholder for any expression from the line. Otherwise the
@@ -160,13 +167,17 @@ CPU- and output-module allow it):
       8-bit addressable memory.
 
 @item asc <exp1>[,<exp2>,"<string1>"...]
-      Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
+      Equivalent to @code{ascii <exp1>[,<exp2>,"<string1>"...]}.
 
 @item ascii <exp1>[,<exp2>,"<string1>"...]
-      See @code{defm}. 
+      Assign the integer or string constant operands into successive
+      8-bit memory cells of the current section. Any combination of integer
+      and character string constant operands is permitted.
 
 @item asciiz "<string1>"[,"<string2>"...]
-      See @code{string}. 
+      Defines one or multiple string constants into successive 8-bit memory
+      cells of the current section, where each string will be automatically
+      terminated by a zero-byte.
 
 @item assert <expression>[,<message>]
       Display an error with the optional <message> when the expression
@@ -177,15 +188,17 @@ CPU- and output-module allow it):
       this position.
 
 @item blk <exp>[,<fill>]
-      Insert <exp> zero or <fill> bytes into the current section.
+      Insert <exp> zeroed or <fill> bytes into the current section.
 
 @item blkl <exp>[,<fill>]
-      Insert <exp> zero or <fill> 32-bit long words into the current section,
-      using the endianness of the target CPU.
+      Insert <exp> zeroed or <fill> long words into the current section-
+      The endianess and the number of bits per word depend on the target CPU.
+      For example, will be 24 bits for 6502 and 65816.
 
 @item blkw <exp>[,<fill>]
-      Insert <exp> zero or <fill> 16-bit words into the current section,
-      using the endianness of the target CPU.
+      Insert <exp> zeroed or <fill> words into the current section.
+      The endianess and the number of bits per word depend on the target CPU,
+      but the size will usually be the size of two bytes.
 
 @item bss <exp>
       Equivalent to @code{blk <exp>,0}.
@@ -200,15 +213,36 @@ CPU- and output-module allow it):
 
 @item byt <exp1>[,<exp2>,"<string1>"...]
       Assign the integer or string constant operands into successive
-      8-bit memory cells in the current section. Any combination of integer
+      8-bit memory cells of the current section. Any combination of integer
       and character string constant operands is permitted.
-      Without any operands the program counter is just incremented by one.
 
 @item byte <exp1>[,<exp2>,"<string1>"...]
       Equivalent to @code{byt <exp1>[,<exp2>,"<string1>"...]}.
 
+@item di8 <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 8-bit memory cells
+      of the current section.
+
+@item di16 <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 16-bit words of
+      memory in the current section, using the target's endianness.
+
+@item di24 <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 24-bit words of
+      memory in the current section, using the target's endianness.
+
+@item di32 <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 32-bit words of
+      memory in the current section, using the target's endianness.
+
+@item di64 <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 64-bit words of
+      memory in the current section, using the target's endianness.
+
 @item da <exp1>[,<exp2>...]
-      Equivalent to @code{addr <exp1>[,<exp2>...]}.
+      Assign the values of the operands into successive words
+      of memory in the current section, using the target's endianness
+      and address pointer size.
 
 @item data <exp1>[,<exp2>,"<string1>"...]
       Equivalent to @code{byt <exp1>[,<exp2>,"<string1>"...]}.
@@ -233,17 +267,18 @@ CPU- and output-module allow it):
       an error.
 
 @item defl <exp1>[,<exp2>...]
-      Assign the values of the operands into successive 32-bit integers
+      Assign the values of the operands into successive long words
       of memory in the current section, using the endianness of the target
-      CPU.
+      CPU. The number of bits per long word also depends on the CPU.
+      For example, will be 24 bits for 6502 and 65816.
 
 @item defp <exp1>[,<exp2>...]
-      Assign the values of the operands into successive 24-bit integers
-      of memory in the current section, using the endianness of the target
-      CPU.
+      Assign the values of the operands into successive words
+      of memory in the current section, using the target's endianness
+      and address pointer size.
 
 @item defm "string"
-      Equivalent to @code{text "string"}.
+      Equivalent to @code{fcc "<string>"}.
 
 @item defw <exp1>[,<exp2>...]
       Equivalent to @code{word <exp1>[,<exp2>...]}.
@@ -263,6 +298,12 @@ CPU- and output-module allow it):
 
 @item dephase
       Equivalent to @code{rend}.
+
+@item dl <exp1>[,<exp2>...]
+      Assign the values of the operands into successive long words
+      of memory in the current section, using the endianness of the target
+      CPU. The number of bits per long word also depends on the CPU.
+      For example, will be 24 bits for 6502 and 65816.
 
 @item ds <exp>[,<fill>]
       Equivalent to @code{blk <exp>[,<fill>]}.
@@ -367,15 +408,19 @@ CPU- and output-module allow it):
       Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
 
 @item fcc "<string>"
-      Equivalent to @code{text}.
+      Puts a single string constant into successive 8-bit memory cells
+      of the current section. The string delimiters may be any
+      printable ASCII character.
 
 @item fcs "<string>"
-      Works like @code{text} and @code{fcc}, but additionally sets the
+      Works like @code{fcc} and @code{defm}, but additionally sets the
       most significant bit of the last byte. This can be used as a
       string terminator on some systems.
 
 @item fdb <exp1>[,<exp2>,"<string1>"...]
-      Equivalent to @code{word <exp1>[,<exp2>...]}.
+      Assign the values of the operands into successive double-bytes
+      of memory in the current section, using the endianness of the target
+      CPU.
 
 @item global <symbol>[,<symbol>...]
       Flag <symbol> as an external symbol, which means that <symbol> is
@@ -508,12 +553,17 @@ CPU- and output-module allow it):
 @item phase <expression>
       Equivalent to @code{rorg <expression>}.
 
-@item repeat <expression>
+@item repeat <expression>[,<symbol>]
       Equivalent to @code{rept <expression>}.
 
-@item rept <expression>
+@item rept <expression>[,<symbol>]
       Repeats the assembly of the block between @code{rept} and @code{endr}
       <expression> number of times. <expression> has to be positive.
+      The internal symbol @code{__RPTCNT} always holds the iteration counter
+      of the inner repeat loop, starting with 0. @code{__RPTCNT} is -1 outside
+      of any repeat block.
+      The optional @code{SET}-symbol @code{<symbol>} receives a copy of the
+      current iteration counter, when given.
 
 @item reserve <exp>
       Equivalent to @code{blk <exp>,0}.
@@ -533,6 +583,25 @@ CPU- and output-module allow it):
 @item rorg <expression>
       Relocate all labels between @code{rorg} and @code{rend} based on the
       new origin from @code{<expression>}.
+
+@item ds8 <exp>[,<fill>]
+      Insert <exp> zeroed or <fill> 8-bit words into the current section.
+
+@item ds16 <exp>[,<fill>]
+      Insert <exp> zeroed or <fill> 16-bit words into the current section,
+      using the target's endianess.
+
+@item ds24 <exp>[,<fill>]
+      Insert <exp> zeroed or <fill> 24-bit words into the current section,
+      using the target's endianess.
+
+@item ds32 <exp>[,<fill>]
+      Insert <exp> zeroed or <fill> 32-bit words into the current section,
+      using the target's endianess.
+
+@item ds64 <exp>[,<fill>]
+      Insert <exp> zeroed or <fill> 64-bit words into the current section,
+      using the target's endianess.
 
 @item section <name>[,"<attributes>"]
       Starts a new section named <name> or reactivate an old one. If
@@ -602,11 +671,13 @@ CPU- and output-module allow it):
       Equivalent to @code{blk <exp>,0}.
 
 @item str "<string1>"[,"<string2>"...]
-      Like @code{text}, but adds a terminating carriage return (ASCII
-      code 13).
+      Like @code{asciiz} and @code{string}, but adds a terminating carriage
+      return (ASCII code 13) instead of a zero-byte.
 
 @item string "<string1>"[,"<string2>"...]
-      Like @code{text}, but adds a terminating zero-byte.
+      Defines one or multiple string constants into successive 8-bit memory
+      cells of the current section, where each string will be automatically
+      terminated by a zero-byte.
 
 @item struct <name>
       Defines a structure which can be referenced by <name>. Labels within
@@ -628,10 +699,8 @@ CPU- and output-module allow it):
       any actual relocation being performed (@code{R_NONE} in ELF).
 
 @item text "<string>"
-      Puts a single string constant into successive 8-bit memory cells
-      of the current section. The string delimiters may be any
-      printable ASCII character.
-      (Not available with option @option{-sect}.)
+      Equivalent to @code{fcc "<string>"}.
+      Not available with option @option{-sect}.
 
 @item text
       With option @option{-sect}:
@@ -650,10 +719,10 @@ CPU- and output-module allow it):
       Equivalent to @code{word <exp1>[,<exp2>...]}.
 
 @item word <exp1>[,<exp2>...]
-      Assign the values of the operands into successive 16-bit words
+      Assign the values of the operands into successive words
       of memory in the current section, using the endianness of the target
-      CPU.
-      Without any operand just the program counter is incremented by two.
+      CPU. The number of bits per word also depends on the CPU, but will
+      usually have the size of two bytes.
 
 @item xdef  <symbol>[,<symbol>...]
         See @code{global}.

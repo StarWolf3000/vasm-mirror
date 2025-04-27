@@ -1,6 +1,6 @@
 /*
 ** cpu.c 650x/65C02/6280/45gs02/65816 cpu-description file
-** (c) in 2002,2006,2008-2012,2014-2024 by Frank Wille
+** (c) in 2002,2006,2008-2012,2014-2025 by Frank Wille
 */
 
 #include "vasm.h"
@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-const char *cpu_copyright="vasm 6502 cpu backend 1.0a (c) 2002,2006,2008-2012,2014-2024 Frank Wille";
+const char *cpu_copyright="vasm 6502 cpu backend 1.0b (c) 2002,2006,2008-2012,2014-2025 Frank Wille";
 const char *cpuname = "6502";
 int bytespertaddr = 2;
 
@@ -27,7 +27,7 @@ static int OC_JMPABS,OC_BRA,OC_FIRSTMV,OC_LASTMV;
 
 /* sizes for all operand types - refer to addressing modes enum in cpu.h */
 const uint8_t opsize[NUM_OPTYPES] = {
-  0,0,2,2,2,2,3,3,1,1,1,1,1,2,1,1,1,1,1,2,2,1,2,1,4,1,2,0,0,1,2,0,1,0
+  0,0,2,2,2,2,3,3,1,1,1,1,1,2,1,1,1,1,1,2,2,1,2,1,2,4,1,2,0,0,1,2,0,1,0
 };
 
 /* table for cpu specific extra directives */
@@ -118,7 +118,8 @@ int parse_operand(char *p,int len,operand *op,int required)
   p = skip(p);
 
   if (!op->type) {
-    if (len>0 && required!=DATAOP && (check_indir(p,start+len) || *p=='[')) {
+    if (len>0 && required!=DATAOP &&
+        (check_indir(p,start+len,'(',')') || check_indir(p,start+len,'[',']'))) {
       indir = *p=='[' ? 2 : 1;
       p = skip(++p);
     }
@@ -148,6 +149,7 @@ int parse_operand(char *p,int len,operand *op,int required)
       case LDPINDY:
       case QDPINDZ:
       case LDPIND:
+      case QDPIND:
         if (indir != 2)
           return PO_NOMATCH;
         break;
@@ -582,6 +584,7 @@ static void rangecheck(symbol *base,taddr val,operand *op)
     case DPINDY:
     case DPINDZ:
     case LDPIND:
+    case QDPIND:
     case LDPINDY:
     case QDPINDZ:
     case DPIND:
@@ -727,6 +730,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                     cpu_error(2);  /* selector prefix ignored */
                   size = 16;
                   break;
+                case QDPIND:
                 case QDPINDZ:
                   offs++;  /* include prefix-byte */
                 case DPAGE:
@@ -804,12 +808,12 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                 case REL8:
                   type = REL_PC;
                   size = 8;
-                  add -= -1;  /* 6502 addend correction */
+                  add -= 1;  /* 6502 addend correction */
                   break;
                 case REL16:
                   type = REL_PC;
                   size = 16;
-                  add -= -2;  /* 6502 addend correction */
+                  add -= 2;  /* 6502 addend correction */
                   break;
                 default:
                   ierror(0);
@@ -844,6 +848,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
               case LDPINDY:
               case QDPINDZ:
               case LDPIND:
+              case QDPIND:
                 if (op->flags & OF_LO)
                   val &= 0xff;
                 else
@@ -924,6 +929,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
           case LABSX:
             d = setval(0,d,3,val);
             break;
+          case QDPIND:
           case QDPINDZ:
 	    *d = d[-1];
 	    d[-1] = 0xea;  /* MEGA65 32-bit indirect prefix */

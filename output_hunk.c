@@ -1,11 +1,11 @@
 /* hunk.c AmigaOS hunk format output driver for vasm */
-/* (c) in 2002-2024 by Frank Wille */
+/* (c) in 2002-2025 by Frank Wille */
 
 #include "vasm.h"
 #include "osdep.h"
 #include "output_hunk.h"
 #if defined(OUTHUNK) && (defined(VASM_CPU_M68K) || defined(VASM_CPU_PPC))
-static char *copyright="vasm hunk format output module 2.17e (c) 2002-2024 Frank Wille";
+static char *copyright="vasm hunk format output module 2.17f (c) 2002-2025 Frank Wille";
 int hunk_xdefonly,hunk_devpac;
 
 static uint32_t sec_cnt;
@@ -64,8 +64,14 @@ static void fwmemflags(FILE *f,section *s,uint32_t data)
     fw32(f,HUNKF_FAST|data,1);
   }
   else {
-    fw32(f,HUNKF_MEMTYPE|data,1);
-    fw32(f,mem,1);
+    if (kick1) {
+      output_error(24,s->name,(unsigned long)s->memattr);  /* mem ignored */
+      fw32(f,data,1);
+    }
+    else {
+      fw32(f,HUNKF_MEMTYPE|data,1);
+      fw32(f,mem,1);
+    }
   }
 }
 

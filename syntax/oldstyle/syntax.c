@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2024 by Frank Wille */
+/* (c) in 2002-2025 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm oldstyle syntax module 0.20a (c) 2002-2024 Frank Wille";
+const char *syntax_copyright="vasm oldstyle syntax module 0.21 (c) 2002-2025 Frank Wille";
 hashtable *dirhash;
 int dotdirs;
 
@@ -25,9 +25,6 @@ static char zeroname[]=".zero",zeroattr[]="aurwz";
 char commentchar=';';
 
 static char macroname[] = ".macro";
-static char equname[] = ".equ";
-static char setname[] = ".set";
-
 static char endmname[] = ".endmacro";
 static char endrname[] = ".endrepeat";
 static char reptname[] = ".rept";
@@ -345,55 +342,92 @@ static void handle_uspace(char *s,int size)
 }
 
 
-static void handle_fixedspc1(char *s)
+static void handle_fixedspc(char *s,int nb)
 {
-  do_space(8,number_expr(1),0);
-  eol(s);
-}
-
-
-static void handle_fixedspc2(char *s)
-{
-  do_space(8,number_expr(2),0);
+  do_space(8,number_expr(nb),0);
   eol(s);
 }
 
 
 static void handle_d8(char *s)
 {
+#if BITSPERBYTE == 8
   s = skip(s);
   if (ISEOL(s))
-    handle_fixedspc1(s);
+    handle_fixedspc(s,1);
   else
+#endif
     handle_data(s,8);
+}
+
+
+static void handle_dblbyt(char *s)
+{
+  s = skip(s);
+  if (ISEOL(s))
+    do_space(BITSPERBYTE,number_expr(2),0);
+  else
+    handle_data(s,BITSPERBYTE*2);
 }
 
 
 static void handle_d16(char *s)
 {
+#if BITSPERBYTE == 8
   s = skip(s);
   if (ISEOL(s))
-    handle_fixedspc2(s);
+    handle_fixedspc(s,2);
   else
+#endif
     handle_data(s,16);
 }
 
 
 static void handle_d24(char *s)
 {
-  handle_data(s,24);
+#if BITSPERBYTE == 8
+  s = skip(s);
+  if (ISEOL(s))
+    handle_fixedspc(s,3);
+  else
+#endif
+    handle_data(s,24);
 }
 
 
 static void handle_d32(char *s)
 {
-  handle_data(s,32);
+#if BITSPERBYTE == 8
+  s = skip(s);
+  if (ISEOL(s))
+    handle_fixedspc(s,4);
+  else
+#endif
+    handle_data(s,32);
+}
+
+
+static void handle_d64(char *s)
+{
+#if BITSPERBYTE == 8
+  s = skip(s);
+  if (ISEOL(s))
+    handle_fixedspc(s,8);
+  else
+#endif
+    handle_data(s,64);
 }
 
 
 static void handle_taddr(char *s)
 {
-  handle_data(s,bytespertaddr*BITSPERBYTE);
+#if BITSPERBYTE == 8
+  s = skip(s);
+  if (ISEOL(s))
+    handle_fixedspc(s,bytespertaddr);
+  else
+#endif
+    handle_data(s,bytespertaddr*BITSPERBYTE);
 }
 
 
@@ -512,17 +546,27 @@ static void handle_spc16(char *s)
 }
 
 
-#if 0
 static void handle_spc24(char *s)
 {
   handle_space(s,24);
 }
-#endif
 
 
 static void handle_spc32(char *s)
 {
   handle_space(s,32);
+}
+
+
+static void handle_spc64(char *s)
+{
+  handle_space(s,64);
+}
+
+
+static void handle_ascii(char *s)
+{
+  handle_data(s,8);
 }
 
 
@@ -958,12 +1002,23 @@ static void handle_incbin(char *s)
 
 static void handle_rept(char *s)
 {
-  utaddr cnt = parse_constexpr(&s);
+  int cnt = (int)parse_constexpr(&s);
+  char *itername = NULL;
 
-  eol(s);
-  new_repeat((int)cnt,NULL,NULL,
+  s = skip(s);
+  if (!ISEOL(s) && *s==',') {
+    strbuf *name;
+
+    s = skip(s+1);
+    if (name = parse_identifier(0,&s)) {
+      if (name)
+        itername = name->str;
+    }
+  }
+  new_repeat(cnt<0?0:cnt,itername,NULL,
              dotdirs?drept_dirlist:rept_dirlist,
              dotdirs?dendr_dirlist:endr_dirlist);
+  eol(s);
 }
 
 
@@ -1137,43 +1192,70 @@ struct {
   "roffs",handle_roffs,
   "align",handle_align,
   "even",handle_even,
+  "data",handle_secdata,
+  "text",handle_sectext,
+  "bss",handle_secbss,
+#if defined(VASM_CPU_650X) || defined(VASM_CPU_Z80) || defined(VASM_CPU_6800)
+  "abyte",handle_d8_mod,
+#endif
+  "asc",handle_ascii,
+  "ascii",handle_ascii,
+  "asciiz",handle_string,
+  "string",handle_string,
+  "str",handle_str,  /* GMGM */
+  "defm",handle_text,
+  "fcc",handle_text,
+  "fcs",handle_fcs,
+  "fcb",handle_d8,
   "byt",handle_d8,
   "byte",handle_d8,
   "db",handle_d8,
   "dfb",handle_d8,
   "defb",handle_d8,
-  "asc",handle_d8,
-  "data",handle_secdata,
-  "defm",handle_text,
-  "text",handle_sectext,
-  "bss",handle_secbss,
-  "wor",handle_d16,
-  "word",handle_d16,
-  "wrd",handle_d16,
+  "byt",handle_d8,
+  "fdb",handle_dblbyt,
+  "wrd",DATWORD,
+  "wor",DATWORD,
+  "word",DATWORD,
+  "wrd",DATWORD,
+  "dw",DATWORD,
+  "dfw",DATWORD,
+  "defw",DATWORD,
+  "dl",DATLONG,
+  "defl",DATLONG,
+  "dd",DATDWRD,
 #if !defined(VASM_CPU_6809)  /* clash with 6309 ADDR instruction */
   "addr",handle_taddr,
 #endif
   "da",handle_taddr,
-  "dw",handle_d16,
-  "dfw",handle_d16,
-  "defw",handle_d16,
-  "dd",handle_d32,
-#if defined(VASM_CPU_650X) || defined(VASM_CPU_Z80) || defined(VASM_CPU_6800)
-  "abyte",handle_d8_mod,
-#endif
+  "defp",handle_taddr,
   "ds",handle_spc8,
   "dsb",handle_spc8,
   "fill",handle_spc8,
   "reserve",handle_spc8,
   "spc",handle_spc8,
-  "dsw",handle_spc16,
-  "dsl",handle_spc32,
-  "blk",handle_spc8,
-  "blkw",handle_spc16,
-  "blkl",handle_spc32,
+  "defs",handle_spc8,
+  "bsz",handle_spc8,
+  "zmb",handle_spc8,
   "dc",handle_spc8,
-  "byt",handle_d8,
-  "wrd",handle_d16,
+  "blk",handle_spc8,
+#if !defined(VASM_CPU_650X)
+  "rmb",handle_spc8,
+#endif
+  "dsw",SPCWORD,
+  "blkw",SPCWORD,
+  "dsl",SPCLONG,
+  "blkl",SPCLONG,
+  "di8",handle_d8,
+  "di16",handle_d16,
+  "di24",handle_d24,
+  "di32",handle_d32,
+  "di64",handle_d64,
+  "ds8",handle_spc8,
+  "ds16",handle_spc16,
+  "ds24",handle_spc24,
+  "ds32",handle_spc32,
+  "ds64",handle_spc64,
   "assert",handle_assert,
 #if defined(VASM_CPU_TR3200) /* Clash with IFxx instructions of TR3200 cpu */
   "if_def",handle_ifd,
@@ -1208,8 +1290,8 @@ struct {
   "else",handle_else,
   "el",handle_else,
   "endif",handle_endif,
-#if !defined(VASM_CPU_Z80) && !defined(VASM_CPU_6800)
-  "ei",handle_endif,  /* Clashes with z80 opcode */
+#if !defined(VASM_CPU_Z80) && !defined(VASM_CPU_6800) && !defined(VASM_CPU_SPC700)
+  "ei",handle_endif,  /* clashes with cpu mnemonic */
 #endif
   "fi",handle_endif,  /* GMGM */
   "incbin",handle_incbin,
@@ -1235,9 +1317,6 @@ struct {
   "dsect",handle_dsect,
   "dend",handle_dend,
   "binary",handle_incbin,
-  "defs",handle_spc8,
-  "defp",handle_d24,
-  "defl",handle_d32,
   "defc",handle_defc,
   "xdef",handle_global,
   "xref",handle_global,
@@ -1249,10 +1328,6 @@ struct {
   "weak",handle_weak,
   "needs",handle_symdepend,
   "symdepend",handle_symdepend,
-  "ascii",handle_string,
-  "asciiz",handle_string,
-  "string",handle_string,
-  "str",handle_str,  /* GMGM */
   "list",handle_list,
   "nolist",handle_nolist,
   "struct",handle_struct,
@@ -1261,15 +1336,6 @@ struct {
   "endstructure",handle_endstruct,
   "inline",handle_inline,
   "einline",handle_einline,
-#if !defined(VASM_CPU_650X)
-  "rmb",handle_spc8,
-#endif
-  "fcc",handle_text,
-  "fcs",handle_fcs,
-  "fcb",handle_d8,
-  "fdb",handle_d16,
-  "bsz",handle_spc8,
-  "zmb",handle_spc8,
   "nam",handle_listttl,
   "subttl",handle_listsubttl,
   "page",handle_listpage,
@@ -1425,48 +1491,107 @@ static int execute_struct(char *name,int name_len,char *s)
 }
 
 
-static char *parse_label_or_pc(char **start)
+static struct {
+  const char *asn_name;
+  int asn_len;
+} symassigns[] = {
+  { NULL,0 }, { "=",1 }, { "equ",3 }, { "eq",2 }, { "set",3 }
+};
+enum {
+  ASN_NONE=0, ASN_EQ1, ASN_EQ2, ASN_EQ3, ASN_SET, ASN_NUM
+};
+
+
+static char *parse_label_field(char **start,int *asntype)
 {
   char *s,*name;
+  int spaced;  /* potential label is spaced and needs a ':' or '=' */
 
   s = *start;
+  if (asntype)
+    *asntype = ASN_NONE;
+
+  if (isspace((unsigned char )*s)) {
+    s = skip(s);
+    spaced = 1;
+  }
+  else
+    spaced = 0;
+
   if (*s == ':') {
     /* anonymous label definition */
-    strbuf *buf;
-    char num[16];
+    if (asntype) {
+      strbuf *buf;
+      char num[16];
 
-    buf = make_local_label(0,":",1,num,sprintf(num,"%u",++anon_labno));
-    name = buf->str;
-    s = skip(s+1);
+      buf = make_local_label(0,":",1,num,sprintf(num,"%u",++anon_labno));
+      name = buf->str;
+    }
+    else
+      name = s;
+    *start = skip(s+1);
   }
   else {
-    int lvalid;
-
-    if (isspace((unsigned char )*s)) {
-      s = skip(s);
-      lvalid = 0;  /* colon required, when label doesn't start at 1st column */
-    }
-    else lvalid = 1;
-
-    if (name = parse_symbol(&s)) {
-      s = skip(s);
-      if (*s == ':') {
-        s++;
-        if (*s=='+' || *s=='-')
-          return NULL;  /* likely an operand with anonymous label reference */
-      }
-      else if (!lvalid)
-        return NULL;
-    }
-  }
-
-  if (name==NULL && *s==current_pc_char && !ISIDCHAR(*(s+1))) {
-    name = current_pc_str;
-    s = skip(s+1);
-  }
-
-  if (name)
     *start = s;
+    name = parse_symbol(&s);
+
+    if (name==NULL && *s==current_pc_char && !ISIDCHAR(*(s+1))) {
+      name = current_pc_str;
+      s++;
+    }
+
+    if (name) {
+      /* we need anything to authentify a spaced symbol/label, like a ':', a '=',
+         or an equate or set-directive */
+      s = skip(s);
+
+      if (s[0]==':' && s[1]!='+' && s[1]!='-') {
+        s = skip(s+1);
+        spaced = 0;
+      }
+
+      if (*s == '=') {
+        spaced = 0;
+        if (asntype)
+          *asntype = ASN_EQ1;
+      }
+      else {
+        /* check for equ or set directives */
+        char *p = s;
+        int i;
+
+        if (!dotdirs || (dotdirs && *p++=='.')) {
+          for (i=ASN_EQ2; i<ASN_NUM; i++) {
+            if (!strnicmp(p,symassigns[i].asn_name,symassigns[i].asn_len)) {
+              char *q = p + symassigns[i].asn_len;
+
+              if (isspace((unsigned char)*q)) {
+                q = skip(q);
+                if (!ISEOL(q))
+                  break;  /* directive with space and operand confirmed */
+              }
+            }
+          }
+        }
+        else
+          i = ASN_NUM;
+
+        if (i < ASN_NUM) {
+          /* assignment directive confirmed - remember it */
+          if (!igntrail)
+            spaced = 0;
+          if (asntype)
+            *asntype = i;
+        }
+      }
+
+      if (spaced)
+        name = NULL;
+      else
+        *start = s;
+    }
+  }
+
   return name;
 }
 
@@ -1481,9 +1606,8 @@ static char *read_next_statement(void)
     s = line = read_next_line();
     if (s == NULL)
       return NULL;  /* no more lines in source */
-
     /* skip label field and possible statement delimiters therein */
-    (void)parse_label_or_pc(&s);
+    (void)parse_label_field(&s,NULL);
   }
   else {
     /* make the new statement start with a blank - there is no label field */
@@ -1507,7 +1631,7 @@ static char *read_next_statement(void)
 #endif
       s = skip_string(s,c,NULL);
     }
-    else if (c == STATEMENT_DELIMITER) {
+    else if (c==STATEMENT_DELIMITER && s[1]!='-' && s[1]!='+') {
       *s = '\0';  /* terminate the statement here temporarily */
       break;
     }
@@ -1530,7 +1654,7 @@ void parse(void)
   char *op[MAX_OPERANDS];
   int ext_len[MAX_QUALIFIERS?MAX_QUALIFIERS:1];
   int op_len[MAX_OPERANDS];
-  int ext_cnt,op_cnt,inst_len;
+  int ext_cnt,op_cnt,inst_len,asn_type;
   instruction *ip;
 
 #ifdef STATEMENT_DELIMITER
@@ -1546,7 +1670,7 @@ void parse(void)
       int idx;
 
       s = line;
-      (void)parse_label_or_pc(&s);
+      (void)parse_label_field(&s,NULL);
       idx = check_directive(&s);
       if (idx >= 0) {
         if (!strncmp(directives[idx].name,"if",2))
@@ -1560,42 +1684,34 @@ void parse(void)
     }
 
     s = line;
-    if (labname = parse_label_or_pc(&s)) {
+    if (labname = parse_label_field(&s,&asn_type)) {
       /* we have found a global or local label, or current-pc character */
       symbol *label;
-      int equlen = 0;
 
-      s = skip(s);
-      if (!strnicmp(s,equname+!dotdirs,3+dotdirs) &&
-          isspace((unsigned char)*(s+3+dotdirs)))
-        equlen = 3+dotdirs;
-      else if (!strnicmp(s,equname+!dotdirs,2+dotdirs) &&
-               isspace((unsigned char)*(s+2+dotdirs)))
-        equlen = 2+dotdirs;
-      else if (*s == '=')
-        equlen = 1;
+      if (asn_type) {
+        /* proceed to operand */
+        if (dotdirs && asn_type!=ASN_EQ1)
+          s++;  /* skip the '.' unless we have a '=' */
+        s = skip(s+symassigns[asn_type].asn_len);
 
-      if (equlen) {
-        /* found a kind of equate directive */
-        if (*labname == current_pc_char) {
-          handle_org(skip(s+equlen));
-          continue;
+        if (asn_type < ASN_SET) {
+          /* EQU or '=' */
+          if (*labname == current_pc_char) {
+            handle_org(s);
+            continue;
+          }
+          else
+            label = new_equate(labname,parse_expr_tmplab(&s));
         }
-        else {
-          s = skip(s+equlen);
-          label = new_equate(labname,parse_expr_tmplab(&s));
+        else if (asn_type == ASN_SET) {
+          /* SET allows redefinitions */
+          if (*labname == current_pc_char)
+            syntax_error(10);  /* identifier expected */
+          else
+            label = new_abs(labname,parse_expr_tmplab(&s));
         }
-      }
-      else if (!strnicmp(s,setname+!dotdirs,3+dotdirs) &&
-               isspace((unsigned char)*(s+3+dotdirs))) {
-        /* SET allows redefinitions */
-        if (*labname == current_pc_char) {
-          syntax_error(10);  /* identifier expected */
-        }
-        else {
-          s = skip(s+3+dotdirs);
-          label = new_abs(labname,parse_expr_tmplab(&s));
-        }
+        else
+          ierror(0);
       }
       else if (!strnicmp(s,macroname+!dotdirs,3+dotdirs) &&
                (isspace((unsigned char)*(s+3+dotdirs)) ||
@@ -1603,6 +1719,7 @@ void parse(void)
                !strnicmp(s,macroname+!dotdirs,5+dotdirs) &&
                (isspace((unsigned char)*(s+5+dotdirs)) ||
                 *(s+5+dotdirs)=='\0')) {
+        /* macro definition */
         char *params;
         strbuf *buf;
 
@@ -1626,26 +1743,25 @@ void parse(void)
         add_atom(0,new_label_atom(label));
       }
 
-      if (!is_local_symbol_name(labname) && autoexport)
-          label->flags |= EXPORT;
+      if (autoexport && !is_local_symbol_name(labname))
+        label->flags |= EXPORT;
     }
-
-    /* check for directives first */
-    s = skip(s);
-    if (*s==commentchar)
+    if (ISEOL(s))
       continue;
 
+    /* check for directives first */
     s = parse_cpu_special(s);
     if (ISEOL(s))
       continue;
 
-    if (*s==current_pc_char && *(s+1)=='=') {   /* "*=" org directive */ 
+    if (*s==current_pc_char && *(s+1)=='=') {
+      /* "*=" org directive can stand together with a label: lab *= *+1 */ 
       handle_org(skip(s+2));
       continue;
     }
+
     if (handle_directive(s))
       continue;
-
     s = skip(s);
     if (ISEOL(s))
       continue;
@@ -1973,6 +2089,7 @@ strbuf *get_local_label(int n,char **start)
   s = *start;
   p = skip_local(s);
 
+#if !defined(VASM_CPU_SPC700)
   if (p!=NULL && *p=='.' && ISIDCHAR(*(p+1)) &&
       ISIDSTART(*s) && *s!='.' && *(p-1)!='$') {
     /* skip local part of global.local label */
@@ -1981,7 +2098,9 @@ strbuf *get_local_label(int n,char **start)
     name = make_local_label(n,*start,s-*start,s,p-s);
     *start = skip(p);
   }
-  else if (p!=NULL && p>(s+1) && *s=='.') {  /* .label */
+  else
+#endif
+  if (p!=NULL && p>(s+1) && *s=='.') {  /* .label */
     name = make_local_label(n,NULL,0,s,p-s);
     *start = skip(p);
   }

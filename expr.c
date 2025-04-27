@@ -1400,9 +1400,9 @@ void print_expr(FILE *f,expr *p)
     ierror(0);
   simplify_expr(p);
   if(p->type==NUM)
-    fprintf(f,"%lld=0x%llx",(long long)p->c.val,ULLTVAL(p->c.val));
+    fprintf(f,"%lld=%#llx",(long long)p->c.val,ULLTVAL(p->c.val));
   else if(p->type==HUG)
-    fprintf(f,"0x%016llx%016llx",
+    fprintf(f,"%#016llx%016llx",
             (unsigned long long)p->c.huge.hi,(unsigned long long)p->c.huge.lo);
 #if FLOAT_PARSER
   else if(p->type==FLT)

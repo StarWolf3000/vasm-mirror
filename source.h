@@ -1,5 +1,5 @@
 /* source.h - source files, include paths and dependencies */
-/* (c) in 2020,2022,2024 by Volker Barthelmann and Frank Wille */
+/* (c) in 2020,2022,2024,2025 by Volker Barthelmann and Frank Wille */
 
 #ifndef SOURCE_H
 #define SOURCE_H
@@ -34,6 +34,8 @@ struct source {
   int srcdebug;
   macro *macro;
   unsigned long repeat;
+  taddr reptn;
+  char *reptcntname;
   char *irpname;
   struct macarg *irpvals;
   int cond_level;
@@ -53,9 +55,6 @@ struct source {
   char *linebuf;
 #ifdef CARGSYM
   expr *cargexp;
-#endif
-#ifdef REPTNSYM
-  long reptn;
 #endif
 };
 

@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2024 by Frank Wille */
+/* (c) in 2002-2025 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm motorola syntax module 3.19a (c) 2002-2024 Frank Wille";
+const char *syntax_copyright="vasm motorola syntax module 3.19b (c) 2002-2025 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -1208,8 +1208,19 @@ static void handle_incbin(char *s)
 static void handle_rept(char *s)
 {
   int cnt = (int)parse_constexpr(&s);
+  char *itername = NULL;
 
-  new_repeat(cnt<0?0:cnt,NULL,NULL,rept_dirlist,endr_dirlist);
+  s = skip(s);
+  if (!ISEOL(s) && *s==',') {
+    strbuf *name;
+
+    s = skip(s+1);
+    if (name = parse_identifier(0,&s)) {
+      if (name)
+        itername = name->str;
+    }
+  }
+  new_repeat(cnt<0?0:cnt,itername,NULL,rept_dirlist,endr_dirlist);
 }
 
 
@@ -2042,6 +2053,7 @@ static int offs_directive(char *s,char *name)
 }
 
 
+#if FLOAT_PARSER
 static symbol *fequate(char *labname,char **s)
 {
   char x = tolower((unsigned char)**s);
@@ -2053,6 +2065,7 @@ static symbol *fequate(char *labname,char **s)
   syntax_error(1);  /* illegal extension */
   return NULL;
 }
+#endif
 
 
 static char *skip_local(char *p)

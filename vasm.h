@@ -1,5 +1,5 @@
 /* vasm.h  main header file for vasm */
-/* (c) in 2002-2024 by Volker Barthelmann */
+/* (c) in 2002-2025 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -113,10 +113,11 @@ struct section {
   uint8_t pad[MAXPADSIZE];
   int padbytes;
   uint32_t flags;
-  taddr memattr;  /* type of memory, used by some object formats */
+  taddr memattr;          /* type of memory, used by some object formats */
   taddr org;
   taddr pc;
-  unsigned long idx; /* usable by output module */
+  taddr rorg_pc,saved_pc; /* used during RORG blocks */
+  unsigned long idx;      /* usable by output module */
 };
 
 /* mnemonic description */

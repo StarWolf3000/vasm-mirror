@@ -187,6 +187,7 @@ The following CPU modules can be selected:
 @item @code{CPU=pdp11}
 @item @code{CPU=ppc}
 @item @code{CPU=qnice}
+@item @code{CPU=spc700}
 @item @code{CPU=test}
 @item @code{CPU=tr3200}
 @item @code{CPU=unsp}
@@ -326,6 +327,15 @@ source context was included or called.
         directive it allows any number of repetitions, which is decremented
         every time the end of the source text block is reached.
 
+@item long reptn;
+        Current value of the repetition
+        counter symbol in this source instance. So it can be restored when
+        reentering this instance.
+
+@item char *reptcntname;
+        Name of an optional iterator symbol (when @code{reptcntname} is not
+        @code{NULL}), which is set to the current value of @code{reptn}.
+
 @item char *irpname;
         Name of the iterator symbol in special repeat loops, which use a
         sequence of arbitrary values, being assigned to this symbol within
@@ -393,11 +403,6 @@ source context was included or called.
         assigned to the CARG-symbol (used to select a macro argument) in
         this source instance. So it can be restored when reentering this
         instance.
-
-@item long reptn;
-        (If @code{REPTNSYM} was defined.) Current value of the repetition
-        counter symbol in this source instance. So it can be restored when
-        reentering this instance.
 @end table
 
 @subsection Sections
@@ -967,7 +972,7 @@ typedef struct rlist @{
 @} rlist;
 @end example
 
-Type identifies the relocation type. All the standard relocations have
+@code{type} identifies the relocation type. All the standard relocations have
 type numbers between @code{FIRST_STANDARD_RELOC} and 
 @code{LAST_STANDARD_RELOC}. Consider @file{reloc.h} to see which
 standard relocations are available.
@@ -1256,8 +1261,6 @@ Useful support functions for writing CPU-, Syntax- and Output-modules.
   Allocate a new @code{sblock} structure for storing @code{space} elements
   of @code{size} target-bytes, filled with @code{fill}, or zeros when
   @code{fill} is @code{NULL}.
-@item atom *new_atom(int type,taddr align)
-  Allocate a new atom with given type and alignment.
 @item atom *new_inst_atom(instruction *p)
   Allocate a new @code{INSTRUCTION} atom from @code{p}.
 @item atom *new_data_atom(dblock *p,taddr align)
@@ -1272,6 +1275,8 @@ Useful support functions for writing CPU-, Syntax- and Output-modules.
 @item atom *new_datadef_atom(size_t bitsize,operand *op)
   Allocate a new @code{DATADEF} atom from operand @code{op} with
   @code{bitsize} bits.
+@item atom *new_atom(int type,taddr align)
+  Allocate a new atom with given type and alignment.
 @item void add_atom(section *sec,atom *a)
   Adds a new atom to the end of the specified section. If @code{sec} is
   @code{NULL} then the current section is used. If there is no current
@@ -1690,9 +1695,10 @@ keep the syntax consistent.
 Allocate and initialize a new operand structure.
 
 @item int parse_operand(char *text,int len,operand *op,int requires);
-Parses the source at @code{text} with length @code{len} to fill the target
-specific operand structure pointed to by @code{op}. Return with one
-of the following codes:
+Parses the source text for an instruction's operand at @code{text} with length
+@code{len} to fill the target specific operand structure pointed to by @code{op},
+whenever the operand's type matches the type from @code{requires}.
+Return with one of the following codes:
 @table @code
 @item PO_NOMATCH
 The source did no match the operand type given in @code{requires}.
@@ -1730,8 +1736,8 @@ final pass, must be identical to the number of bytes written by
 (see below).
 
 @item dblock *eval_instruction(instruction *ip, section *sec, taddr pc);
-Converts the instruction @code{ip} into a DATA atom, including relocations,
-if necessary.
+Converts the instruction @code{ip} into a DATA atom, including relocations
+when necessary.
 
 @item dblock *eval_data(operand *op, taddr bitsize, section *sec, taddr pc);
 Converts a data operand into a DATA atom, including relocations.

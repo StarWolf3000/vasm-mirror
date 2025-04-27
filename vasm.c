@@ -1,5 +1,5 @@
 /* vasm.c  main module for vasm */
-/* (c) in 2002-2024 by Volker Barthelmann */
+/* (c) in 2002-2025 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,8 +10,8 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 2.0a"
-const char *copyright = _VER " (c) in 2002-2024 Volker Barthelmann";
+#define _VER "vasm 2.0b"
+const char *copyright = _VER " (c) in 2002-2025 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 #endif
@@ -257,16 +257,14 @@ static void vasmdebug(const char *f,section *s,atom *a)
 
 static int resolve_section(section *sec)
 {
-  taddr rorg_pc,org_pc;
   int fastphase=FASTOPTPHASE;
   int pass=0;
-  int done,extrapass,rorg;
+  int done,extrapass;
   size_t size;
   atom *p;
 
   do{
     done=1;
-    rorg=0;
     if (++pass>=maxpasses){
       general_error(7,sec->name);
       break;
@@ -287,19 +285,15 @@ static int resolve_section(section *sec)
       else
 #endif
       if(p->type==RORG){
-        if(rorg)
+        if(sec->flags&IN_RORG)
           general_error(43);  /* reloc org is already set */
-        rorg_pc=*p->content.rorg;
-        org_pc=sec->pc;
-        sec->pc=rorg_pc;
-        sec->flags|=ABSOLUTE;
-        rorg=1;
+        sec->saved_pc=sec->pc;
+        sec->pc=sec->rorg_pc=*p->content.rorg;
+        sec->flags|=ABSOLUTE|IN_RORG;
       }
-      else if(p->type==RORGEND&&rorg){
-        sec->pc=org_pc+(sec->pc-rorg_pc);
-        rorg_pc=0;
-        sec->flags&=~ABSOLUTE;
-        rorg=0;
+      else if(p->type==RORGEND&&(sec->flags&IN_RORG)){
+        sec->pc=sec->saved_pc+(sec->pc-sec->rorg_pc);
+        sec->flags&=~(ABSOLUTE|IN_RORG);
       }
       else if(p->type==LABEL){
         symbol *label=p->content.label;
@@ -346,9 +340,9 @@ static int resolve_section(section *sec)
       }
       sec->pc+=size;
     }
-    if(rorg){
-      sec->pc=org_pc+(sec->pc-rorg_pc);
-      sec->flags&=~ABSOLUTE;  /* workaround for missing RORGEND */
+    if(sec->flags&IN_RORG){
+      sec->pc=sec->saved_pc+(sec->pc-sec->rorg_pc);
+      sec->flags&=~(ABSOLUTE|IN_RORG);  /* workaround for missing RORGEND */
     }
     /* Extend the fast-optimization phase, when there was no atom which
        became larger than in the previous pass. */
@@ -398,11 +392,10 @@ static void resolve(void)
 
 static void assemble(void)
 {
-  taddr basepc,rorg_pc,org_pc;
+  taddr basepc;
   struct dwarf_info dinfo;
   section *sec;
   atom *p,*pp;
-  int rorg;
 
   convert_offset_labels();
   if(dwarf){
@@ -411,7 +404,6 @@ static void assemble(void)
     source_debug_init(1,&dinfo);
   }
   final_pass=1;
-  rorg=0;
   for(sec=first_section;sec;sec=sec->next){
     source *lasterrsrc=NULL;
     utaddr oldpc;
@@ -439,24 +431,20 @@ static void assemble(void)
           general_error(50);  /* instruction has been auto-aligned */
         else if(aa->type==DATA||aa->type==DATADEF)
           general_error(57);  /* data has been auto-aligned */
-        if(rorg)
+        if(sec->flags&IN_RORG)
           alignment_to_space(sec->pc-basepc,sec,pp,p);
       }
-      else if(rorg)
+      else if(sec->flags&IN_RORG)
         p->align=1;  /* disable ineffective alignment in relocated org block */
       if(p->type==RORG){
-        rorg_pc=*p->content.rorg;
-        org_pc=sec->pc;
-        sec->pc=rorg_pc;
-        sec->flags|=ABSOLUTE;
-        rorg=1;
+        sec->saved_pc=sec->pc;
+        sec->pc=sec->rorg_pc=*p->content.rorg;
+        sec->flags|=ABSOLUTE|IN_RORG;
       }
       else if(p->type==RORGEND){
-        if(rorg){
-          sec->pc=org_pc+(sec->pc-rorg_pc);
-          rorg_pc=0;
-          sec->flags&=~ABSOLUTE;
-          rorg=0;
+        if(sec->flags&IN_RORG){
+          sec->pc=sec->saved_pc+(sec->pc-sec->rorg_pc);
+          sec->flags&=~(ABSOLUTE|IN_RORG);
         }
         else
           general_error(44);  /* reloc org was not set */
@@ -476,13 +464,8 @@ static void assemble(void)
         if(pic_check)
           do_pic_check(db->relocs);
         cur_listing=0;
-        if(dwarf){
-          if(cur_src->defsrc)
-            dwarf_line(&dinfo,sec,cur_src->defsrc->srcfile->index,
-                       cur_src->defline+cur_src->line);
-          else
-            dwarf_line(&dinfo,sec,cur_src->srcfile->index,cur_src->line);
-        }
+        if(dwarf)
+          dwarf_line(&dinfo,sec,cur_src);
         /*FIXME: sauber freigeben */
         myfree(p->content.inst);
         p->content.db=db;
@@ -549,11 +532,9 @@ static void assemble(void)
       pp=p;  /* prev atom */
     }
     /* leave RORG-mode, when section ends */
-    if(rorg){
-      sec->pc=org_pc+(sec->pc-rorg_pc);
-      rorg_pc=0;
-      sec->flags&=~ABSOLUTE;
-      rorg=0;
+    if(sec->flags&IN_RORG){
+      sec->pc=sec->saved_pc+(sec->pc-sec->rorg_pc);
+      sec->flags&=~(ABSOLUTE|IN_RORG);  /* workaround for missing RORGEND */
     }
     if(dwarf)
       dwarf_end_sequence(&dinfo,sec);
@@ -656,7 +637,7 @@ static void statistics(void)
 
   putchar('\n');
   for(sec=first_section;sec;sec=sec->next){
-    size=(utaddr)(sec->pc)-(utaddr)(sec->org);
+    size=sec->pc?(utaddr)(sec->pc)-(utaddr)(sec->org):(utaddr)(~0)-(utaddr)(sec->org)+1;
     printf("%s(%s%lu):\t%12llu byte%c\n",sec->name,sec->attr,
            (unsigned long)sec->align,size,size==1?' ':'s');
   }
@@ -1038,6 +1019,7 @@ static void reset_rorg(section *s)
     s->flags |= ABSOLUTE;
   else
     s->flags &= ~ABSOLUTE;
+  s->pc = s->saved_pc+(s->pc-s->rorg_pc);
   s->flags &= ~IN_RORG;
 }
 
@@ -1095,6 +1077,9 @@ void start_rorg(taddr rorg)
   }
   else
     s->flags |= PREVABS;
+  s->rorg_pc = rorg;
+  s->saved_pc = s->pc;
+  s->pc = rorg;
 }
 
 void print_section(FILE *f,section *sec)
@@ -1270,6 +1255,10 @@ int main(int argc,char **argv)
     }
     if(!strncmp("-maxpasses=",argv[i],11)){
       sscanf(argv[i]+11,"%i",&maxpasses);
+      continue;
+    }
+    if(!strcmp("-no-msrcdebug",argv[i])){
+      msource_disable = 1;
       continue;
     }
     if(!strcmp("-nocase",argv[i])){

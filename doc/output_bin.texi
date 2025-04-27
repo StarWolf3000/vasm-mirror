@@ -3,16 +3,16 @@ selected with the @option{-Fbin} option.
 
 @section Legal
 
-    This module is written in 2002-2024 by Volker Barthelmann and
+    This module is written in 2002-2025 by Volker Barthelmann and
     Frank Wille and is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
  
 @table @option
     @item -apple-bin
-        Writes an Apple DOS 3.3 binary file header preceding the output
-        file, which consists of a 16-bit start/load address and a 16-bit
-        file length in little-endian order.
+        Prepends a 4-byte header with load-address and length to the
+        raw binary file, as used by the @command{AppleCommander} to write
+        such files onto a DOS 3.3 disk image.
     @item -atari-com
         Writes an Atari DOS COM header preceding the output file. It has
         a standard header (@code{0xFFFF}), which is followed by any

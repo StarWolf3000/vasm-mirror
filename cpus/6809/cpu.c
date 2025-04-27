@@ -9,7 +9,7 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-const char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5a (c)2020-2024 by Frank Wille";
+const char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5b (c)2020-2025 by Frank Wille";
 const char *cpuname = "6809";
 int bytespertaddr = 2;
 
@@ -33,6 +33,7 @@ static const int psh_postbyte_map[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   3<<1,1<<4,1<<5,1<<6,1<<6,1<<7,-1,-1,1<<1,1<<2,1<<0,1<<3,-1,-1,-1,-1
 };
+
 static const int ir_postbyte_map09[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   0,1,2,3,4,5,6,7,8,9,10,11,-1,13,14,15
@@ -41,6 +42,11 @@ static const int ir_postbyte_map12[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   4,5,6,7,7,-1,-1,-1,0,1,2,-1,-1,-1,-1,-1
 };
+static const int ir_postbyte_mapk[] = {
+  /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
+  1,2,3,5,6,7,-1,-1,0,1,-1,4,-1,-1,-1,-1
+};
+
 static const int idx_postbyte_map09[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   -1,0x00,0x20,0x40,0x60,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
@@ -49,6 +55,11 @@ static const int idx_postbyte_map12[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   -1,0,1,2,2,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 };
+static const int idx_postbyte_mapk[] = {
+  /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
+  -1,0x20,0x30,0x50,0x60,0x70,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+};
+
 static const int offs_postbyte_map09[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   11,-1,-1,-1,-1,-1,14,-1,6,5,-1,-1,-1,-1,7,10
@@ -57,10 +68,16 @@ static const int offs_postbyte_map12[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   2,-1,-1,-1,-1,-1,-1,-1,0,1,-1,-1,-1,-1,-1,-1
 };
+static const int offs_postbyte_mapk[] = {
+  /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
+  7,-1,-1,-1,-1,-1,-1,-1,0,1,-1,-1,-1,-1,-1,-1
+};
+
 static const int bitm_postbyte_map[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   -1,-1,-1,-1,-1,-1,-1,-1,1,2,0,-1,-1,-1,-1,-1
 };
+
 static const int dbr_postbyte_map[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
   4,5,6,7,7,-1,-1,-1,0,1,-1,-1,-1,-1,-1,-1
@@ -198,15 +215,15 @@ static int read_index(char **start,operand *op)
   /* check if pre/post increment/decrements are valid for this register */
   switch (preinc) {
     case -2:
-      a = indir ? R_IPDIX : R_PD2IX;
+      a = indir ? R_IPD2IX : R_PD2IX;
       break;
     case -1:
-      a = indir ? 0 : R_PD1IX;
+      a = indir ? R_IPD1IX : R_PD1IX;
       break;
     case 1:
       a = indir ? 0 : R_PI1IX;
     case 0:
-      break;      
+      break;
     default:
       a = 0;
       break;
@@ -216,10 +233,10 @@ static int read_index(char **start,operand *op)
       a = indir ? 0 : R_QD1IX;
       break;
     case 1:
-      a = indir ? 0 : R_QI1IX;
+      a = indir ? R_IQI1IX : R_QI1IX;
       break;
     case 2:
-      a = indir ? R_IQIIX : R_QI2IX;
+      a = indir ? R_IQI2IX : R_QI2IX;
     case 0:
       break;
     default:
@@ -272,8 +289,8 @@ int parse_operand(char *p,int len,operand *op,int required)
         break;
 
       case TFR:
-        /* transfer/exchange registers */
-        if ((reg = parse_reg(&p,R_IRP)) < 0)
+        /* transfer/exchange registers (source D-register for Konami only) */
+        if ((reg = parse_reg(&p,(required&TFR_SRC)?(R_IRP|R_TFRS):R_IRP)) < 0)
           return PO_NOMATCH;
         op->mode = AM_TFR;
         op->opreg = reg;
@@ -885,8 +902,8 @@ static size_t process_instruction(instruction *ip,section *sec,
             }
             else if (op->flags & AF_HI)
               op->flags |= AF_OFF16;
-            else if (!(op->flags & AF_INDIR) &&
-                     abs && val>=-16 && val<=15 && !wreg)
+            else if (!(op->flags & AF_INDIR) && abs && val>=-16 && val<=15
+                     && !wreg && !(cpu_type & KONAMI2))
               op->flags |= AF_OFF5;
             else if (abs && val>=-128 && val<=127 && !wreg)
               op->flags |= AF_OFF8;
@@ -984,7 +1001,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
   operand *op;
   int offs = 1;
   rlist *rl;
-  int16_t oc;
+  uint16_t oc;
   uint8_t *d;
   taddr val;
   int i,ocsz;
@@ -1082,16 +1099,23 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
         break;
 
       case AM_TFR:
-        if (offs == ocsz) {
-          *d++ = (cpu_type & HC12) ?
-                 ir_postbyte_map12[registers[op->opreg].value]<<4 :
-                 ir_postbyte_map09[registers[op->opreg].value]<<4;
+        if (offs == ocsz) {  /* src oper */
+          if (cpu_type & HC12)
+            *d++ = ir_postbyte_map12[registers[op->opreg].value]<<4;
+          else if (cpu_type & KONAMI2)
+            *d++ = ir_postbyte_mapk[registers[op->opreg].value]
+                   | (oc==0x3f ? 0x80 : 0);  /* set for TFR */
+          else
+            *d++ = ir_postbyte_map09[registers[op->opreg].value]<<4;
           offs++;
         }
-        else {
-          *(d-1) |= (cpu_type & HC12) ?
-                    ir_postbyte_map12[registers[op->opreg].value] :
-                    ir_postbyte_map09[registers[op->opreg].value];
+        else {  /* dest oper */
+          if (cpu_type & HC12)
+            *(d-1) |= ir_postbyte_map12[registers[op->opreg].value];
+          else if (cpu_type & KONAMI2)
+            *(d-1) |= ir_postbyte_mapk[registers[op->opreg].value]<<4;
+          else
+            *(d-1) |= ir_postbyte_map09[registers[op->opreg].value];
         }
         break;
 
@@ -1134,7 +1158,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
 
       case AM_EXT:
         if (op->flags & AF_INDIR) {
-          *d++ = 0x9f;  /* [ext] needs postbyte */
+          *d++ = (cpu_type & KONAMI2) ? 0x0f : 0x9f;  /* [ext] needs postbyte */
           offs++;
         }
       case AM_IMM16:
@@ -1177,14 +1201,18 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
               *d |= 0x60;
           }
           else {
-            *d = idx_postbyte_map09[registers[op->opreg].value] |
-                 ((op->flags & AF_INDIR) ? 0x90 : 0x80);
+            if (cpu_type & KONAMI2)
+              *d = idx_postbyte_mapk[registers[op->opreg].value] |
+                   ((op->flags & AF_INDIR) ? 0x08 : 0x00);
+            else
+              *d = idx_postbyte_map09[registers[op->opreg].value] |
+                   ((op->flags & AF_INDIR) ? 0x90 : 0x80);
             if (op->preinc < 0)
               *d |= (-op->preinc) + 1;
             else if (op->postinc > 0)
               *d |= op->postinc - 1;
             else
-              *d |= 4;
+              *d |= (cpu_type & KONAMI2) ? 6 : 4;
           }
         }
         d++;
@@ -1196,6 +1224,11 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
           *d++ = 0xe4 | (idx_postbyte_map12[registers[op->opreg].value]<<3) |
                  ((op->flags & AF_INDIR) ? 0x03 :
                   offs_postbyte_map12[registers[op->offs_reg].value]);
+        }
+        else if (cpu_type & KONAMI2) {
+          *d++ = idx_postbyte_mapk[registers[op->opreg].value] |
+                 offs_postbyte_mapk[registers[op->offs_reg].value] |
+                 ((op->flags & AF_INDIR) ? 0x88 : 0x80);
         }
         else {   /* 6809/6309 */
           *d++ = idx_postbyte_map09[registers[op->opreg].value] |
@@ -1255,9 +1288,15 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                 *d = (op->flags & AF_INDIR) ? 0x9c : 0x8c;
               }
               else {
-                *d = idx_postbyte_map09[registers[op->opreg].value];              
-                if (cosz != AF_OFF5)
-                  *d |= (op->flags & AF_INDIR) ? 0x98 : 0x88;
+                if (cpu_type & KONAMI2) {
+                  *d = idx_postbyte_mapk[registers[op->opreg].value];
+                  *d |= (op->flags & AF_INDIR) ? 0x0c : 0x04;
+                }
+                else {
+                  *d = idx_postbyte_map09[registers[op->opreg].value];
+                  if (cosz != AF_OFF5)
+                    *d |= (op->flags & AF_INDIR) ? 0x98 : 0x88;
+                }
               }
               *d |= cosz == AF_OFF16;
             }
@@ -1405,6 +1444,8 @@ int cpu_args(char *p)
     cpu_type = HC12;
   else if (!stricmp(p,"-turbo9"))
     cpu_type = TURBO9;
+  else if (!stricmp(p,"-konami2"))
+    cpu_type = KONAMI2;
   else if (!strcmp(p,"-opt-offset"))
     opt_off = 1;
   else if (!strcmp(p,"-opt-branch"))

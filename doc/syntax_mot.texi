@@ -4,7 +4,7 @@ M68k and ColdFire families of CPUs, which is available with the extension
 
 @section Legal
 
-    This module is written in 2002-2024 by Frank Wille and
+    This module is written in 2002-2025 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -233,7 +233,7 @@ CPU- and output-module support them):
       seen as a comment.
       There is only one exception, when the operand contains @code{HEAD=}.
       Then the following expression is passed to the TOS output module
-      via the symbol '@code{ TOSFLAGS}', to define the Atari specific TOS
+      via the symbol '@code{TOSFLAGS}', to define the Atari specific TOS
       flags.
 
 @item cseg
@@ -741,13 +741,16 @@ foo IIF bar equ 42
       The assembler will ignore everything from encountering the @code{rem}
       directive until an @code{erem} directive was found.
 
-@item rept <expression>
+@item rept <expression>[,<symbol>]
       Repeats the assembly of the block between @code{rept} and @code{endr}
       @code{<expression>} number of times. @code{<expression>} should be
-      positive. Negative values are regarded like @code{0}.
+      positive. Negative values are regarded as @code{0}.
       The internal symbol @code{REPTN} always holds the iteration counter
       of the inner repeat loop, starting with 0. @code{REPTN} is -1 outside
       of any repeat block.
+      The optional @code{SET}-symbol @code{<symbol>} receives a copy of the
+      current iteration counter, when given (this is a non-standard
+      extension!).
 
 @item rorg <expression>[,<fill>]
       Sets the program counter to an offset relative to the start
@@ -794,7 +797,7 @@ foo IIF bar equ 42
       contain a new value from now on.
 
 @item setfo <expression>
-      Sets the structure offset counter (@code{__FO}) to @code{<expression>}.
+      Sets the stack-frame offset counter (@code{__FO}) to @code{<expression>}.
       See @code{fo} directive.
 
 @item setso <expression>

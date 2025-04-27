@@ -3,7 +3,11 @@
 
 /* macros to recognize identifiers */
 #define ISIDSTART(x) ((x)=='.'||(x)=='_'||(x)=='$'||(x)=='@'||isalpha((unsigned char)(x)))
+#if defined(VASM_CPU_SPC700)
+#define ISIDCHAR(x) ((x)=='_'||(x)=='$'||isalnum((unsigned char)(x)))
+#else
 #define ISIDCHAR(x) ((x)=='.'||(x)=='_'||(x)=='$'||isalnum((unsigned char)(x)))
+#endif
 #define ISBADID(p,l) ((l)==1&&(*(p)=='.'||*(p)=='_'||*(p)=='$'||*(p)=='@'))
 #define ISEOL(p) (*(p)=='\0'||*(p)==commentchar)
 #if defined(VASM_CPU_M68K)

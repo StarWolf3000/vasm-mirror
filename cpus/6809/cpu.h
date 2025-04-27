@@ -128,6 +128,7 @@ typedef struct {
 #define HD6309          (1<<1)  /* 6309: new registers, additional instr. */
 #define HC12            (1<<2)  /* standard 68HC12 instruction set */
 #define TURBO9          (1<<3)  /* Turbo9 */
+#define KONAMI2         (1<<4)  /* Konami 6809 based cpu, scrambled instr/regs */
 /* other flags */
 #define MOVE            (1<<15) /* movb, movw instruction */
 
@@ -148,6 +149,10 @@ typedef struct {
 #define BIT             10      /* bit number 0-7 */
 #define DBR             11      /* dbcc,ibcc,tbcc register */
 #define OTMASK          0xf     /* lowest four bits for single modes */
+
+/* flag for TFR source register (Konami D-register) */
+#define TFR_SRC         (1<<15)
+#define TSR             (TFR|TFR_SRC)
 
 /* flags for TFM and pseudo modes with these flags */
 #define TFM_PLUS        (1<<14) /* r+ */
@@ -212,16 +217,19 @@ struct CPUReg {
 #define R_QI1IX         (1<<10) /* index reg. with byte post-incr. */
 #define R_QI2IX         (1<<11) /* index reg. with word post-incr. */
 #define R_QD1IX         (1<<12) /* index reg. with byte post-decr. */
-#define R_IPDIX         (1<<13) /* indirect index reg. with word pre-decr. */
-#define R_IQIIX         (1<<14) /* indirect index reg. with word post-incr. */
-#define R_DAIX          (1<<15) /* index reg. with direct accum. offset */
-#define R_IAIX          (1<<16) /* index reg. with indirect accum. offset */
-#define R_DOFF          (1<<17) /* direct offset register */
-#define R_IOFF          (1<<18) /* indirect offset register */
-#define R_IRP           (1<<19) /* inter-register operations */
-#define R_STK           (1<<20) /* stack push/pull register lists */
-#define R_BMP           (1<<21) /* bit-manipulation register */
-#define R_DBR           (1<<22) /* decr./incr./test-branch register */
+#define R_IPD1IX        (1<<13) /* indirect index reg. with byte pre-decr. */
+#define R_IPD2IX        (1<<14) /* indirect index reg. with word pre-decr. */
+#define R_IQI1IX        (1<<15) /* indirect index reg. with byte post-incr. */
+#define R_IQI2IX        (1<<16) /* indirect index reg. with word post-incr. */
+#define R_DAIX          (1<<17) /* index reg. with direct accum. offset */
+#define R_IAIX          (1<<18) /* index reg. with indirect accum. offset */
+#define R_DOFF          (1<<19) /* direct offset register */
+#define R_IOFF          (1<<20) /* indirect offset register */
+#define R_IRP           (1<<21) /* inter-register operations */
+#define R_STK           (1<<22) /* stack push/pull register lists */
+#define R_BMP           (1<<23) /* bit-manipulation register */
+#define R_DBR           (1<<24) /* decr./incr./test-branch register */
+#define R_TFRS          (1<<25) /* TFR source register (Konami only) */
 
 /* used to get any register */
 #define R_ANY           (0xffffffff)
@@ -236,21 +244,22 @@ struct CPUReg {
 #define R_DPIDX         (R_PI1IX|R_PD1IX|R_PD2IX|R_QI1IX|R_QI2IX|R_QD1IX)
 
 /* indirect index registers with increment/decrement */
-#define R_IPIDX         (R_IPDIX|R_IQIIX)
+#define R_IP1IDX        (R_IPD1IX|R_IQI1IX)
+#define R_IP2IDX        (R_IPD2IX|R_IQI2IX)
 
 /* any direct/indirect index register */
 #define R_DIDX          (R_DCIDX|R_DPIDX|R_DAIX)
-#define R_IIDX          (R_ICIDX|R_IPIDX|R_IAIX)
+#define R_IIDX          (R_ICIDX|R_IP1IDX|R_IP2IDX|R_IAIX)
 
 /* Index availability for 6809 X,Y,U,S: */
 #define R_CIX09         (R_DCIX0|R_DCIX5|R_DCIX8|R_DCIX16|R_ICIX0|R_ICIX8|R_ICIX16)
 #define R_AIX09         (R_DAIX|R_IAIX)
-#define R_PIX09         (R_PD1IX|R_PD2IX|R_QI1IX|R_QI2IX|R_IPIDX)
+#define R_PIX09         (R_PD1IX|R_PD2IX|R_QI1IX|R_QI2IX|R_IP2IDX)
 #define R_IDX09         (R_CIX09|R_AIX09|R_PIX09)
 
 /* Index availability for 6309 W: */
 #define R_CIXW          (R_DCIX0|R_DCIX16|R_ICIX0|R_ICIX16)
-#define R_PIXW          (R_PD2IX|R_QI2IX|R_IPIDX)
+#define R_PIXW          (R_PD2IX|R_QI2IX|R_IP2IDX)
 #define R_IDXW          (R_CIXW|R_AIX09|R_PIXW)
 
 /* Index availability for 6809 PCR: */
@@ -264,6 +273,14 @@ struct CPUReg {
 /* Index availability for HC12 PC: */
 #define R_IDX12PC       (R_CIX12|R_AIX09)
 
+/* Index availability for KONAMI2 X,Y,U,S: */
+#define R_CIXK          (R_DCIX0|R_DCIX8|R_DCIX16|R_ICIX16)
+#define R_PIXK          (R_PD1IX|R_PD2IX|R_QI1IX|R_QI2IX|R_IP1IDX|R_IP2IDX)
+#define R_IDXK          (R_CIXK|R_AIX09|R_PIXK)
+
+/* Index availability for KONAMI2 PC: */
+#define R_IDXKPC        (R_CIXK|R_AIX09)
+ 
 /* Offset availability for 6809 A,B,D and 6309 E, F, W: */
 #define R_OFF           (R_DOFF|R_IOFF)
 

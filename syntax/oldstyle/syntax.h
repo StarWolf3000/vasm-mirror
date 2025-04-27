@@ -1,5 +1,5 @@
 /* syntax.h  syntax header file for vasm */
-/* (c) in 2002,2012,2014,2017,2020 by Frank Wille */
+/* (c) in 2002,2012,2014,2017,2020,2025 by Frank Wille */
 
 /* macros to recognize identifiers */
 int isidchar(char);
@@ -37,3 +37,20 @@ extern int igntrail;
 #define MAXMACPARAMS 35
 char *my_skip_macro_arg(char *);
 #define SKIP_MACRO_ARGNAME(p) my_skip_macro_arg(p)
+
+/* cpu-specific data sizes */
+#if defined(VASM_CPU_650X) || defined(VASM_CPU_SPC700)
+#define DATWORD handle_d16
+#define SPCWORD handle_spc16
+#define DATLONG handle_d24
+#define SPCLONG handle_spc24
+#define DATDWRD handle_d32
+#define SPCDWRD handle_spc32
+#else
+#define DATWORD handle_d16
+#define SPCWORD handle_spc16
+#define DATLONG handle_d32
+#define SPCLONG handle_spc32
+#define DATDWRD handle_d32
+#define SPCDWRD handle_spc32
+#endif
