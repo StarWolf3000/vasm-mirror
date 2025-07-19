@@ -9,7 +9,7 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-const char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5b (c)2020-2025 by Frank Wille";
+const char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5c (c)2020-2025 by Frank Wille";
 const char *cpuname = "6809";
 int bytespertaddr = 2;
 
@@ -1445,7 +1445,9 @@ int cpu_args(char *p)
   else if (!stricmp(p,"-turbo9"))
     cpu_type = TURBO9;
   else if (!stricmp(p,"-konami2"))
-    cpu_type = KONAMI2;
+    cpu_type = KONAMI2ORIG;
+  else if (!stricmp(p,"-konami2ext"))
+    cpu_type = KONAMI2EXT;
   else if (!strcmp(p,"-opt-offset"))
     opt_off = 1;
   else if (!strcmp(p,"-opt-branch"))

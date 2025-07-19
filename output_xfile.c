@@ -98,20 +98,6 @@ static void xfile_header(FILE *f,unsigned long tsize,unsigned long dsize,
 }
 
 
-static void checkdefined(rlist *rl,section *sec,taddr pc,atom *a)
-{
-  if (is_std_reloc(rl)) {
-    nreloc *r = (nreloc *)rl->reloc;
-
-    if (EXTREF(r->sym))
-      output_atom_error(8,a,r->sym->name,sec->name,
-                        (unsigned long)pc+r->byteoffset,rl->type);
-  }
-  else
-    ierror(0);
-}
-
-
 static void do_relocs(section *asec,taddr pc,atom *a)
 /* Try to resolve all relocations in a DATA or SPACE atom.
    Very simple implementation which can only handle basic 68k relocs. */

@@ -25,7 +25,7 @@ const struct cpu_models models[] = {
 static const int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.7c (c) 2002-2024 Frank Wille";
+const char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 2.8 (c) 2002-2025 Frank Wille";
 const char *cpuname = "M68k";
 int bytespertaddr = 4;
 
@@ -39,32 +39,32 @@ static expr *baseexp[7];              /* basereg: expression loaded to reg. */
 static signed char sdreg = -1;        /* current small-data base register */
 static signed char last_sdreg = -1;
 static unsigned char optmainswitch = 1;
-static unsigned char phxass_compat = 0;
-static unsigned char devpac_compat = 0;
-static unsigned char gas = 0;         /* true enables GNU-as mnemonics */
-static unsigned char sgs = 0;         /* true enables & as immediate prefix */
-static unsigned char no_fpu = 0;      /* true: FPU code/direct. disallowed */
-static unsigned char elfregs = 0;     /* true: %Rn instead of Rn reg. names */
+static unsigned char phxass_compat;
+static unsigned char devpac_compat;
+static unsigned char gas;             /* true enables GNU-as mnemonics */
+static unsigned char sgs;             /* true enables & as immediate prefix */
+static unsigned char no_fpu;          /* true: FPU code/direct. disallowed */
+static unsigned char elfregs;         /* true: %Rn instead of Rn reg. names */
 static unsigned char fpu_id = 1;      /* default coprocessor id for FPU */
 static unsigned char opt_gen = 1;     /* generic optimizations (not Devpac) */
-static unsigned char opt_movem = 0;   /* MOVEM Rn -> MOVE Rn */
-static unsigned char opt_pea = 0;     /* MOVE.L #x,-(sp) -> PEA x */
-static unsigned char opt_clr = 0;     /* MOVE #0,<ea> -> CLR <ea> */
-static unsigned char opt_st = 0;      /* MOVE.B #-1,<ea> -> ST <ea> */
-static unsigned char opt_lsl = 0;     /* LSL #1,Dn -> ADD Dn,Dn */
-static unsigned char opt_mul = 0;     /* MULU/MULS #n,Dn -> LSL/ASL #n,Dn */
-static unsigned char opt_div = 0;     /* DIVU/DIVS.L #n,Dn -> LSR/ASR #n,Dn */
+static unsigned char opt_movem;       /* MOVEM Rn -> MOVE Rn */
+static unsigned char opt_pea;         /* MOVE.L #x,-(sp) -> PEA x */
+static unsigned char opt_clr;         /* MOVE #0,<ea> -> CLR <ea> */
+static unsigned char opt_st;          /* MOVE.B #-1,<ea> -> ST <ea> */
+static unsigned char opt_lsl;         /* LSL #1,Dn -> ADD Dn,Dn */
+static unsigned char opt_mul;         /* MULU/MULS #n,Dn -> LSL/ASL #n,Dn */
+static unsigned char opt_div;         /* DIVU/DIVS.L #n,Dn -> LSR/ASR #n,Dn */
 static unsigned char opt_fconst = 1;  /* Fxxx.D #m,FPn -> Fxxx.S #m,FPn */
-static unsigned char opt_brajmp = 0;  /* branch to different sect. into jump */
+static unsigned char opt_brajmp;      /* branch to different sect. into jump */
 static unsigned char opt_pc = 1;      /* <label> -> (<label>,PC) */
-static unsigned char opt_pc080 = 0;   /* dest.label -> (<label>,PC) (Apollo) */
+static unsigned char opt_pc080;       /* dest.label -> (<label>,PC) (Apollo) */
 static unsigned char opt_bra = 1;     /* B<cc>.L -> B<cc>.W -> B<cc>.B */
-static unsigned char opt_allbra = 0;  /* also optimizes sized branches */
-static unsigned char opt_jbra = 0;    /* JMP/JSR <ext> -> BRA.L/BSR.L (020+) */
+static unsigned char opt_allbra;      /* also optimizes sized branches */
+static unsigned char opt_jbra;        /* JMP/JSR <ext> -> BRA.L/BSR.L (020+) */
 static unsigned char opt_disp = 1;    /* (0,An) -> (An), etc. */
 static unsigned char opt_abs = 1;     /* optimize absolute addresses to 16bit */
 static unsigned char opt_moveq = 1;   /* MOVE.L #x,Dn -> MOVEQ #x,Dn */
-static unsigned char opt_nmovq = 0;   /* MOVE.L #x,Dn -> MOVEQ #x,Dn & NEG Dn*/
+static unsigned char opt_nmovq;       /* MOVE.L #x,Dn -> MOVEQ #x,Dn & NEG Dn*/
 static unsigned char opt_quick = 1;   /* ADD/SUB #x,Rn -> ADDQ/SUBQ #x,Rn */
 static unsigned char opt_branop = 1;  /* BRA.B *+2 -> NOP */
 static unsigned char opt_bdisp = 1;   /* base displacement optimization */
@@ -72,22 +72,23 @@ static unsigned char opt_odisp = 1;   /* outer displacement optimization */
 static unsigned char opt_lea = 1;     /* ADD/SUB #x,An -> LEA (x,An),An */
 static unsigned char opt_lquick = 1;  /* LEA (x,An),An -> ADDQ/SUBQ #x,An */
 static unsigned char opt_immaddr = 1; /* <op>.L #x,An -> <op>.W #x,An */
-static unsigned char opt_speed = 0;   /* optimize for speed, code may grow */
-static unsigned char opt_size = 0;    /* optimize for size, even when slower */
-static unsigned char opt_sc = 0;      /* external JMP/JSR are 16-bit PC-rel. */
-static unsigned char opt_sd = 0;      /* small data opts: abs.L -> (d16,An) */
-static unsigned char no_opt = 0;      /* don't optimize at all! */
-static unsigned char warn_opts = 0;   /* warn on optimizations/translations */
-static unsigned char warn_abs16 = 0;  /* warn about absolute 16-bit accesses */
-static unsigned char warn_abs32 = 0;  /* warn about absolute 32-bit accesses */
-static unsigned char convert_brackets = 0;  /* convert [ into ( for <020 */
+static unsigned char opt_speed;       /* optimize for speed, code may grow */
+static unsigned char opt_size;        /* optimize for size, even when slower */
+static unsigned char opt_sc;          /* external JMP/JSR are 16-bit PC-rel. */
+static unsigned char opt_sd;          /* small data opts: abs.L -> (d16,An) */
+static unsigned char no_opt;          /* don't optimize at all! */
+static unsigned char warn_opts;       /* warn on optimizations/translations */
+static unsigned char warn_abs16;      /* warn about absolute 16-bit accesses */
+static unsigned char warn_abs32;      /* warn about absolute 32-bit accesses */
+static unsigned char warn_unaligned;  /* warn about unaligned accesses */
+static unsigned char convert_brackets;/* convert [ into ( for <020 */
 static unsigned char typechk = 1;     /* check value types and ranges */
-static unsigned char ign_unambig_ext = 0;  /* don't check unambig. size ext. */
-static unsigned char ign_unsized_ext = 0;  /* don't check size on unsized */
-static unsigned char regsymredef = 0; /* allow redefinition of reg. symbols */
-static unsigned char kick1hunks = 0;  /* no optim. to 32-bit PC-displacem. */
-static unsigned char no_dpc = 0;      /* abs. PC-displacments not allowed */
-static unsigned char extsd = 0;       /* small-data with ext. addr. modes */
+static unsigned char ign_unambig_ext; /* don't check unambig. size ext. */
+static unsigned char ign_unsized_ext; /* don't check size on unsized */
+static unsigned char regsymredef;     /* allow redefinition of reg. symbols */
+static unsigned char kick1hunks;      /* no optim. to 32-bit PC-displacem. */
+static unsigned char no_dpc;          /* abs. PC-displacments not allowed */
+static unsigned char extsd;           /* small-data with ext. addr. modes */
 static char current_ext;              /* extension of current parsed inst. */
 
 /* minimum and maximum distance+1 for B<cc>.B branches */
@@ -3543,7 +3544,8 @@ dontswap:
     if (ip->op[0]->mode==MODE_Extended &&
         ip->op[0]->reg==REG_Immediate && abs) {
       /* ADD/ADDI/ADDA/SUB/SUBI/SUBA Immediate --> ADDQ/SUBQ */
-      if (opt_quick && val>=1 && val<=8) {
+      if (opt_quick && val>=1 && val<=8 &&
+          (ip->op[1]->mode!=MODE_An || ext!='b')) {
         if ((cpu_type&apollo) && ip->op[1]->mode==MODE_SpecReg)
           ip->code = (oc&0x4200) ? OC_ADDQVX : OC_SUBQVX;
         else
@@ -4493,48 +4495,80 @@ size_t instruction_size(instruction *realip,section *sec,taddr pc)
 }
 
 
-static void write_val(unsigned char *d,int pos,int size,taddr val,int sign)
-/* Insert value 'val' with 'size' bits at bit-position 'pos'.
-   sign==0 allows unsigned values with 'size' bits. Otherwise signed.
-   sign<0 indicates that any value in signed and unsigned range is allowed. */
+static void insert_val(unsigned char *d,int pos,int size,taddr val)
+/* Insert value 'val' with 'size' bits at bit-position 'pos'. */
 {
-  if (typechk) {
-    if (sign) {
-      if ((val > (1L << (size-1)) - 1) || (val < -(1L << (size-1)))) {
-        if (val > 0 && val < (1L << size)) {
-          if (sign > 0)
-            cpu_error(27,val,-(1L<<(size-1)),
-                      (1L<<(size-1))-1,
-                      val-(1L<<size));   /* using signed operand as unsigned */
-        }
-        else                             /* operand value out of range */
-          cpu_error(25,val,-(1L<<(size-1)),
-                    (sign>0) ? (1L<<(size-1))-1 : (1L<<size)-1);
-      }
-    }
-    else {
-      if ((utaddr)val > (1L << size) - 1)
-        cpu_error(25,val,0,(1L<<size)-1);  /* operand value out of range */
-    }
-  }
+  val &= (taddr)MAKEMASK(size);  /* clamp to field width */
 
-  d += pos>>3;
+  d += pos >> 3;
   pos &= 7;
 
   while (size > 0) {
-    int shift = 8-pos-size;
-    unsigned char v;
+    int shift = 8 - pos - size;
+    uint8_t b;
 
     if (shift > 0)
-      v = (val << shift) & 0xff;
+      b = (val << shift) & 0xff;
     else if (shift < 0)
-      v = (val >> -shift) & 0xff;
+      b = (val >> -shift) & 0xff;
     else
-      v = val & 0xff;
-    *d++ |= v;
-    size -= 8-pos;
+      b = val & 0xff;
+    *d++ |= b;
+    size -= 8 - pos;
     pos = 0;
   }
+}
+
+
+static void write_val0(unsigned char *d,struct oper_insert *oii,
+                       taddr val,int anysign)
+/* Insert value at destination, described by oii, while doing optional
+   range checks. 'anysign' allows any value in signed and unsigned range. */
+{
+  unsigned flags = oii->flags;
+  int size = oii->size;
+  taddr smax = (1L << (size-1)) - 1;
+  utaddr max = (1L << size) - 1;
+
+  if (flags & IIF_MASK) {
+    if (++max == 0)
+      ierror(0);
+    if (typechk && (val<1 || (utaddr)val>max))
+      cpu_error(25,(long)val,1L,(unsigned long)max);  /* op value out of range */
+    if ((utaddr)val >= max)
+      val = 0;  /* Q-immediate masking */
+  }
+  else if (flags & IIF_3Q) {
+    if (typechk && val!=-1 && (val<1 || (utaddr)val>max))
+      cpu_error(66,(long)val,(unsigned long)max);     /* 3Q value out of range */
+    if (val < 0)
+      val = 0;  /* MOV3Q: -1 -> 0 */
+  }
+  else if (typechk) {
+    if (flags & IIF_SIGNED) {
+      taddr min = -(1L << (size-1));
+
+      if (val<min || val>smax) {
+        if (val>0 && (utaddr)val<=max) {
+          if (!anysign)
+            cpu_error(27,(long)val,(long)min,(unsigned long)max,
+                      (long)(val-(1L<<size)));  /* using signed op as unsigned */
+        }
+        else                                    /* operand value out of range */
+          cpu_error(25,(long)val,(long)min,
+                    anysign?(unsigned long)max:(unsigned long)smax);
+      }
+    }
+    else {
+      if ((utaddr)val > max)
+        cpu_error(25,(long)val,0L,(unsigned long)max);  /* value out of range */
+    }
+  }
+
+  if (flags & IIF_REVERSE)
+    val = reverse(val,size);
+
+  insert_val(d,oii->pos,size,val);
 }
 
 
@@ -4788,6 +4822,9 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
           cpu_error(no_dpc ? 26 : 68);  /* absolute PC-displacement */
         if (typechk && (disp<-0x8000 || disp>0x7fff))
           cpu_error(29);  /* displacement out of range */
+        if (warn_unaligned && ext!='b' && (disp&1) &&
+            (op->base[0]==NULL || !EXTREF(op->base[0])))
+          cpu_error(74);  /* accessing odd address */
         d = setval(1,d,2,disp);
       }
 
@@ -4879,6 +4916,9 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
         }
         else if (warn_abs16)
           cpu_error(73,16);  /* 16-bit access to absolute address */
+        if (warn_unaligned && ext!='b' && (op->extval[0]&1) &&
+            (!rsize || !EXTREF(op->base[0])))
+          cpu_error(74);  /* accessing odd address */
         d = write_extval(0,2,db,d,op,rtype);
       }
 
@@ -4890,11 +4930,15 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
         }
         else if (warn_abs32)
           cpu_error(73,32);  /* 32-bit access to absolute address */
+        if (warn_unaligned && ext!='b' && (op->extval[0]&1) &&
+            (!rsize || !EXTREF(op->base[0])))
+          cpu_error(74);  /* accessing odd address */
         d = write_extval(0,4,db,d,op,rtype);
       }
 
       else if (op->reg == REG_Immediate) {
         /* #immediate */
+        thuge hval;
         int err;
 
         if (op->base[0] != NULL)
@@ -4918,6 +4962,20 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
               *d++ = 0;
               d = write_extval(0,1,db,d,op,rtype);
             }
+            else if (type_of_expr(op->value[0]) == HUG) {
+              if (!eval_expr_huge(op->value[0],&hval))
+                general_error(59);  /* cannot evaluate huge integer */
+              if (!huge_chkrange(hval,8)) {
+                if (typechk)
+                  cpu_error(36);  /* immediate operand out of range */
+                /* write a 16-bit value for out-of-range constants,
+                   to simulate the behaviour of some old assemblers */
+                d = huge_to_mem(1,d,2,hval);
+                break;
+              }
+              *d++ = 0;
+              d = huge_to_mem(1,d,1,hval);
+            }
             else
               cpu_error(37);  /* immediate operand has illegal type */
             break;
@@ -4928,10 +4986,7 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
               if (typechk && (op->extval[0]<-0x8000 || op->extval[0]>0xffff))
                 cpu_error(36);  /* immediate operand out of range */
             }
-            else if (type_of_expr(op->value[0])==HUG && (cpu_type&apollo)) {
-              /* Apollo AMMX 64-bit as WORD */
-              thuge hval;
-
+            else if (type_of_expr(op->value[0]) == HUG) {
               if (!eval_expr_huge(op->value[0],&hval))
                 general_error(59);  /* cannot evaluate huge integer */
               d = huge_to_mem(1,d,2,hval);
@@ -4945,6 +5000,13 @@ static unsigned char *write_ea_ext(dblock *db,unsigned char *d,operand *op,
             if (op->flags & FL_ExtVal0) {
               rsize = 32;
               d = write_extval(0,4,db,d,op,rtype);
+            }
+            else if (type_of_expr(op->value[0]) == HUG) {
+              if (!eval_expr_huge(op->value[0],&hval))
+                general_error(59);  /* cannot evaluate huge integer */
+              d = huge_to_mem(1,d,4,hval);
+              if (typechk && !huge_chkrange(hval,32))
+                cpu_error(36);  /* immediate operand out of range */
             }
             else if (type_of_expr(op->value[0]) == FLT) {
               if ((err = copy_float_exp(d,op,EXT_SINGLE)) != 0)
@@ -5364,29 +5426,8 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
             break;
 
           case M_val0:
-            if (op->base[0] == NULL) {
-              taddr v = op->extval[0];
-              int sign = (oii->flags&IIF_SIGNED) != 0;
-
-              if (ipflags & IFL_ANYSIGN)
-                sign = -sign;
-
-              if (oii->flags & IIF_MASK) {
-                if (v == 0)
-                  v = 1 << oii->size;
-                else if (v == (1<<oii->size))
-                  v = 0;
-              }
-              else if (oii->flags & IIF_3Q) {
-                if (v == 0)
-                  v = -1;
-                else if (v == -1)
-                  v = 0;
-              }
-              if (oii->flags & IIF_REVERSE)
-                v = reverse(v,oii->size);
-              write_val(dbstart,oii->pos,oii->size,v,sign);
-            }
+            if (op->base[0] == NULL)
+              write_val0(dbstart,oii,op->extval[0],(ipflags&IFL_ANYSIGN)!=0);
             else
               cpu_error(24);  /* absolute value expected */
             break;
@@ -5397,7 +5438,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
   
               if (oii->size>3 && op->mode==MODE_An)
                 r += REGAn;
-              write_val(dbstart,oii->pos,oii->size,r,0);
+              insert_val(dbstart,oii->pos,oii->size,r);
             }
             else
               ierror(0);
@@ -6503,7 +6544,7 @@ nofpu:
   else if (!strcmp(p,"-extsd"))
     extsd = 1;
   else if (!strcmp(p,"-rangewarnings"))
-    modify_cpu_err(WARNING,25,29,32,36,0);
+    modify_cpu_err(WARNING,29,32,36,39,0);
   else if (!strcmp(p,"-conv-brackets"))
     convert_brackets = 1;
   else if (!strcmp(p,"-regsymredef"))
@@ -6524,6 +6565,8 @@ nofpu:
     warn_abs16 = 1;
   else if (!strcmp(p,"-warnabs32"))
     warn_abs32 = 1;
+  else if (!strcmp(p,"-warnunaligned"))
+    warn_unaligned = 1;
   else if (!strcmp(p,"-sc"))
     opt_sc = !no_opt;
   else if (!strcmp(p,"-sd"))

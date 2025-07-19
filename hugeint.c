@@ -133,13 +133,13 @@ int huge_chkrange(thuge h,int bits)
   if (bits >= HUGEBITS/2) {
     mask = ~0LL << (bits - HUGEBITS/2);
     v = h.hi & mask;
-    return (v & (1LL << (bits - HUGEBITS/2))) ? (v ^ mask) == 0 : v == 0;
-  }    
+    return (v^mask) == 0 ? (h.hi & (1LL << (bits-HUGEBITS/2-1))) != 0 : v == 0;
+  }
 
   mask = ~0LL << bits;
   v = h.lo & mask;
-  if (v & (1LL << bits))
-    return h.hi == ~0 && (v ^ mask) == 0;
+  if (h.hi == ~0 && (v^mask) == 0)
+    return (h.lo & (1LL << (bits-1))) != 0;
   return h.hi == 0 && v == 0;
 }
 

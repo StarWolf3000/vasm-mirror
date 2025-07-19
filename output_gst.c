@@ -4,7 +4,7 @@
 #include "vasm.h"
 #include "output_gst.h"
 #if defined(OUTGST)
-static char *copyright="vasm GST output module 0.1 (c) 2023 Frank Wille";
+static char *copyright="vasm GST output module 0.1a (c) 2023 Frank Wille";
 
 static rlist **sorted_rlist;
 static size_t bss_bytes;
@@ -261,7 +261,7 @@ static void stream_section(FILE *f,section *sec)
       else
         unsupp_reloc_error(a,sorted_rlist[i]);
     }
-    stream_data(f,sec,a,offs,(npc-pc)-offs);
+    stream_data(f,sec,a,offs,(utaddr)(npc-pc)-offs);
   }
   gst_dobss(f);  /* write last uninitialized block with GST_OFFSET */
 }

@@ -160,6 +160,7 @@ extern int debug;
 
 void leave(void);
 void set_taddr(void);
+void join_sections(section *,symbol *,utaddr);
 void set_section(section *);
 section *new_section(const char *,const char *,int);
 section *new_org(taddr);

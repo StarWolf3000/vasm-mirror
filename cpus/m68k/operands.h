@@ -363,7 +363,7 @@ struct optype optypes[] = {
 
 /* special operand insertion functions */
 
-static void write_val(unsigned char *,int,int,taddr,int);
+static void insert_val(unsigned char *,int,int,taddr);
 
 static void insert_cas2(unsigned char *d,struct oper_insert *i,operand *o)
 {
@@ -382,11 +382,11 @@ static void insert_macreg(unsigned char *d,struct oper_insert *i,operand *o)
 {
   if (i->pos == 4) {
     /* special case: MSB is at bit-position 9 */
-    write_val(d,4,3,o->reg,0);
+    insert_val(d,4,3,o->reg);
     *(d+1) |= o->mode << 6;
   }
   else
-    write_val(d,i->pos,4,(o->mode<<3)+o->reg,0);
+    insert_val(d,i->pos,4,(o->mode<<3)+o->reg);
   if (o->bf_offset)     /* .u extension selects upper word, else lower */
     *(d+3) |= i->size;  /* size holds the U/L mask for this register */
 }
@@ -454,8 +454,8 @@ static void insert_ammx(unsigned char *d,struct oper_insert *i,operand *o)
 {
   unsigned char v = o->extval[0];
 
-  write_val(d,i->pos,i->size,v&15,0);
-  write_val(d,15-(i->flags&15),1,(v&16)!=0,0);
+  insert_val(d,i->pos,i->size,v&15);
+  insert_val(d,15-(i->flags&15),1,(v&16)!=0);
 }
 
 /* place to put an operand */

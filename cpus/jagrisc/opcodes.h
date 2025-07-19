@@ -32,7 +32,7 @@
   "move",     { REG,   REG   }, { 34, ANY },
   "move",     { PC,    REG   }, { 51, ANY },
   "movefa",   { REG,   REG   }, { 37, ANY },
-  "movei",    { IMMLW, REG   }, { 38, ANY },
+  "movei",    { IMMLW, REG   }, { 38, ANY|EXTRA32 },
   "moveq",    { IMM0,  REG   }, { 35, ANY },
   "moveta",   { REG,   REG   }, { 36, ANY },
   "mtoi",     { REG,   REG   }, { 55, ANY },
@@ -72,3 +72,5 @@
   "subqt",    { IMM1,  REG   }, {  7, ANY },
   "unpack",   { REG          }, { 63, GPU },
   "xor",      { REG,   REG   }, { 11, ANY },
+  /* used for -opt-jr: JR cc,lab -> MOVEI lab,Rx + JUMP cc,(Rx) */
+  " jrabs",   { CC,    IREG  }, { 38, ANY|EXTRA32 },

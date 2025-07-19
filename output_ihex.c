@@ -193,7 +193,7 @@ static void write_output(FILE *f, section *sec, symbol *sym)
 
   for (s = sec; s; s = s->next) {
     pc = s->org;
-    addr = pc * octetsperbyte;
+    addr = ((utaddr)pc) * octetsperbyte;
     for (a = s->first; a; a = a->next) {
       pc = mypcalign(f, s, a, pc);
       if (a->type == DATA) {

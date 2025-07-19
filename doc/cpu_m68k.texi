@@ -3,7 +3,7 @@ microprocessor family.
 
 @section Legal
 
-    This module is written in 2002-2024 by Frank Wille and
+    This module is written in 2002-2025 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 
@@ -243,6 +243,11 @@ This module provides the following additional options:
     @item -warnabs32
         Show a warning for every access to an absolute 32-bit address.
         This doesn't include section labels.
+
+    @item -warnunaligned
+        Show a warning, if the target address for absolute (16/32-bit) or
+        16-bit PC-relative addressing modes is odd and the operation size
+        is not 8-bit. No warnings for accessing external symbols.
 @end table
 
 In its default setting (no @option{-devpac} or @option{-phxass} option)
@@ -326,8 +331,9 @@ vasm performs the following optimizations:
         @option{-sd} and @option{-guess-ext}.
 
     @item -rangewarnings
-        Recognized for backwards-compatibility only.
-        No longer needed since V2.0.
+        Values which are out of range usually produce an error. With this
+        option the errors 2030, 2033, 2037 and 2040 will be displayed as
+        a warning, allowing the user to create an object file.
 
     @item -regsymredef
         Allow redefining register symbols with @code{EQUR}. This should
@@ -529,8 +535,7 @@ directives:
         Automatically optimize absolute to PC-relative references.
         Default is off in Devpac-comptability mode, otherwise on.
       @item c
-        Case-sensitivity for all symbols, instructions and macros.
-        Default is on.
+        Case-sensitivity for all symbols and macros. Default is on.
       @item d
         Include all symbols for debugging in the output file. May also
         generate line debugging information in some output formats.
@@ -539,15 +544,6 @@ directives:
         Generate a linkable object file. The default is defined by the
         selected output format via the assembler's @option{-F} option.
         This option was supported by Devpac-Amiga only.
-      @item l0
-      @itemx l1
-      @itemx l2
-        Nonzero selects object file, zero selects executable file format,
-        when Atari-TOS (@option{-Ftos}) or Amiga-hunk output format
-        (@option{-Fhunk}) was set on the command line.
-        This option was supported by Devpac-Atari only and its original
-        function was to select TOS-executable (0), DRI-object (1) or
-        GST-object (2) output. For GST objects use (@option{-Fgst}) instead.
       @item o
         Enable all optimizations (o1 to o12), or disable all optimizations.
         The default is that all are disabled in Devpac-compatibility mode
@@ -660,7 +656,7 @@ directives:
    @end table
 
    The following options are vasm specific and should not be used when
-   writing portable source. Using @code{opt o+} or @code{opt o-} in
+   writing portable source text. Using @code{opt o+} or @code{opt o-} in
    Devpac mode only toggles @code{og} and @code{of}.
    @table @code
       @item oa
@@ -1166,6 +1162,7 @@ This module has the following error messages:
 @item 2065: Addr.reg. operand at level #0 causes F-line exception
 @item 2066: Dr and Dq are identical, transforming DIVxL.L effectively into DIVx.L
 @item 2068: trailing garbage in operand
+@item 2067: 3Q value out of range: %ld (valid: -1, 1..%ld)
 @item 2069: encoding absolute displacement directly
 @item 2070: internal symbol %s has been modified
 @item 2071: instruction too large for bank prefix

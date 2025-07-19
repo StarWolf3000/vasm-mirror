@@ -1,5 +1,5 @@
 /* expr.c expression handling for vasm */
-/* (c) in 2002-2024 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2025 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -11,13 +11,16 @@ static char *s;
 static symbol *cpc;
 static int make_tmp_lab;
 static int exp_type;
-static int charspertaddr;
+static int bitspertaddr,charspertaddr;
 
 static expr *expression(void);
 
 
 int init_expr(void)
 {
+  /* we always assume 8-bit bytes on the host system */
+  bitspertaddr = sizeof(taddr) * 8;
+
   /* maximum number of characters in expression strings */
   charspertaddr=bytespertaddr*BITSPERBYTE/8;
   if(!charsperexp) charsperexp=charspertaddr;
@@ -665,6 +668,24 @@ expr **find_sym_expr(expr **ptree,char *name)
   return NULL;
 }
 
+static taddr lshift(taddr val,int sh)
+{
+  if (sh>=bitspertaddr) return 0;
+  return val<<sh;
+}
+
+static taddr rshift(taddr val,int sh)
+{
+  if (sh>=bitspertaddr) return val<0 ? -1 : 0;
+  return val>>sh;
+}
+
+static utaddr urshift(utaddr val,int sh)
+{
+  if (sh>=bitspertaddr) return 0;
+  return val>>sh;
+}
+
 /* Try to evaluate expression as far as possible. Subexpressions
    only containing constants or absolute symbols are simplified. */
 void simplify_expr(expr *tree)
@@ -756,13 +777,13 @@ void simplify_expr(expr *tree)
       ival=BOOLEAN(!tree->left->c.val);
       break;
     case LSH:
-      ival=(tree->left->c.val<<tree->right->c.val);
+      ival=lshift(tree->left->c.val,(int)tree->right->c.val);
       break;
     case RSH:
-      ival=(tree->left->c.val>>tree->right->c.val);
+      ival=rshift(tree->left->c.val,(int)tree->right->c.val);
       break;
     case RSHU:
-      ival=((utaddr)tree->left->c.val>>tree->right->c.val);
+      ival=urshift((utaddr)tree->left->c.val,(int)tree->right->c.val);
       break;
     case LT:
       ival=BOOLEAN(tree->left->c.val<tree->right->c.val);
@@ -983,14 +1004,21 @@ void simplify_expr(expr *tree)
   free_expr(tree->left);
   free_expr(tree->right);
   tree->left=tree->right=NULL;
-  switch(tree->type=type){
+  switch(type){
+    case HUG:
+      if(!huge_chkrange(hval,bitspertaddr)){
+        tree->c.huge=hval;
+        break;
+      }
+      ival=huge_to_int(hval);
+      type=NUM;
     case NUM: tree->c.val=ival; break;
-    case HUG: tree->c.huge=hval; break;
 #if FLOAT_PARSER
     case FLT: tree->c.flt=fval; break;
 #endif
     default: ierror(0); break;
   }
+  tree->type=type;
 }
 
 static void add_dep(section *src, section *dest)
@@ -1109,13 +1137,13 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     val=BOOLEAN(!lval);
     break;
   case LSH:
-    val=(lval<<rval);
+    val=lshift(lval,(int)rval);
     break;
   case RSH:
-    val=(lval>>rval);
+    val=rshift(lval,(int)rval);
     break;
   case RSHU:
-    val=((utaddr)lval>>rval);
+    val=urshift((utaddr)lval,(int)rval);
     break;
   case LT:
     val=BOOLEAN(lval<rval);
@@ -1159,13 +1187,13 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     val=tree->c.val;
     break;
   case HUG:
-    if (!huge_chkrange(tree->c.huge,bytespertaddr*BITSPERBYTE) && final_pass)
+    if (final_pass && !huge_chkrange(tree->c.huge,bytespertaddr*BITSPERBYTE))
       general_error(21,bytespertaddr*BITSPERBYTE); /* target data type overflow */
     val=huge_to_int(tree->c.huge);
     break;
 #if FLOAT_PARSER
   case FLT:
-    if (!flt_chkrange(tree->c.flt,bytespertaddr*BITSPERBYTE) && final_pass)
+    if (final_pass && !flt_chkrange(tree->c.flt,bytespertaddr*BITSPERBYTE))
       general_error(21,bytespertaddr*BITSPERBYTE); /* target data type overflow */
     val=(taddr)tree->c.flt;
     break;

@@ -1,6 +1,6 @@
 /*
  * cpu.c Jaguar RISC cpu description file
- * (c) in 2014-2017,2020,2021,2024 by Frank Wille
+ * (c) in 2014-2017,2020,2021,2024,2025 by Frank Wille
  */
 
 #include "vasm.h"
@@ -10,14 +10,16 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-const char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.6 (c) 2014-2017,2020,2021,2024 Frank Wille";
+const char *cpu_copyright = "vasm Jaguar RISC cpu backend 0.7 (c) 2014-2017,2020,2021,2024,2025 Frank Wille";
 const char *cpuname = "jagrisc";
 int bytespertaddr = 4;
 
 int jag_big_endian = 1;  /* defaults to big-endian (Atari Jaguar 68000) */
 
+static int noopt;        /* disable std. optimizations without side effects */
+static int optjr = -1;   /* x=0..31: translation of JR to MOVEI/JUMP (Rx) */
 static uint8_t cpu_type = GPU|DSP;
-static int OC_MOVEI,OC_UNPACK;
+static int OC_MOVEI,OC_MOVEQ,OC_UNPACK,OC_JRABS,OC_JUMP;
 
 /* condition codes */
 static regsym cc_regsyms[] = {
@@ -59,8 +61,14 @@ int init_cpu(void)
   for (i=0; i<mnemonic_cnt; i++) {
     if (!strcmp(mnemonics[i].name,"movei"))
       OC_MOVEI = i;
+    else if (!strcmp(mnemonics[i].name,"moveq"))
+      OC_MOVEQ = i;
     else if (!strcmp(mnemonics[i].name,"unpack"))
       OC_UNPACK = i;
+    else if (!strcmp(mnemonics[i].name,"jump"))
+      OC_JUMP = i;
+    else if (!strcmp(mnemonics[i].name," jrabs"))
+      OC_JRABS = i;
   }
 
   /* define all condition code register symbols */
@@ -83,6 +91,16 @@ int cpu_args(char *p)
       cpu_type = GPU|DSP;
     else
       return 0;
+  }
+  else if (!strcmp(p,"-no-opt")) {
+    optjr = -1;
+    noopt = 1;
+  }
+  else if (!strncmp(p,"-opt-jr=",8)) {
+    p += 8;
+    if (toupper((unsigned char)*p) == 'R')
+      p++;
+    optjr = atoi(p) & 31;
   }
   else if (!strcmp(p,"-big"))
     jag_big_endian = 1;
@@ -137,6 +155,43 @@ static expr *parse_cc(char **p)
 
   /* otherwise the condition code is any expression */
   return parse_expr(p);
+}
+
+
+static void jagrel5(rlist **rl,MyOpVal *opval,size_t offs)
+{
+  if (opval->base) {
+    switch (opval->btype) {
+      case BASE_OK:  /* Immediate or CC values */
+        add_extnreloc(rl,opval->base,opval->val,REL_ABS,offs,5,0);
+        break;
+      case BASE_PCREL:  /* JR instruction */
+        add_extnreloc_masked(rl,opval->base,opval->val,REL_PC,offs,5,0,~1);
+        break;
+      case BASE_ILLEGAL:
+        general_error(38);  /* illegal relocation */
+        break;
+      default:
+        ierror(0);
+        break;
+    }
+  }
+}
+
+
+static void jagrelswap32(rlist **rl,size_t o,symbol *base,int btype,taddr val)
+{
+  if (base) {
+    if (btype != BASE_ILLEGAL) {
+      /* swapped: two relocations for LSW first, then MSW */
+      add_extnreloc_masked(rl,base,val,btype==BASE_PCREL?REL_PC:REL_ABS,
+                           0,16,o,0xffff);
+      add_extnreloc_masked(rl,base,val,btype==BASE_PCREL?REL_PC:REL_ABS,
+                           16,16,o,0xffff0000);
+    }
+    else
+      general_error(38);  /* illegal relocation */
+  }
 }
 
 
@@ -229,7 +284,7 @@ int parse_cpu_label(char *labname,char **start)
       if ((r = parse_reg(&s)) >= 0)
         new_regsym(0,0,labname,RTYPE_R,0,r);
       else
-        cpu_error(3);  /* register expected */
+        cpu_error(2);  /* register expected */
       eol(s);
       *start = skip_line(s);
       return 1;
@@ -371,182 +426,210 @@ int parse_operand(char *p, int len, operand *op, int required)
 }
 
 
-static int32_t eval_oper(instruction *ip,operand *op,section *sec,
-                         taddr pc,dblock *db)
+static size_t process_instruction(instruction *ip,section *sec,taddr pc,
+                                  MyOpVal values[MAX_OPERANDS+1],int final)
 {
-  symbol *base = NULL;
-  int optype = op->type;
-  int btype;
-  taddr val,loval,hival,mask=0x1f;
+  int i,btype,optype;
+  operand *op;
+  size_t size;
+  symbol *base;
+  taddr val;
 
-  switch (optype) {
-    case PC:
-      return 0;
+  for (i=0,size=2; i<MAX_OPERANDS; i++) {
+    val = 0;
+    base = NULL;
+    btype = BASE_ILLEGAL;
 
-    case REG:
-    case IREG:
-    case IR14R:
-    case IR15R:
-      return op->reg;
+    if ((op = ip->op[i]) != NULL) {
+      switch (optype = op->type) {
+        case REG:
+        case IREG:
+        case IR14R:
+        case IR15R:
+          val = op->reg;
+          break;
 
-    case IMM0:
-    case IMM1:
-    case SIMM:
-    case IMMLW:
-    case IR14D:
-    case IR15D:
-    case REL:
-    case CC:
-      if (!eval_expr(op->val,&val,sec,pc))
-        btype = find_base(op->val,&base,sec,pc);
+        case IMM0:
+        case IMM1:
+        case SIMM:
+        case IMMLW:
+        case IR14D:
+        case IR15D:
+        case REL:
+        case CC:
+          if (!eval_expr(op->val,&val,sec,pc)) {
+            btype = find_base(op->val,&base,sec,pc);
+            if (final && btype == BASE_ILLEGAL)
+              general_error(38);  /* illegal relocation */
+          }
 
-      if (optype==IMM0 || optype==CC || optype==IMM1 || optype==SIMM) {
-        if (base != NULL) {
-          loval = -16;
-          hival = optype==SIMM ? 15 : 31;
-          if (btype != BASE_ILLEGAL) {
-            if (db) {
-              add_extnreloc(&db->relocs,base,val,
-                            btype==BASE_PCREL?REL_PC:REL_ABS,
-                            jag_big_endian?6:5,5,0);
+          if (optype == REL) {
+            if ((base!=NULL && btype==BASE_OK && !is_pc_reloc(base,sec))
+                || base == NULL) {
+              /* known label from same section or absolute label */
+              taddr d = (val - (pc + 2)) / 2;
+
+              if (d<-16 || d>15) {
+                if (optjr >= 0) {
+                  /* JR [cc,]lab -> MOVEI lab,Rx + JUMP [cc,]Rx */
+                  ip->code = OC_JRABS;
+                  values[MAX_OPERANDS].val = val;  /* MOVEI 32-bit */
+                  values[MAX_OPERANDS].base = base;
+                  values[MAX_OPERANDS].btype = btype;
+                  val = optjr & 31;  /* Rx */
+                  size += 6;
+                }
+                else if (final)
+                  cpu_error(1,-16,15);
+              }
+              else
+                val = d;
+            }
+            else if (btype == BASE_OK) {
+              /* external label or from a different section (distance / 2) */
+              if (optjr >= 0) {
+                /* JR [cc,]lab -> MOVEI lab,Rx + JUMP [cc,]Rx */
+                ip->code = OC_JRABS;
+                values[MAX_OPERANDS].val = val;  /* MOVEI 32-bit */
+                values[MAX_OPERANDS].base = base;
+                values[MAX_OPERANDS].btype = btype;
+                val = optjr & 31;  /* Rx */
+                size += 6;
+              }
+              else {
+                val -= 2;
+                btype = BASE_PCREL;
+                break;  /* add relocation */
+              }
+            }
+            base = NULL;
+            btype = BASE_ILLEGAL;
+          }
+          else if (optype == IMMLW) {
+            if (!noopt && base==NULL && val>=0 && val<=31) {
+              /* optimize to MOVEQ */
+              ip->code = OC_MOVEQ;
+            }
+            else {
+              values[MAX_OPERANDS].val = val;  /* MOVEI 32-bit */
+              values[MAX_OPERANDS].base = base;
+              values[MAX_OPERANDS].btype = btype;
+              val = 0;
               base = NULL;
+              btype = BASE_ILLEGAL;
+              size += 4;
             }
           }
-        }
-        else if (optype==IMM1) {
-          loval = 1;
-          hival = 32;
-        }
-        else if (optype==SIMM) {
-          loval = -16;
-          hival = 15;
-        }
-        else {
-          loval = 0;
-          hival = 31;
-        }
-      }
-      else if (optype==IR14D || optype==IR15D) {
-        if (base==NULL && val==0) {
-          /* Optimize (Rn+0) to (Rn). Assume that load/store (Rn) is
-             three entries before (R14+d) and four entries before (R15+d). */
-          ip->code -= optype==IR14D ? 3 : 4;  /* @OPT1@ */
-          op->type = IREG;
-          op->reg = optype==IR14D ? 14 : 15;
-          return op->reg;
-        }
-        loval = 1;
-        hival = 32;
-      }
-      else if (optype==IMMLW) {
-        mask = ~0;
-        if (base != NULL) {
-          if (btype != BASE_ILLEGAL) {
-            if (db) {
-              /* two relocations for LSW first, then MSW */
-              add_extnreloc_masked(&db->relocs,base,val,
-                                   btype==BASE_PCREL?REL_PC:REL_ABS,
-                                   0,16,2,0xffff);
-              add_extnreloc_masked(&db->relocs,base,val,
-                                   btype==BASE_PCREL?REL_PC:REL_ABS,
-                                   16,16,2,0xffff0000);
-              base = NULL;
+          else if (optype==IR14D || optype==IR15D) {
+            if (!noopt && base==NULL && val==0) {
+              /* Optimize (Rn+0) to (Rn). Assume that load/store (Rn) is three
+                 entries before (R14+d) and four entries before (R15+d). */
+              ip->code -= optype==IR14D ? 3 : 4;  /* @OPT1@ */
+              val = optype==IR14D ? 14 : 15;
             }
+            else if (final && base==NULL && (val<1 || val>32))
+              cpu_error(1,1,32);
           }
-        }
+          else if (optype==IMM1) {
+            if (final && base==NULL && (val<1 || val>32))
+              cpu_error(1,1,32);
+          }
+          else if (optype==SIMM) {
+            if (final && base==NULL && (val<-16 || val>15))
+              cpu_error(1,-16,15);
+          }
+          else {
+            if (final && base==NULL && (val<0 || val>31))
+              cpu_error(1,0,31);
+          }
+          break;
+
+        default:
+          ierror(0);
+        case PC:
+          break;
       }
-      else if (optype==REL) {
-        loval = -16;
-        hival = 15;
-        if ((base!=NULL && btype==BASE_OK && !is_pc_reloc(base,sec)) ||
-            base==NULL) {
-          /* known label from same section or absolute label */
-          val = (val - (pc + 2)) / 2;
-        }
-        else if (btype == BASE_OK) {
-          /* external label or from a different section (distance / 2) */
-          val -= 2;
-          add_extnreloc_masked(&db->relocs,base,val,REL_PC,
-                               jag_big_endian?6:5,5,0,~1);
-          val /= 2;
-        }
-        base = NULL;
-      }
-      else ierror(0);
+    }
+    else if (i != 0) {
+      /* operand missing: take values from previous operand (destOp = srcOp) */
+      val = values[i-1].val;
+      base = values[i-1].base;
+      btype = values[i-1].btype;
 
-      if (base != NULL)
-        general_error(38);  /* bad or unhandled reloc: illegal relocation */
+      /* and reset previous (source) operand field */
+      values[i-1].val = ip->code==OC_UNPACK ? 1 : 0;
+      values[i-1].base = NULL;
+      values[i-1].btype = BASE_ILLEGAL;
+    }
 
-      /* range check for this addressing mode */
-      if (mask!=~0 && (val<loval || val>hival))
-        cpu_error(1,(long)loval,(long)hival);
-      return val & mask;
-
-    default:
-      ierror(0);
-      break;
+    values[i].val = val;
+    values[i].base = base;
+    values[i].btype = btype;
   }
 
-  return 0;  /* default */
+  return size;
 }
 
 
 size_t instruction_size(instruction *ip, section *sec, taddr pc)
 {
-  return ip->code==OC_MOVEI ? 6 : 2;
+  MyOpVal values[MAX_OPERANDS+1];
+
+  return process_instruction(copy_inst(ip),sec,pc,values,0);
 }
 
 
 dblock *eval_instruction(instruction *ip, section *sec, taddr pc)
 {
+  MyOpVal values[MAX_OPERANDS+1];
   dblock *db = new_dblock();
-  int32_t src=0,dst=0,extra;
-  int size = 2;
   uint16_t inst;
+  uint8_t flags;
 
-  /* get source and destination argument, when present */
-  if (ip->op[0])
-    dst = eval_oper(ip,ip->op[0],sec,pc,db);
-  if (ip->op[1]) {
-    if (ip->code == OC_MOVEI) {
-      extra = dst;
-      size = 6;
-    }
-    else
-      src = dst;
-    dst = eval_oper(ip,ip->op[1],sec,pc,db);
-  }
-  else if (ip->code == OC_UNPACK)
-    src = 1;  /* pack(src=0)/unpack(src=1) use the same opcode */
+  /* evaluate operands, optimize instruction and determine its size */
+  db->size = process_instruction(ip,sec,pc,values,1);
+  db->data = mymalloc(db->size);
 
   /* store and jump instructions need the second operand in the source field */
-  if (mnemonics[ip->code].ext.flags & OPSWAP) {
-    extra = src;
-    src = dst;
-    dst = extra;
+  flags = mnemonics[ip->code].ext.flags;
+  if (flags & OPSWAP) {
+    MyOpVal swap = values[0];
+    values[0] = values[1];
+    values[1] = swap;
   }
-
-  /* allocate dblock data for instruction */
-  db->size = size;
-  db->data = mymalloc(size);
 
   /* construct the instruction word out of opcode and source/dest. value */
   inst = (mnemonics[ip->code].ext.opcode & 63) << 10;
-  inst |= ((src&31) << 5) | (dst & 31);
-
-  /* write instruction */
-  if (jag_big_endian) {
-    db->data[0] = (inst >> 8) & 0xff;
-    db->data[1] = inst & 0xff;
+  if (!(flags & EXTRA32)) {
+    inst |= (values[0].val & 31) << 5;
+    jagrel5(&db->relocs,&values[0],jag_big_endian?6:5);
   }
-  else {
-    db->data[0] = inst & 0xff;
-    db->data[1] = (inst >> 8) & 0xff;
-  }
+  inst |= values[1].val & 31;
+  jagrel5(&db->relocs,&values[1],jag_big_endian?11:0);
+  setval(jag_big_endian,db->data,2,inst);
 
-  /* extra words for MOVEI are always written in the order lo-word, hi-word */
-  if (size == 6)
-    jagswap32(&db->data[2],extra);
+  /* write extra words for MOVEI and JRABS */
+  if (ip->code == OC_MOVEI) {
+    if (db->size != 6)
+      ierror(0);
+    /* extra words for MOVEI are always written in the order lo-, hi-word */
+    jagswap32(&db->data[2],values[2].val);
+    jagrelswap32(&db->relocs,2,values[2].base,values[2].btype,values[2].val);
+  }
+  else if (ip->code == OC_JRABS) {
+    if (db->size != 8)
+      ierror(0);
+    /* write jump-address as MOVEI extra-word */
+    jagswap32(&db->data[2],values[2].val);
+    jagrelswap32(&db->relocs,2,values[2].base,values[2].btype,values[2].val);
+    /* followed by an indirect jump using the optjr register */
+    inst = (mnemonics[OC_JUMP].ext.opcode & 63) << 10;
+    inst |= ((values[0].val & 31) << 5) | (values[1].val & 31);
+    jagrel5(&db->relocs,&values[1],jag_big_endian?11:0);
+    setval(jag_big_endian,&db->data[6],2,inst);
+  }
+  else if (db->size != 2)
+    ierror(0);
 
   return db;
 }
@@ -580,15 +663,8 @@ dblock *eval_data(operand *op, size_t bitsize, section *sec, taddr pc)
 
       btype = find_base(op->val,&base,sec,pc);
       if (base!=NULL && btype!=BASE_ILLEGAL) {
-        if (op->type == DATAI_OP) {
-          /* swapped: two relocations for LSW first, then MSW */
-          add_extnreloc_masked(&db->relocs,base,val,
-                               btype==BASE_PCREL?REL_PC:REL_ABS,
-                               0,16,0,0xffff);
-          add_extnreloc_masked(&db->relocs,base,val,
-                               btype==BASE_PCREL?REL_PC:REL_ABS,
-                               16,16,0,0xffff0000);
-        }
+        if (op->type == DATAI_OP)
+          jagrelswap32(&db->relocs,0,base,btype,val);
         else /* normal 8, 16, 32 bit relocation */
           add_extnreloc(&db->relocs,base,val,
                         btype==BASE_PCREL?REL_PC:REL_ABS,0,bitsize,0);
@@ -604,7 +680,7 @@ dblock *eval_data(operand *op, size_t bitsize, section *sec, taddr pc)
       case 2:
       case 4:
         if (op->type == DATAI_OP)
-          jagswap32(db->data,(int32_t)val);
+          jagswap32(db->data,val);
         else
           setval(jag_big_endian,db->data,db->size,val);
         break;

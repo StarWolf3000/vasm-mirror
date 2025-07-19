@@ -491,6 +491,7 @@ Has to be provided completely by the syntax module.
     @item Jim Westfall
     @item Bernard Thibault
     @item Dimitri Theulings
+    @item Steven Tattersall
     @item Yannick Stamm
     @item Jens Sch@"onfeld
     @item Ross

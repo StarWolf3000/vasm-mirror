@@ -97,7 +97,8 @@ The @code{hunk} module supports the following relocation types:
 
 @end itemize
 
-The @code{hunkexe} module supports absolute 32-bit relocations only.
+The @code{hunkexe} module supports absolute and relative 32-bit relocations
+only.
 
 @section Known Problems
 

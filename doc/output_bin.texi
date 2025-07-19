@@ -52,6 +52,12 @@ selected with the @option{-Fbin} option.
         size, and there is also a start address defined.
         There is a 24-bit (@code{'Z'}) and a 32-bit (@code{'z'}) format
         which will be selected according to the target CPU.
+    @item -join[=<address>]
+        To be able to write multiple sections as a raw binary file this
+        option invokes a mini-linker, which joins all section's with
+        ascending addresses, regarding their alignment. The start address
+        defaults to 0 when missing. Only simple PC-relative and absolute
+        relocations are supported at the moment.
     @item -oric-mc
         Writes a machine code file header for Oric-1, Oric-Atmos and
         compatible systems. It includes the file type and name, as well as

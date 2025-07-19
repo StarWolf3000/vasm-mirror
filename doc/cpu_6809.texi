@@ -20,7 +20,12 @@ This module provides the following additional options:
     @item -68hc12
         Generate code for the 68HC12 CPU.
     @item -konami2
-        Generate code for Konami's 6809 based arcade CPU (Konami-2).
+        Generate code for the original revision (052001) of Konami's
+        6809 based arcade CPU (Konami-2).
+    @item -konami2ext
+        Generate code for later revisions (052526, 053248) of Konami's
+        6809 based arcade CPU (Konami-2), which have extra instructions
+        over the original revision.
     @item -opt-branch
         Translate short-branches to long and optimize long-branches
         to short when required/possible.
@@ -120,9 +125,6 @@ This backend performs the following operand optimizations:
 @itemize @minus
 @item HC12 PC-relative addressing modes in @code{MOVx} instructions may be
       wrong. Needs testing.
-@item Some new Konami instructions dealing with 16-bit memory or D-register
-      access may crash or do not work correctly with older CPU revisions
-      (for example Konami-2 CPUs manufactured before 1990).
 @end itemize
 
 @section Error Messages

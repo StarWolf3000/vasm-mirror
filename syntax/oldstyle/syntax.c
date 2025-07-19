@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm oldstyle syntax module 0.21 (c) 2002-2025 Frank Wille";
+const char *syntax_copyright="vasm oldstyle syntax module 0.21a (c) 2002-2025 Frank Wille";
 hashtable *dirhash;
 int dotdirs;
 
@@ -154,7 +154,7 @@ static char *skip_operand(int instoper,char *s)
 #endif
       /* a quote expects just a single character with an optional
          quote character following it */
-      if (!ISEOL(s+1)) {
+      if (*(s+1) != '\0') {
         s++;
         if (*s == '\\')
           s = escape(s,NULL) - 1;

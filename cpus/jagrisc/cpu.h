@@ -1,6 +1,6 @@
 /*
 ** cpu.h Jaguar RISC cpu-description header-file
-** (c) in 2014-2017 by Frank Wille
+** (c) in 2014-2017,2025 by Frank Wille
 */
 
 extern int jag_big_endian;
@@ -61,6 +61,13 @@ enum {
   PC                    /* PC register */
 };
 
+/* evaluated operands */
+typedef struct {
+  taddr val;
+  symbol *base;
+  int btype;
+} MyOpVal;
+
 /* additional mnemonic data */
 typedef struct {
   uint8_t opcode;
@@ -72,6 +79,7 @@ typedef struct {
 #define DSP 2
 #define ANY GPU|DSP
 
+#define EXTRA32 64      /* instruction followed by a 32-bit word */
 #define OPSWAP 128      /* swapped operands in instruction word encoding */
 
 /* Register symbols */

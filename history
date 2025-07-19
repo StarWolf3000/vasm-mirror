@@ -1,6 +1,42 @@
 vasm history
 =============
 
+- 2.0c (14.07.25)
+o Fixed output of the last byte in a CPU's address space for multiple
+  output formats allowing absolute addressing: gst, ihex, pap, srec, woz.
+o Try to convert 128-bit expressions to the backend's native address size
+  when  possible, while parsing it.
+o Support left and right shift operations using a shift-count larger than
+  the backend's native address size.
+o Defining symbols which were declared as externally defined is no longer
+  an error but a warning, as this is usually harmless.
+o Fixed possible internal error when defining a label on the same line as
+  a section directive.
+o m68k: Reverted change from V2.0: out of range warnings have become errors
+  again. These checks can be disabled by multiple options and directives.
+o m68k: Improved error messages for quick-immediate and shift-values.
+o m68k: Huge (128-bit) expressions are allowed in immediate 8/16/32-bit
+  addressing modes when the final value fits or when range-checking was
+  disabled.
+o m68k: Apollo: Disabled illegal optimization of ADDI.B #n,An into ADDQ.
+o m68k: New option -warnunaligned to warn about accesses to odd addresses.
+o 6809: -konami2 option now enables the original instruction set (rev. 052001),
+  while the extended instruction set for later revisions is available via
+  -konami2ext (e.g. rev. 052526, 053248).
+o jagrisc: New option -opt-jr=<n> automatically translates out-of-range JR
+  branches into MOVEI plus JUMP, using Rn as a temporary register.
+o jagrisc: New option -no-opt disables all standard optimizations.
+o jagrisc: Optimize MOVEI to MOVEQ when possible (constant from 0 to 31).
+o jagrisc: Fixed JR/JUMP with externally defined CC.
+o jagrisc: Allow relocations for LOAD/STORE (Rn+x), but note that there are
+  still errors when x becomes 32.
+o mot-syntax: -devpac compatility automatically disables warnings for xref
+  on defined symbols and xdef on undefined symbols.
+o oldstyle-syntax: Fixed data directives with comment characters (for example:
+  db 1,';',2).
+o vobj-output: Fix handling of section sizes which have the MSB set.
+o bin-output: New option -join implements a mini-linker for multiple sections.
+
 - 2.0b (21.04.25)
 o New CPU backend for the SPC700, as used in the SuperFamicom and SNES for
   sound processing.

@@ -49,7 +49,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 
   /* Output data and space atoms */
   for (s = sec; s != NULL; s = s->next) {
-    addr = s->org;
+    addr = (utaddr)s->org;
     /* If the address is aligned on an eight byte boundary, write_bytes() will
        output the address. */
     if(addr%8 != 0) {

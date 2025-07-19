@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm motorola syntax module 3.19b (c) 2002-2025 Frank Wille";
+const char *syntax_copyright="vasm motorola syntax module 3.19c (c) 2002-2025 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -2835,6 +2835,8 @@ int syntax_args(char *p)
     allmp = 1;
     warn_unalloc_ini_dat = 1;
     disable_warning(84);  /* allow labels with section directives */
+    disable_warning(86);  /* allow xref for defined symbols */
+    disable_warning(87);  /* allow xdef with undefined symbols */
     return 1;
   }
   else if (!strcmp(p,"-phxass")) {

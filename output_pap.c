@@ -97,7 +97,7 @@ static void write_output(FILE *f, section *sec, symbol *sym)
   buffer = mymalloc(sizeof(uint8_t) * buffer_s);
 
   for (s = sec; s; s = s->next) {
-    addr = s->org;
+    addr = (utaddr)s->org;
     for (a = s->first; a; a = a->next) {
       if (a->type == DATA) {
         for (i = 0; i < a->content.db->size; i++) {

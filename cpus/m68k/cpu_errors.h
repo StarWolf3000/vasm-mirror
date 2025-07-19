@@ -23,22 +23,22 @@
   "need 32 bits to reference a program label",WARNING,
   "option expected",ERROR,
   "absolute value expected",ERROR,
-  "operand value out of range: %ld (valid: %ld..%ld)",WARNING,       /* 25 */
+  "operand value out of range: %ld (valid: %ld..%lu)",ERROR,         /* 25 */
   "label in operand required",ERROR,
-  "using signed operand as unsigned: %ld (valid: %ld..%ld), "
+  "using signed operand as unsigned: %ld (valid: %ld..%lu), "
     "%ld to fix",WARNING,
   "branch destination out of range",ERROR,
-  "displacement out of range",WARNING,
+  "displacement out of range",ERROR,
   "absolute displacement expected",ERROR,                            /* 30 */
   "unknown option %c%c ignored",WARNING,
-  "absolute short address out of range",WARNING,
+  "absolute short address out of range",ERROR,
   "deprecated instruction alias",WARNING,
   "illegal opcode extension",FATAL|ERROR,
   "extension for unsized instruction ignored",WARNING,               /* 35 */
-  "immediate operand out of range",WARNING,
+  "immediate operand out of range",ERROR,
   "immediate operand has illegal type or size",ERROR,
   "data objects with %d bits size are not supported",ERROR,
-  "data out of range",WARNING,
+  "data out of range",ERROR,
   "data has illegal type",ERROR,                                     /* 40 */
   "illegal combination of ColdFire addressing modes",ERROR,
   "FP register required",ERROR,
@@ -66,7 +66,7 @@
   "Addr.reg. operand at level #0 causes F-line exception",WARNING,
   "Dr and Dq are identical, transforming DIVxL.L effectively into "
     "DIVx.L",WARNING,                                                /* 65 */
-  " ",ERROR,  /* @@@ UNUSED @@@ */
+  "3Q value out of range: %ld (valid: -1, 1..%lu)",ERROR,
   "trailing garbage in operand",WARNING,
   "encoding absolute displacement directly",WARNING,
   "internal symbol %s has been modified",WARNING,
@@ -74,3 +74,4 @@
   "bad FPU id %d for selected cpu type",ERROR,
   "absolute k-factor without '#'",WARNING,
   "%d-bit access to absolute address",WARNING,
+  "accessing odd address",WARNING,

@@ -1,10 +1,10 @@
 /* tos.c Atari TOS executable output driver for vasm */
-/* (c) in 2009-2016,2020-2024 by Frank Wille */
+/* (c) in 2009-2016,2020-2025 by Frank Wille */
 
 #include "vasm.h"
 #include "output_tos.h"
 #if defined(OUTTOS) && defined(VASM_CPU_M68K)
-static char *copyright="vasm tos output module 2.4a (c) 2009-2016,2020-2024 Frank Wille";
+static char *copyright="vasm tos output module 2.4b (c) 2009-2016,2020-2025 Frank Wille";
 int tos_hisoft_dri = 1;
 int sozobonx_dri;
 
@@ -112,20 +112,6 @@ static void tos_header(FILE *f,uint32_t tsize,uint32_t dsize,uint32_t bsize,
 }
 
 
-static void checkdefined(rlist *rl,section *sec,taddr pc,atom *a)
-{
-  if (is_std_reloc(rl)) {
-    nreloc *r = (nreloc *)rl->reloc;
-
-    if (EXTREF(r->sym))
-      output_atom_error(8,a,r->sym->name,sec->name,
-                        (unsigned long)pc+r->byteoffset,rl->type);
-  }
-  else
-    ierror(0);
-}
-
-
 static taddr tos_sym_value(symbol *sym,int textbased)
 {
   taddr val = get_sym_value(sym);
@@ -189,18 +175,17 @@ static void tos_writesection(FILE *f,section *sec,taddr sec_align)
 {
   if (sec) {
     utaddr pc = secoffs[sec->idx];
-    utaddr npc;
     atom *a;
 
     for (a=sec->first; a; a=a->next) {
-      npc = fwpcalign(f,a,sec,pc);
+      pc = fwpcalign(f,a,sec,pc);
       if (exec_out)
-        do_relocs(sec,npc,a);
+        do_relocs(sec,pc,a);
       if (a->type == DATA)
         fwdata(f,a->content.db->data,a->content.db->size);
       else if (a->type == SPACE)
         fwsblock(f,a->content.sb);
-      pc = npc + atom_size(a,sec,npc);
+      pc += atom_size(a,sec,pc);
     }
     fwalign(f,pc,sec_align);
   }
@@ -284,7 +269,7 @@ static void dri_symboltable(FILE *f,symbol *sym)
       if ((sym->flags & EXPORT) && sym->type!=IMPORT)
         t |= STYP_GLOBAL;
 
-      if (sym->flags & COMMON)
+      if (sym->flags & COMMON)  /* external symbol with size as value */
         write_dri_sym(f,sym->name,t,get_sym_size(sym));
       else
         write_dri_sym(f,sym->name,t,get_sym_value(sym));

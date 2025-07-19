@@ -1,5 +1,5 @@
 /* reloc.h  reloc header file for vasm */
-/* (c) in 2002,2005-11,2016,2023-2024 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002,2005-11,2016,2023-2025 by Volker Barthelmann and Frank Wille */
 
 #ifndef RELOC_H
 #define RELOC_H
@@ -85,6 +85,7 @@ int std_reloc(rlist *);
 void do_pic_check(rlist *);
 taddr nreloc_real_addend(nreloc *);
 void unsupp_reloc_error(atom *,rlist *);
+void checkdefined(rlist *,section *,taddr,atom *);
 void print_nreloc(FILE *,nreloc *,int);
 void print_reloc(FILE *,rlist *);
 rlist *get_relocs(atom *);

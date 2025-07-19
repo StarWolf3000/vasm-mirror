@@ -290,7 +290,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
     write_data_buffer(f, 0); /* record type is S0 for header */
     
     pc = s->org;                        /* start at the org address */
-    srec_pc = pc * octetsperbyte;       /* displayed in s-records */
+    srec_pc = ((utaddr)pc) * octetsperbyte;       /* displayed in s-records */
     for (p=s->first; p; p=p->next)      /* iterate through atoms */
     {
       addralign(f,p,s);

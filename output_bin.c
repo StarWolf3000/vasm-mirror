@@ -4,7 +4,7 @@
 #include "vasm.h"
 
 #ifdef OUTBIN
-static char *copyright="vasm binary output module 2.3d (c) 2002-2025 Volker Barthelmann and Frank Wille";
+static char *copyright="vasm binary output module 2.3e (c) 2002-2025 Volker Barthelmann and Frank Wille";
 
 enum {
   BINFMT_RAW,           /* no header */
@@ -21,8 +21,8 @@ enum {
 
 static int binfmt = BINFMT_RAW;
 static char *exec_symname;
-static taddr exec_addr;
-static int addrbits,coalesce;
+static taddr exec_addr,joinorg;
+static int addrbits,coalesce,joinsecs;
 
 
 static int orgcmp(const void *sec1,const void *sec2)
@@ -46,6 +46,9 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 
   if (sec == NULL)
     return;
+
+  if (joinsecs)
+    join_sections(sec,sym,joinorg);
 
   for (; sym; sym=sym->next) {
     if (sym->type==IMPORT)
@@ -286,6 +289,16 @@ static int output_args(char *p)
 
   if (!strcmp(p,"-coalesced")) {
     coalesce = 1;
+    return 1;
+  }
+  else if (!strcmp(p,"-join")) {
+    joinsecs = 1;
+    return 1;
+  }
+  else if (!strncmp(p,"-join=",6)) {
+    sscanf(p+6,"%lli",&val);
+    joinorg = val;  /* set start address for section joining */
+    joinsecs = 1;
     return 1;
   }
   else if (!strncmp(p,"-exec=",6)) {

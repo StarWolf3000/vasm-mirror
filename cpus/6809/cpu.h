@@ -128,7 +128,9 @@ typedef struct {
 #define HD6309          (1<<1)  /* 6309: new registers, additional instr. */
 #define HC12            (1<<2)  /* standard 68HC12 instruction set */
 #define TURBO9          (1<<3)  /* Turbo9 */
-#define KONAMI2         (1<<4)  /* Konami 6809 based cpu, scrambled instr/regs */
+#define KONAMI2ORIG     (1<<4)  /* Konami 6809 based cpu (052001) */
+#define KONAMI2EXT      (1<<5)  /* Konami 6809 w/extra instr. (052526, 053248) */
+#define KONAMI2         (KONAMI2ORIG|KONAMI2EXT)
 /* other flags */
 #define MOVE            (1<<15) /* movb, movw instruction */
 

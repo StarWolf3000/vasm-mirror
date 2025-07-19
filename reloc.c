@@ -1,5 +1,5 @@
 /* reloc.c - relocation support functions */
-/* (c) in 2010-2016,2020,2022-2024 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2016,2020,2022-2025 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -111,9 +111,11 @@ void do_pic_check(rlist *rl)
 
 taddr nreloc_real_addend(nreloc *nrel)
 {
+  symbol *sym = nrel->sym;
+
   /* In vasm the addend includes the symbol's section offset for LABSYMs */
-  if (nrel->sym->type == LABSYM)
-    return nrel->addend - nrel->sym->pc;
+  if (sym->type == LABSYM)
+    return nrel->addend - (sym->pc - sym->sec->org);  /* subtract offset */
   return nrel->addend;
 }
 
@@ -131,6 +133,20 @@ void unsupp_reloc_error(atom *a,rlist *rl)
   }
   else
     output_atom_error(5,a,rl->type);
+}
+
+
+void checkdefined(rlist *rl,section *sec,taddr pc,atom *a)
+{
+  if (is_std_reloc(rl)) {
+    nreloc *r = (nreloc *)rl->reloc;
+
+    if (EXTREF(r->sym))
+      output_atom_error(8,a,r->sym->name,sec->name,
+                        (unsigned long)pc+r->byteoffset,rl->type);
+  }
+  else
+    ierror(0);
 }
 
 

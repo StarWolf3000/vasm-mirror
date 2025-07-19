@@ -83,7 +83,7 @@
   "label definition not allowed here",ERROR,
   "label defined on the same line as a new section",WARNING,
   "no debug output possible with source from stdin",WARNING,
-  "external symbol <%s> must not be defined",ERROR,             /* 85 */
+  "external symbol <%s> must not be defined",WARNING,           /* 85 */
   "missing definition for symbol <%s>",NOLINE|WARNING,
   "additional macro arguments ignored (expecting %d)",WARNING,
   "macro previously defined at line %d of %s",WARNING,

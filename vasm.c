@@ -10,7 +10,7 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 2.0b"
+#define _VER "vasm 2.0c"
 const char *copyright = _VER " (c) in 2002-2025 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
@@ -829,11 +829,11 @@ static int move_label_to_sec(atom *lab,section *ns)
             break;
           }
         }
+        if (s == NULL)
+          ierror(0);  /* section not found in list */
       }
       else
         first_section = os->next;
-      if (s == NULL)
-        ierror(0);  /* section not found in list */
       /* @@@ free section and atoms here */
     }
   }
@@ -841,6 +841,72 @@ static int move_label_to_sec(atom *lab,section *ns)
     ierror(0);
   return 1;
 }
+
+/* "link" sections using ascending addresses starting with 'pc' */
+void join_sections(section *firstsec,symbol *sym,utaddr pc)
+{
+  section *sec;
+  atom *a;
+
+  /* assign ascending addresses to all real sections */
+  for (sec=firstsec; sec!=NULL; sec=sec->next) {
+    if (!(sec->flags & ABSOLUTE)) {
+      pc += balign(pc,sec->align);
+      sec->org = pc;
+      for (a=sec->first; a; a=a->next)
+        pc += atom_size(a,sec,pcalign(a,pc));
+      sec->pc = pc;
+    }
+  }
+
+  /* fix section symbols and turn them into absolute labels */
+  while (sym) {
+    if (sym->type==LABSYM && !(sym->flags&ABSLABEL)) {
+      sym->pc += sym->sec->org;
+      sym->flags |= ABSLABEL;
+    }
+    sym = sym->next;
+  }
+
+  /* finally execute relocations using the new absolute addresses */
+  for (sec=firstsec; sec!=NULL; sec=sec->next) {
+    if (!(sec->flags & ABSOLUTE)) {
+      for (a=sec->first,pc=sec->org; a; a=a->next) {
+        rlist *rl;
+
+        pc = pcalign(a,pc);
+        rl = get_relocs(a);
+        while (rl) {
+          switch (std_reloc(rl)) {
+            case REL_PC:
+              checkdefined(rl,sec,pc,a);
+              patch_nreloc(a,rl,
+                           (get_sym_value(((nreloc *)rl->reloc)->sym)
+                            + nreloc_real_addend(rl->reloc)) -
+                           (pc + ((nreloc *)rl->reloc)->byteoffset),
+                           BIGENDIAN);
+              break;
+            case REL_ABS:
+              checkdefined(rl,sec,pc,a);
+              patch_nreloc(a,rl,
+                           get_sym_value(((nreloc *)rl->reloc)->sym) +
+                           nreloc_real_addend(rl->reloc),
+                           BIGENDIAN);
+              break;
+            default:
+              unsupp_reloc_error(a,rl);
+              break;
+          }
+          rl = rl->next;
+        }
+        pc += atom_size(a,sec,pc);
+      }
+      sec->pc = pc;
+      sec->flags |= ABSOLUTE;  /* now the section is fully absolute */
+    }
+  }
+}
+
 
 /* set current section, remember last */
 void set_section(section *s)
