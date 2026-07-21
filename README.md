@@ -15,6 +15,12 @@ The assembler supports optimizations (e.g. choosing the shortest possible branch
 Most syntax modules support macros, include directives, repetitions, conditional assembly and local symbols.
 
 
+## Statement from the vasm creators about AI
+
+> vasm is human-made software, and at the moment it is our goal to preserve this characteristic. Please keep this in mind if you consider contributing (especially regarding use of generative AI). If your contribution might contain code not written by yourself, please consult us beforehand to check whether we consider it admissible.
+
+This statement applies to submissions on the origin homepage of vasm (https://sun.hasenbraten.de/vasm), and we do not accept any pull requests here in this mirror repository of the project. All submissions here in this repository are done by the repository maintainer (@StarWolf3000) and, outside of the README, reflect changes 1:1 the provided latest stable source from the origin homepage. We distance ourselves from any forks which may use any content provided by large language models (LLMs).
+
 
 ## Compilation Instructions
 
