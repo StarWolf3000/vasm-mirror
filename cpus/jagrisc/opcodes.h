@@ -4,6 +4,10 @@
   "addq",     { IMM1,  REG   }, {  2, ANY },
   "addqmod",  { IMM1,  REG   }, { 63, DSP },
   "addqt",    { IMM1,  REG   }, {  3, ANY },
+  "ajr",      { REL          }, { 53, ANY|OPSWAP|JALIGN },
+  "ajr",      { CC,    REL   }, { 53, ANY|OPSWAP|JALIGN },
+  "ajump",    { IREG         }, { 52, ANY|OPSWAP|JALIGN },
+  "ajump",    { CC,    IREG  }, { 52, ANY|OPSWAP|JALIGN },
   "and",      { REG,   REG   }, {  9, ANY },
   "bclr",     { IMM0,  REG   }, { 15, ANY },
   "bset",     { IMM0,  REG   }, { 14, ANY },
@@ -74,3 +78,5 @@
   "xor",      { REG,   REG   }, { 11, ANY },
   /* used for -opt-jr: JR cc,lab -> MOVEI lab,Rx + JUMP cc,(Rx) */
   " jrabs",   { CC,    IREG  }, { 38, ANY|EXTRA32 },
+  /* used for -opt-jr: AJR cc,lab -> MOVEI lab,Rx + NOP + JUMP cc,(Rx) */
+  " ajrabs",  { CC,    IREG  }, { 38, ANY|EXTRA32 },

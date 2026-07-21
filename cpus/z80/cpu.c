@@ -860,7 +860,7 @@ static int get_flags_info(char **text, int len, int *flags_ptr, int *op)
         if ( len != strlen(flags[i].name) ) {
             continue;
         }
-        if ( strnicmp(*text, flags[i].name,len) == 0 ) {            
+        if ( cistrncmp(*text, flags[i].name,len) == 0 ) {            
 #if 0
             if ( (cpu_type & flags[i].cpu) == 0 ) {
                 continue;
@@ -885,7 +885,7 @@ static int get_register_info(char **text, int len, int *reg, int *op)
         if ( len != strlen(registers[i].name) ) {
             continue;
         }
-        if ( strnicmp(*text, registers[i].name,len) == 0 ) {
+        if ( cistrncmp(*text, registers[i].name,len) == 0 ) {
 #if 0
             if ( (cpu_type & registers[i].cpu) == 0 ) {
                 continue;
@@ -1297,11 +1297,11 @@ static int parse_rcm_identifier(char **sptr)
 
     while (ISIDCHAR(*s))
         s++;
-    if ( s-name == 4 && strnicmp(name, "altd", 4)  == 0 ) {
+    if ( s-name == 4 && cistrncmp(name, "altd", 4)  == 0 ) {
         altd_enabled = 1;
-    } else if ( s-name == 3 && strnicmp(name,"ioi",3) == 0 ) {
+    } else if ( s-name == 3 && cistrncmp(name,"ioi",3) == 0 ) {
         ioi_enabled = 1;
-    } else if ( s-name == 3 && strnicmp(name,"ioe",3) == 0 ) {
+    } else if ( s-name == 3 && cistrncmp(name,"ioe",3) == 0 ) {
         ioe_enabled = 1;
     } else {
         return -1;
@@ -1345,7 +1345,7 @@ char *parse_z80asm_pseudo(char *s)
 
     while (ISIDCHAR(*s))
         s++;
-    if ( s - name == 6 && strnicmp(name,"module", 6) == 0 ) {
+    if ( s - name == 6 && cistrncmp(name,"module", 6) == 0 ) {
         s = skip(s);
         (void)parse_name(0,&s);  /* We throw away the result */
         eol(s);
@@ -1676,13 +1676,13 @@ static void write_opcode(mnemonic *opcode, dblock *db, int size, section *sec, t
             if ( find_base(expr, &base, sec, pc) == BASE_OK ) {
                 if ( opcode->ext.mode == TYPE_RELJUMP ) {
                     add_extnreloc(&db->relocs, base, val -1, REL_PC,
-                                  0, exprsize * 8, (d - start));
+                                  0, exprsize * CHAR_BIT, (d - start));
                     val -= (pc + db->size);
                     if (modifier)
                         ierror(0);  /* @@@ Hi/Lo modifier makes no sense here? */
                 } else {
                     rl = add_extnreloc(&db->relocs, base, val, REL_ABS,
-                                       0, exprsize * 8, (d - start));
+                                       0, exprsize * CHAR_BIT, (d - start));
                     val = apply_modifier(rl, val);
                 }
                 

@@ -10,7 +10,7 @@
 #include "stabs.h"
 #include "dwarf.h"
 
-#define _VER "vasm 2.0e"
+#define _VER "vasm 2.0f"
 const char *copyright = _VER " (c) in 2002-2026 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
@@ -51,7 +51,7 @@ char *filename,*debug_filename;
 source *cur_src;
 section *current_section,container_section;
 int num_secs;
-int debug,final_pass,exec_out,nostdout;
+int debug,final_pass,exec_out,nostdout,parse_finished;
 char *defsectname,*defsecttype;
 taddr defsectorg;
 
@@ -172,7 +172,7 @@ static void roffs_to_space(section *sec,atom *p)
         padbytes = sec->padbytes;
       }
       else
-        padbytes = make_padding(n,padding,MAXPADSIZE*8);
+        padbytes = make_padding(n,padding,MAXPADSIZE*CHAR_BIT);
 
       if (space >= padbytes) {
         n = balign(sec->pc,padbytes);  /* alignment is automatic */
@@ -254,8 +254,7 @@ static void new_stabdef(aoutnlist *nlist,section *sec)
 /* emit internal debug info, triggered by a VASMDEBUG atom */
 static void vasmdebug(const char *f,section *s,atom *a)
 {
-  if (a->next != NULL) {
-    a = a->next;
+  if ((a = a->next) != NULL) {
     printf("%s: (%s+%#llx) %2d:%lu(%u) ",
            f,s->name,ULLTADDR(s->pc),a->type,(unsigned long)a->lastsize,a->changes);
     print_atom(stdout,a);
@@ -278,10 +277,9 @@ static int resolve_section(section *sec)
       break;
     }
     extrapass=pass<=fastphase;
-    if(debug){
+    if(debug)
       printf("resolve_section(%s) pass %d%s",sec->name,pass,
              pass<=fastphase?" (fast)\n":"\n");
-    }
     sec->pc=sec->org;
     for(p=sec->first;p;p=p->next){
       sec->pc=pcalign(p,sec->pc);
@@ -382,14 +380,14 @@ static void resolve(void)
   do{
     finished=1;
     for(sec=first_section;sec;sec=sec->next)
-      if(BTST(todo, sec->idx)){
+      if(BTST(todo,sec->idx)){
 	int passes;
 	finished=0;
 	passes = resolve_section(sec);
-	BCLR(todo, sec->idx);
+	BCLR(todo,sec->idx);
 	if(passes>1){
 	  if(sec->deps)
-	    bvunite(todo, sec->deps, BVSIZE(num_secs));
+	    bvunite(todo,sec->deps,BVSIZE(num_secs));
 	}
       }
   }while(!finished);
@@ -402,13 +400,12 @@ static void assemble(void)
   section *sec;
   atom *p,*pp;
 
-  convert_offset_labels();
+  final_pass=1;
   if(dwarf){
     dinfo.version=dwarf;
     dinfo.producer=vasmname;
     source_debug_init(1,&dinfo);
   }
-  final_pass=1;
   for(sec=first_section;sec;sec=sec->next){
     source *lasterrsrc=NULL;
     utaddr oldpc;
@@ -572,7 +569,6 @@ static void fix_labels(void)
   if((sym=first_symbol)==NULL) return;  /* no symbols to fix */
 
   do{
-    /* turn all absolute mode labels into absolute symbols */
     next=sym->next;
 
     if(add_uscore&&(sym->type==IMPORT||sym->flags&(EXPORT|COMMON|WEAK))){
@@ -585,6 +581,7 @@ static void fix_labels(void)
     }
 
     if((sym->flags&ABSLABEL)&&sym->type==LABSYM){
+      /* turn all absolute mode labels into absolute symbols */
       sym->type=EXPRESSION;
       sym->flags&=~(TYPE_MASK|COMMON);
       sym->sec=NULL;
@@ -592,8 +589,8 @@ static void fix_labels(void)
       sym->align=0;
       sym->expr=number_expr(sym->pc);
     }
-    /* expressions which are based on a label are turned into a new label */
     else if(sym->type==EXPRESSION){
+      /* expressions, which are based on a label, are turned into a new label */
       if(type_of_expr(sym->expr)==NUM&&!eval_expr(sym->expr,&val,NULL,0)){
         if(find_base(sym->expr,&base,NULL,0)==BASE_OK){
           if(output_indirect&&(sym->flags&EXPORT)&&base->type==IMPORT){
@@ -626,18 +623,31 @@ static void trim_uninitialized(section *sec)
   for (; sec!=NULL; sec=sec->next) {
     atom *a;
     utaddr pc;
+    size_t sz;
+    int uninit;
 
-    sec->last = NULL;
-    for (a=sec->first,pc=sec->org; a; a=a->next) {
+    for (a=sec->first,pc=sec->org,uninit=0; a; a=a->next) {
       pc = pcalign(a,pc);
-      pc += atom_size(a,sec,pc);
-      if (a->type==DATA ||
-          (a->type==SPACE && !(a->content.sb->flags & SPC_UNINITIALIZED))) {
-        /* remember last initialized atom and pc of this section */
-        sec->pc = pc;
-        sec->last = a;
+      sz = atom_size(a,sec,pc);
+      pc += sz;
+      if (a->type==DATA || a->type==SPACE) {
+        /* remember the end of initialized atoms and its pc */
+        if (a->type==SPACE && a->content.sb->relocs==NULL &&
+            (a->content.sb->flags & SPC_UNINITIALIZED)) {
+          uninit = 1;
+        }
+        else {
+          if (sz != 0)
+            uninit = 0;
+          if (!uninit) {
+            sec->pc = pc;
+            sec->end = a->next;
+          }
+        }
       }
     }
+    if (!uninit)
+      sec->end = NULL;  /* section does not end with uninitialized space */
   }
 }
 
@@ -980,7 +990,7 @@ section *new_section(const char *name,const char *attr,int align)
   p->memattr=0;
   memset(p->pad,0,MAXPADSIZE);
   if(sec_padding)
-    p->padbytes=make_padding(sec_padding,p->pad,MAXPADSIZE*8);
+    p->padbytes=make_padding(sec_padding,p->pad,MAXPADSIZE*CHAR_BIT);
   else
     p->padbytes=1;
   p->idx=num_secs++;
@@ -991,6 +1001,7 @@ section *new_section(const char *name,const char *attr,int align)
   /* transfer saved atoms from intermediate container, when needed */
   p->first=container_section.first;
   p->last=container_section.last;
+  p->end=0;
   container_section.first=container_section.last=0;
 #if HAVE_CPU_SECT_EXTENSION
   cpu_init_section(p);
@@ -998,7 +1009,7 @@ section *new_section(const char *name,const char *attr,int align)
   return p;
 }
 
-/* create a dummy code section for each new ORG directive */
+/* ORG creates a readable/writable absolute section with a special name */
 section *new_org(taddr org)
 {
   static unsigned cnt;
@@ -1269,7 +1280,7 @@ int main(int argc,char **argv)
         set_listing(1);
         continue;
       }
-      else if (listing_option(&argv[i][2]))
+      else if(listing_option(&argv[i][2]))
         continue;
     }
     if(!strncmp("-D",argv[i],2)){
@@ -1277,7 +1288,7 @@ int main(int argc,char **argv)
       expr *val;
       if(argv[i][2])
         def=&argv[i][2];
-      else if (i<argc-1)
+      else if(i<argc-1)
         def=argv[++i];
       if(def){
         char *s=def;
@@ -1303,14 +1314,14 @@ int main(int argc,char **argv)
       char *path=NULL;
       if(argv[i][2])
         path=&argv[i][2];
-      else if (i<argc-1)
+      else if(i<argc-1)
         path=argv[++i];
       if(path){
         new_include_path(path);
         continue;
       }
     }
-    if(!strncmp("-depend=",argv[i],8) || !strncmp("-dependall=",argv[i],11)){
+    if(!strncmp("-depend=",argv[i],8)||!strncmp("-dependall=",argv[i],11)){
       depend_all=argv[i][7]!='=';
       if(!strcmp("list",&argv[i][depend_all?11:8])){
         depend=DEPEND_LIST;
@@ -1327,12 +1338,22 @@ int main(int argc,char **argv)
       dep_filename=argv[++i];
       continue;
     }
-    if(!strcmp("-unnamed-sections",argv[i])){
-      unnamed_sections=1;
+    if(!strcmp("-ibe",argv[i])){
+      input_bytes_le = 0;
       continue;
     }
     if(!strcmp("-ignore-mult-inc",argv[i])){
       ignore_multinc=1;
+      continue;
+    }
+    if(!strcmp("-ile",argv[i])){
+      input_bytes_le = 1;
+      continue;
+    }
+    if(!strncmp("-iserror=",argv[i],9)){
+      int wno;
+      sscanf(argv[i]+9,"%i",&wno);
+      warning_is_error(wno);
       continue;
     }
     if(!strncmp("-maxerrors=",argv[i],11)){
@@ -1375,20 +1396,16 @@ int main(int argc,char **argv)
       disable_warning(wno);
       continue;
     }
-    if(!strcmp("-ibe",argv[i])){
-      input_bytes_le = 0;
-      continue;
-    }
-    if(!strcmp("-ile",argv[i])){
-      input_bytes_le = 1;
-      continue;
-    }
     if(!strcmp("-obe",argv[i])){
       output_bytes_le = 0;
       continue;
     }
     if(!strcmp("-ole",argv[i])){
       output_bytes_le = 1;
+      continue;
+    }
+    if(!strcmp("-unnamed-sections",argv[i])){
+      unnamed_sections=1;
       continue;
     }
     if(!strcmp("-unsshift",argv[i])){
@@ -1417,6 +1434,10 @@ int main(int argc,char **argv)
     }
     if(!strcmp("-noialign",argv[i])){
       inst_alignment=1;
+      continue;
+    }
+    if(!strcmp("-ctrace",argv[i])){
+      cond_trace=1;
       continue;
     }
     if(!strncmp("-dwarf",argv[i],6)){
@@ -1461,7 +1482,7 @@ int main(int argc,char **argv)
     general_error(84);
   }
   if(errors) leave();
-  nostdout=depend&&dep_filename==NULL; /* dependencies to stdout nothing else */
+  nostdout=depend&&dep_filename==NULL; /* dependencies to stdout, nothing else */
   include_main_source();
   internal_abs(vasmsym_name);
   if(!init_parse())
@@ -1475,10 +1496,13 @@ int main(int argc,char **argv)
   if(!init_expr())
     general_error(10,"expr");
   parse();
+  cond_check();  /* check for open conditional blocks */
   cleanup_parse();
+  parse_finished=1;
   listena=0;
   if(errors==0||produce_listing)
     resolve();
+  convert_offset_labels();
   if(errors==0||produce_listing)
     assemble();
   cur_src=NULL;
@@ -1498,6 +1522,9 @@ int main(int argc,char **argv)
       write_depends(stdout);
     } else {
       trim_uninitialized(first_section);
+#if HAVE_CPU_STATISTICS
+      cpu_statistics(verbose,first_section);
+#endif
       if(verbose)
         statistics();
       if(depend&&dep_filename!=NULL){

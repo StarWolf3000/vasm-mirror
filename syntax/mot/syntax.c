@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2025 by Frank Wille */
+/* (c) in 2002-2026 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm motorola syntax module 3.19d (c) 2002-2025 Frank Wille";
+const char *syntax_copyright="vasm motorola syntax module 3.19f (c) 2002-2026 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -364,12 +364,12 @@ static char *read_sec_attr(char *attr,char *s,uint32_t *mem)
     return NULL;
   }
 
-  if ((s-type==3 || s-type==5) && !strnicmp(type,"bss",3))
+  if ((s-type==3 || s-type==5) && !cistrncmp(type,"bss",3))
     strcpy(attr,bss_type);
-  else if ((s-type==4 || s-type==6) && !strnicmp(type,"data",4))
+  else if ((s-type==4 || s-type==6) && !cistrncmp(type,"data",4))
     strcpy(attr,data_type);
   else if ((s-type==4 || s-type==6) &&
-           (!strnicmp(type,"code",4) || !strnicmp(type,"text",4)))
+           (!cistrncmp(type,"code",4) || !cistrncmp(type,"text",4)))
     strcpy(attr,code_type);
   else {
     syntax_error(13);  /* illegal section type */
@@ -386,7 +386,8 @@ static char *read_sec_attr(char *attr,char *s,uint32_t *mem)
           *mem = 4;  /* AmigaDOS MEMF_FAST */
           break;
         case 'p':
-          break;
+          if (!devpac_compat)
+            break;  /* Devpac: fall through into error */
         default:
           syntax_error(13);
           return NULL;
@@ -408,11 +409,11 @@ static char *read_sec_attr(char *attr,char *s,uint32_t *mem)
 
     /* check for "chip" or "fast" memory type (AmigaDOS) */
     if (s = skip_identifier(s)) {
-      if (s-type==4 && !strnicmp(type,"chip",4)) {
+      if (s-type==4 && !cistrncmp(type,"chip",4)) {
         *mem = 2;  /* AmigaDOS MEMF_CHIP */
         return skip(s);
       }
-      else if (s-type==4 && !strnicmp(type,"fast",4)) {
+      else if (s-type==4 && !cistrncmp(type,"fast",4)) {
         *mem = 4;  /* AmigaDOS MEMF_FAST */
         return skip(s);
       }
@@ -480,15 +481,15 @@ static void handle_section(char *s)
   }
   else if (unnamed_sections) {
     /* only name is given - guess type from the name (i.e. name is type) */
-    if (!stricmp(name,"data")) {
+    if (!cistrcmp(name,"data")) {
       strcpy(attr,data_type);
       name = data_name;
     }
-    else if (!stricmp(name,"bss")) {
+    else if (!cistrcmp(name,"bss")) {
       strcpy(attr,bss_type);
       name = bss_name;
     }
-    else if (!stricmp(name,"code") || !stricmp(name,"text")) {
+    else if (!cistrcmp(name,"code") || !cistrcmp(name,"text")) {
       strcpy(attr,code_type);
       name = code_name;
     }
@@ -834,7 +835,16 @@ static void handle_even(char *s)
 
 static void handle_odd(char *s)
 {
-  do_alignment(2,1,1,NULL);
+  section *sec = default_section();
+
+  if (sec) {
+    if (sec->align < 2)
+      sec->align = 2;  /* minimum section alignment for odd directive */
+    add_atom(sec,new_space_atom(make_expr(SUB,number_expr(1),
+             make_expr(BAND,curpc_expr(),number_expr(1))),1,NULL));
+  }
+  else
+    general_error(3);
 }
 
 
@@ -1135,9 +1145,9 @@ static void handle_debug(char *s)
 
 static void handle_msource(char *s)
 {
-  if (!strnicmp(s,"on",2))
+  if (!cistrncmp(s,"on",2))
     msource_disable = 0;
-  else if (!strnicmp(s,"off",3))
+  else if (!cistrncmp(s,"off",3))
     msource_disable = 1;
   else
     msource_disable = atoi(s) == 0;
@@ -1422,7 +1432,7 @@ static void ifexp(char *s,int c)
    The string is never modified. */
 static char *handle_iif(char *line_ptr)
 {
-  if (strnicmp(line_ptr,"iif",3) == 0 &&
+  if (cistrncmp(line_ptr,"iif",3) == 0 &&
       isspace((unsigned char)line_ptr[3])) {
     char *expr_copy,*expr_end;
     int condition;
@@ -1747,7 +1757,7 @@ static void handle_noop(char *s)
 static void handle_comment(char *s)
 {
   /* handle Atari-specific "COMMENT HEAD=<expr>" to define the tos-flags */
-  if (!strnicmp(s,"HEAD=",5)) {
+  if (!cistrncmp(s,"HEAD=",5)) {
     s += 5;
     new_abs(" TOSFLAGS",parse_expr_tmplab(&s));
   }
@@ -2054,7 +2064,7 @@ static int offs_directive(char *s,char *name)
   int len = strlen(name);
   char *d = s + len;
 
-  return !strnicmp(s,name,len) &&
+  return !cistrncmp(s,name,len) &&
          ((isspace((unsigned char)*d) || ISEOL(d)) ||
           (*d=='.' && (isspace((unsigned char)*(d+2))||ISEOL(d+2))));
 }
@@ -2063,14 +2073,15 @@ static int offs_directive(char *s,char *name)
 #if FLOAT_PARSER
 static symbol *fequate(char *labname,char **s)
 {
-  char x = tolower((unsigned char)**s);
+  if (**s =='.') {
+    char x = tolower((unsigned char)(*s)[1]);
 
-  if (x=='s' || x=='d' || x=='x' || x=='p') {
-    *s = skip(*s + 1);
-    return new_equate(labname,parse_expr_float(s));
+    if (x!='s' && x!='d' && x!='x' && x!='p')
+      syntax_error(1);  /* illegal extension */
+    *s += 2;
   }
-  syntax_error(1);  /* illegal extension */
-  return NULL;
+  *s = skip(*s);
+  return new_equate(labname,parse_expr_float(s));
 }
 #endif
 
@@ -2258,20 +2269,22 @@ void parse(void)
 
       s = handle_iif(skip(s));
 
-      if (!strnicmp(s,"equ",3) && isspace((unsigned char)*(s+3))) {
+      if (!cistrncmp(s,"equ",3) && isspace((unsigned char)*(s+3))) {
         s = skip(s+3);
         label = new_equate(labname,parse_expr_tmplab(&s));
         if (!devpac_compat && !phxass_compat)
           label->flags |= symflags;
       }
 #if FLOAT_PARSER
-      else if (!strnicmp(s,"fequ.",5) && isspace((unsigned char)*(s+6))) {
-        s += 5;
+      else if (!cistrncmp(s,"fequ",4) &&
+               ((s[4]=='.' && isspace((unsigned char)*(s+6))) ||
+                isspace((unsigned char)*(s+4)))) {
+        s += 4;
         label = fequate(labname,&s);
       }
       else if (phxass_compat &&
-               !strnicmp(s,"equ.",4) && isspace((unsigned char)*(s+5))) {
-        s += 4;
+               !cistrncmp(s,"equ.",4) && isspace((unsigned char)*(s+5))) {
+        s += 3;
         label = fequate(labname,&s);
       }
 #endif
@@ -2292,7 +2305,7 @@ void parse(void)
             label->flags |= symflags;
         }
       }
-      else if (!strnicmp(s,"set",3) && isspace((unsigned char)*(s+3))) {
+      else if (!cistrncmp(s,"set",3) && isspace((unsigned char)*(s+3))) {
         /* SET allows redefinitions */
         s = skip(s+3);
         label = new_abs(labname,parse_expr_tmplab(&s));
@@ -2307,11 +2320,11 @@ void parse(void)
         if (!devpac_compat && !phxass_compat)
           label->flags |= symflags;
       }
-      else if (!strnicmp(s,"ttl",3) && isspace((unsigned char)*(s+3))) {
+      else if (!cistrncmp(s,"ttl",3) && isspace((unsigned char)*(s+3))) {
         s = skip(s+3);
         setfilename(labname);
       }
-      else if (!strnicmp(s,"macro",5) &&
+      else if (!cistrncmp(s,"macro",5) &&
                (isspace((unsigned char)*(s+5)) || *(s+5)=='\0'
                 || *(s+5)==commentchar)) {
         /* reread original label field as macro name, no local macros */
@@ -2423,8 +2436,6 @@ void parse(void)
       add_atom(0,new_inst_atom(ip));
     }
   }
-
-  cond_check();  /* check for open conditional blocks */
 }
 
 
@@ -2781,6 +2792,7 @@ int init_syntax(void)
   cond_init();
   current_pc_char = '*';
   carg1 = number_expr(1);        /* CARG start value for macro invocations */
+  set_internal_abs(NARGSYM,-1);  /* reserve the NARG symbol */
   set_internal_abs(REPTNSYM,-1); /* reserve the REPTN symbol */
   sym = internal_abs(rs_name);
   refer_symbol(sym,so_name);     /* SO is only an additional reference to RS */
@@ -2812,7 +2824,7 @@ int init_syntax(void)
     }
   }
   else
-    set_nocase_macros(0); /* case-sensitive, independant of -nocase setting */
+    set_nocase_macros(0); /* case-sensitive, independent of -nocase setting */
 
   return 1;
 }

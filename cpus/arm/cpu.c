@@ -255,7 +255,7 @@ char *parse_instruction(char *s,int *inst_len,char **ext,int *ext_len,
     char c = tolower((unsigned char)*inst);
 
     if (len > 2) {
-      if (c=='b' && strnicmp(inst,"bic",3) && (len==3 || len==4)) {
+      if (c=='b' && cistrncmp(inst,"bic",3) && (len==3 || len==4)) {
         *inst_len = len - 2;
       }
       else if ((c=='u' || c=='s') &&
@@ -273,7 +273,7 @@ char *parse_instruction(char *s,int *inst_len,char **ext,int *ext_len,
           const char *cc = condition_codes;
 
           while (*cc) {
-            if (!strnicmp(p,cc,2))
+            if (!cistrncmp(p,cc,2))
               break;
             cc += 2;
           }
@@ -288,7 +288,7 @@ char *parse_instruction(char *s,int *inst_len,char **ext,int *ext_len,
           const char **am = addrmode_strings;
 
           do {
-            if (len==strlen(*am) && !strnicmp(*am,p,len))
+            if (len==strlen(*am) && !cistrncmp(*am,p,len))
               break;
             am++;
           }
@@ -573,7 +573,7 @@ int parse_operand(char *p,int len,operand *op,int optype)
       if (p == NULL)
         return PO_NOMATCH;
       for (i=0; i<NUM_SHIFTTYPES; i++) {
-        if (!strnicmp(shift_strings[i],name,p-name))
+        if (!cistrncmp(shift_strings[i],name,p-name))
           break;
       }
       if (i >= NUM_SHIFTTYPES)
@@ -625,9 +625,9 @@ int parse_operand(char *p,int len,operand *op,int optype)
       p = skip_identifier(p);
       if (p == NULL)
         return PO_NOMATCH;
-      if (!strnicmp(name,"CPSR",p-name))
+      if (!cistrncmp(name,"CPSR",p-name))
         op->flags &= ~OFL_SPSR;
-      else if (!strnicmp(name,"SPSR",p-name))
+      else if (!cistrncmp(name,"SPSR",p-name))
         op->flags |= OFL_SPSR;
       else
         return PO_NOMATCH;
@@ -641,9 +641,9 @@ int parse_operand(char *p,int len,operand *op,int optype)
       p = skip_identifier(p);
       if (p==NULL || (p-name)<4)
         return PO_NOMATCH;
-      if (!strnicmp(name,"CPSR",4))
+      if (!cistrncmp(name,"CPSR",4))
         op->flags &= ~OFL_SPSR;
-      else if (!strnicmp(name,"SPSR",4))
+      else if (!cistrncmp(name,"SPSR",4))
         op->flags |= OFL_SPSR;
       else
         return PO_NOMATCH;
@@ -1155,7 +1155,7 @@ static uint32_t get_condcode(instruction *ip)
     uint32_t code = 0;
 
     while (*cc) {
-      if (!strnicmp(q,cc,2) && *(q+2)=='\0')
+      if (!cistrncmp(q,cc,2) && *(q+2)=='\0')
         break;
       cc += 2;
       code++;
@@ -1187,7 +1187,7 @@ static int get_addrmode(instruction *ip)
     int mode = AM_DA;
 
     do {
-      if (!stricmp(*am,q))
+      if (!cistrcmp(*am,q))
         break;
       am++;
       mode++;
@@ -1840,7 +1840,7 @@ static size_t eval_ltorg(section *sec,dblock *db)
         if (e->base) {
           /* value is an addend on a base-symbol, which requires a relocation */
           add_extnreloc(&db->relocs,e->base,e->value,
-                        REL_ABS,0,bytespertaddr*8,offs);
+                        REL_ABS,0,bytespertaddr*CHAR_BIT,offs);
         }
         d = setval(arm_be_mode,d,bytespertaddr,e->value);
       }

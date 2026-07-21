@@ -4,7 +4,7 @@
 #include "vasm.h"
 
 #ifdef OUTWOZ
-static char *copyright="vasm wozmon output module 0.1a (c) 2023 anomie-p@protonmail.com";
+static char *copyright="vasm wozmon output module 0.1b (c) 2023 anomie-p@protonmail.com";
 
 /* file, ptr, addr, len, modulus:
    Using the modulus allows for handling both space and data atoms with
@@ -56,7 +56,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
       fprintf(f, "%X:", addr);
     }
     /* Output the data and space for the section */
-    for(a = s->first; a != NULL; a = a->next) {
+    for(a = s->first; a != sec->end; a = a->next) {
       if(a->type == DATA) {
         addr = write_bytes(f, a->content.db->data, addr, a->content.db->size,
 			   a->content.db->size);

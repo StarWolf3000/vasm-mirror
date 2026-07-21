@@ -109,6 +109,7 @@ struct section {
   char *attr;
   atom *first;
   atom *last;
+  atom *end;              /* stop outputting initialized DATA/SPACE atoms here */
   taddr align;
   uint8_t pad[MAXPADSIZE];
   int padbytes;
@@ -148,7 +149,7 @@ extern hashtable *mnemohash;
 extern char *filename,*debug_filename;
 extern source *cur_src;
 extern section *current_section,container_section;
-extern int num_secs,final_pass,exec_out,nostdout;
+extern int num_secs,final_pass,exec_out,nostdout,parse_finished;
 extern struct stabdef *first_nlist,*last_nlist;
 extern char emptystr[];
 extern char vasmsym_name[];
@@ -192,6 +193,7 @@ void set_syntax_default(void);
 
 /* provided by error.c */
 extern int errors,warnings;
+extern int trans_cnt,optim_cnt;
 extern int max_errors;
 extern int no_warn;
 
@@ -200,11 +202,12 @@ void syntax_error(int,...);
 void cpu_error(int,...);
 void output_error(int,...);
 void output_atom_error(int,atom *,...);
-void modify_gen_err(int,...);
-void modify_syntax_err(int,...);
-void modify_cpu_err(int,...);
+void modify_gen_errors(int,...);
+void modify_syntax_errors(int,...);
+void modify_cpu_errors(int,...);
 void disable_message(int);
 void disable_warning(int);
+void warning_is_error(int);
 
 #define ierror(x) general_error(4,(x),__LINE__,__FILE__)
 
@@ -238,6 +241,9 @@ void cpu_init_section(section *);
 #endif
 #if HAVE_CPU_CLEANUP_PARSE
 void cpu_cleanup_parse(section *);
+#endif
+#if HAVE_CPU_STATISTICS
+void cpu_statistics(int,section *);
 #endif
 #if MAX_QUALIFIERS!=0
 char *parse_instruction(char *,int *,char **,int *,int *);
@@ -274,6 +280,8 @@ extern int tos_hisoft_dri;
 #ifdef OUTHUNK
 extern int hunk_xdefonly;
 extern int hunk_devpac;
+extern int hunk_genlinedb;
+extern int hunk_linedbtype;
 #endif
 
 int init_output_test(char **,void (**)(FILE *,section *,symbol *),int (**)(char *));

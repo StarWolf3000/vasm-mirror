@@ -1,5 +1,5 @@
 /* supp.c miscellaneous support routines */
-/* (c) in 2008-2024 by Frank Wille */
+/* (c) in 2008-2026 by Frank Wille */
 
 #include <math.h>
 #include "vasm.h"
@@ -288,7 +288,7 @@ int countbits(taddr val)
 /* count number of bits in val */
 {
   int cnt = 0;
-  int len = sizeof(taddr) << 3;
+  int len = sizeof(taddr) * CHAR_BIT;
 
   while (len--) {
     if (val & 1)
@@ -303,7 +303,7 @@ int countbits(taddr val)
 int tffs(taddr val)
 /* first first bit set in a taddr - similar to POSIX ffs() */
 {
-  int i,n=sizeof(taddr)<<3;
+  int i,n=sizeof(taddr)*CHAR_BIT;
 
   if (val == 0)
     return 0;
@@ -374,7 +374,7 @@ void conv2ieee64(int be,uint8_t *buf,tfloat f)
    ignoring the fractional part */
 int flt_chkrange(tfloat f,int bits)
 {
-  if (bits <= sizeof(taddr)*8) {
+  if (bits <= sizeof(taddr)*CHAR_BIT) {
     tfloat max = (utaddr)1LL<<(bits-1);
     return (f<2.0*max && f>=-max);
   }
@@ -560,7 +560,7 @@ size_t filesize(FILE *fp)
 }
 
 
-int stricmp(const char *str1,const char *str2)
+int cistrcmp(const char *str1,const char *str2)
 {
   while (tolower((unsigned char)*str1) == tolower((unsigned char)*str2)) {
     if (!*str1) return 0;
@@ -570,7 +570,7 @@ int stricmp(const char *str1,const char *str2)
 }
 
 
-int strnicmp(const char *str1,const char *str2,size_t n)
+int cistrncmp(const char *str1,const char *str2,size_t n)
 {
   if (n==0) return 0;
   while (--n && tolower((unsigned char)*str1) == tolower((unsigned char)*str2)) {
@@ -668,7 +668,7 @@ char *get_str_arg(const char *s)
 }
 
 
-taddr balign(taddr addr,taddr a)
+taddr balign(utaddr addr,taddr a)
 /* return number of bytes required to achieve alignment */
 {
   if (a) {
@@ -679,7 +679,7 @@ taddr balign(taddr addr,taddr a)
 }
 
 
-taddr palign(taddr addr,int a)
+taddr palign(utaddr addr,int a)
 /* return number of bytes required to achieve alignment */
 {
   return balign(addr,((taddr)1)<<a);

@@ -429,6 +429,12 @@ the modules:
         Pointers to the first and last atom of the section. See following
         sections for information on atoms.
 
+@item  atom *end;
+        To be used by output modules. If not @code{NULL}, then it marks the
+        end of initialized data and the first atom which belongs to
+        uninitialized space. Uninitialized space is usually not written
+        to the output file.
+
 @item  taddr align;
         Alignment of the section in target-bytes.
 
@@ -485,6 +491,9 @@ the modules:
 @item   unsigned long idx;
         A member usable by the output module for private purposes.
 
+@item   section_extc extc;
+        (if @code{HAVE_CPU_SECT_EXTENSION} is set.)
+        Backend-specifc extension of the section.
 @end table
 
 @subsection Symbols
@@ -1126,6 +1135,20 @@ Also the CPU module must implement and export the following functions:
   the object file's relocation table in @code{VOBJ} format.
 @end table
 
+And the following data needs to be exported:
+@table @code
+@item extern const char *cpu_reloc_names[];
+  An array of short string pointers with the name of each cpu-specific
+  relocation type. The first element (index 0) is @code{FIRST_CPU_RELOC}.
+@end table
+
+Example:
+@example
+const char *cpu_reloc_names[(LAST_CPU_RELOC+1)-FIRST_CPU_RELOC] = {
+  "sd2","sd21","sdi16","sd2i16","drel","brel"
+};
+@end example
+
 Note, that support for cpu-specific relocations has to be added to
 other tools reading and writing the @code{VOBJ} format, like
 @command{vlink} and @command{vobjdump}, as well.
@@ -1284,6 +1307,8 @@ The following token macros are known (default token follows the macro name):
   Bitwise Or.
 @item T_XOR(s) ^
   Bitwise Exclusive Or.
+@item T_BORN(s) 0
+  Bitwise Or-Not, i.e. @code{|~}. Undefined by default.
 @item T_BAND(s) &
   Bitwise And.
 @item T_LSH(s) <<
@@ -1307,7 +1332,7 @@ and is defined from highest to lowest:
 @item @code{T_PLUS}, @code{T_MINUS}, @code{T_NOT}, @code{T_CPL}
 @item @code{T_LSH}, @code{T_RSH}
 @item @code{T_BAND}
-@item @code{T_XOR}
+@item @code{T_XOR}, @code{T_BORN}
 @item @code{T_BOR}
 @item @code{T_MUL}, @code{T_DIV}, @code{T_MOD}
 @item @code{T_ADD}, @code{T_SUB}
@@ -1523,7 +1548,7 @@ specific macro argument with @code{\.}, @code{\+} and @code{\-}.
 Defines the name of an optional symbol containing the counter of the
 current repeat iteration.
 
-@item #define EXPSKIP() s=exp_skip(s)
+@item #define EXPSKIP(s) exp_skip(s)
 Defines an optional replacement for skip() to be used in expr.c, to skip
 blanks in an expression. Useful to forbid blanks in an expression and to
 ignore the rest of the line (e.g. to treat the rest as comment). The

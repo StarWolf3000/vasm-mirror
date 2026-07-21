@@ -38,8 +38,7 @@ typedef struct {
 } instruction_ext;
 #define IFL_RETAINLASTSIZE    1   /* retain current last_size value */
 #define IFL_UNSIZED           2   /* instruction had no size extension */
-#define IFL_NOTYPECHK         4   /* do not check limits of oper. value */
-#define IFL_ANYSIGN           8   /* allow M_val0 signed and unsigned */
+#define IFL_ANYSIGN           4   /* allow M_val0 signed and unsigned */
 
 /* we use OPTS atoms for cpu-specific options */
 #define HAVE_CPU_OPTS 1
@@ -106,6 +105,9 @@ enum {
 
 /* parse cpu-specific directives with label */
 #define PARSE_CPU_LABEL(l,s) parse_cpu_label(l,s)
+
+/* print some backend specific statistics (e.g. optimizations performed) */
+#define HAVE_CPU_STATISTICS 1
 
 /* we define one additional, but internal, unary operation, to count 1-bits */
 int ext_unary_eval(int,taddr,taddr *,int);
@@ -337,7 +339,6 @@ typedef struct {
 #define W SIZE_WORD
 #define L SIZE_LONG
 #define Q SIZE_DOUBLE
-#define SBW (SIZE_BYTE|SIZE_WORD|SIZE_SINGLE)  /* .s = .b for branches */
 #define SBWL (SIZE_BYTE|SIZE_WORD|SIZE_LONG|SIZE_SINGLE)
 #define BW (SIZE_BYTE|SIZE_WORD)
 #define WL (SIZE_WORD|SIZE_LONG)

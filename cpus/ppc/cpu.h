@@ -1,6 +1,6 @@
 /*
 ** cpu.h PowerPC cpu-description header-file
-** (c) in 2002,2006,2011-2016,2024 by Frank Wille
+** (c) in 2002,2006,2011-2016,2024-2026 by Frank Wille
 */
 
 extern int ppc_endianess;
@@ -263,6 +263,8 @@ typedef struct {
 #define TONE    (0x18)
 #define TOU     (0x1f)
 
+/* we define cpu-specific reloc names */
+extern const char *cpu_reloc_names[];
 
 /* Prototypes */
 int ppc_data_align(int);

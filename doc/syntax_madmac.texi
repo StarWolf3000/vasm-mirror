@@ -5,7 +5,7 @@ It is mainly intended for Atari's 6502, 68000 and Jaguar systems.
 
 @section Legal
 
-    This module is written in 2015-2023 by Frank Wille and
+    This module is written in 2015-2026 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section General Syntax
@@ -56,6 +56,15 @@ following the usual mathematical operator priorities.
 C-like escape characters are supported in strings.
 
 
+@section Operators
+
+The following operators are changed from vasm's standard:
+@table @code
+@item =
+      Boolean Equality. Replaces standard @code{==}.
+@end table
+
+
 @section Directives
 
 The following directives are supported by this syntax module (if the
@@ -74,6 +83,11 @@ equals-character, may be optionally preceded by a dot (@code{.}).
       Equivaluent to @code{offset} for compatibility with older Madmac
       versions. Note that @code{abs} is not available for the jagrisc
       cpu backend as it conflicts with an instruction name.
+
+@item align <n>[,<fill>]
+      Align to the next address which can be divided by the constant <n>.
+      Optionally fill the alignment gap with the 16-bit expression in
+      <fill> for all alignments which are dividable by 2.
 
 @item assert <expression>[,<expression>...]
       Assert that all conditions are true (non-zero), otherwise issue a
@@ -136,6 +150,21 @@ equals-character, may be optionally preceded by a dot (@code{.}).
 
 @item ds.w <exp>
       Equivalent to @code{dcb.w <exp>,0}.
+
+@item du <exp>
+      Equivalent to @code{du.w <exp>}.
+
+@item du.b <exp>
+      Reserve <exp> bytes of uninitialized space in the current section.
+      This is no original madmac directive.
+
+@item du.l <exp>
+      Reserve <exp> 32-bit words of uninitialized space in the current section.
+      This is no original madmac directive.
+
+@item du.w <exp>
+      Reserve <exp> 16-bit words of uninitialized space in the current section.
+      This is no original madmac directive.
 
 @item else
       Else-part of a conditional-assembly block. Refer to '@code{if}'.
@@ -301,6 +330,57 @@ equals-character, may be optionally preceded by a dot (@code{.}).
       The block between @code{rept} and @code{endr} will be repeated
       <expression> times, which has to be positive.
 
+@item section <name>[,"<attributes>"]
+      Starts a new section named <name> or reactivate an old one. If
+      attributes are given for an already existing section, they must
+      match exactly.
+      The "<attributes>" string may consist of the following characters:
+
+      Section Contents:
+@table @code
+@item c 
+         section has code
+
+@item d 
+         section has initialized data
+
+@item u 
+         section has uninitialized data
+
+@item i 
+         section has directives (info section)
+
+@item n 
+         section can be discarded
+            
+@item R 
+         remove section at link time
+            
+@item a 
+         section is allocated in memory
+@end table
+
+      Section Protection:
+@table @code          
+@item r
+         section is readable
+            
+@item w
+         section is writable
+           
+@item x
+         section is executable
+           
+@item s
+         section is shareable
+@end table
+
+      When attributes are missing they are automatically set for the section
+      names @code{text}, @code{data}, @code{bss},@code{.text}, @code{.data}
+      and @code{.bss}. Otherwise they default to @code{"acrwx"}.
+
+      Note, that this is no original Madmac assembler directive.
+
 @item <symbol> set <expression>
       Create a new symbol with the name <symbol> and assign
       the value of <expression>. If <symbol> is already assigned, it will
@@ -339,15 +419,16 @@ This module has the following error messages:
 
 @itemize @minus
 @item 1001: malformed immediate-if
-@item 1003: cannot export local symbol
-@item 1004: no space before operands
-@item 1005: too many closing parentheses
-@item 1006: missing closing parentheses
-@item 1007: missing operand
-@item 1008: garbage at end of line
-@item 1009: unknown print format flag '%c'
-@item 1010: invalid data operand
-@item 1011: print format corrupted
-@item 1012: identifier expected
-@item 1014: unexpected "%s" without "%s"
+@item 1002: cannot export local symbol
+@item 1003: no space before operands
+@item 1004: too many closing parentheses
+@item 1005: missing closing parentheses
+@item 1006: missing operand
+@item 1007: garbage at end of line
+@item 1008: unknown print format flag '%c'
+@item 1019: invalid data operand
+@item 1010: print format corrupted
+@item 1011: identifier expected
+@item 1012: alignment %ld ignored
+@item 1013: unexpected "%s" without "%s"
 @end itemize

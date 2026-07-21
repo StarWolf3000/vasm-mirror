@@ -16,7 +16,7 @@ likely need to be converted to ASCII to use it elsewhere.
 #include "vasm.h"
 
 #ifdef OUTSREC
-static char *copyright="vasm motorola srecord output module 2.0 (c) 2015 Joseph Zatarski";
+static char *copyright="vasm motorola srecord output module 2.1 (c) 2015 Joseph Zatarski";
 
 static uint8_t data[32];  /* acts as a buffer for data portion of a record */
 static size_t data_size;  /* indicates current size of data[] */
@@ -291,7 +291,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
     
     pc = s->org;                        /* start at the org address */
     srec_pc = ((utaddr)pc) * octetsperbyte;       /* displayed in s-records */
-    for (p=s->first; p; p=p->next)      /* iterate through atoms */
+    for (p=s->first; p!=s->end; p=p->next)       /* iterate through atoms */
     {
       addralign(f,p,s);
       if(p->type == DATA)

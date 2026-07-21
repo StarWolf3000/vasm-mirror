@@ -2,7 +2,7 @@ This chapter documents the backend for the Atari Jaguar GPU/DSP RISC processor.
 
 @section Legal
 
-    This module is written in 2014-2017,2020,2021,2024,2025 by Frank Wille and
+    This module is written in 2014-2017,2020,2021,2024-2026 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 
@@ -38,6 +38,8 @@ This module provides the following additional options:
         out-of-range destination into @code{MOVEI dest,Rn} followed by
         @code{JUMP cc,(Rn)}, where @code{Rn} is always the selected
         temporary register.
+        Note, that this optimization also works with the aligned pseudo
+        instructions @code{AJR} and @code{AJUMP}.
 @end table
 
 
@@ -113,6 +115,21 @@ directives (note that a leading dot is optional):
 All directives may be optionally preceded by a dot (@code{.}), for
 compatibility with various syntax modules.
 
+Additionally the backend supports these pseudo instructions for running
+code in the Jaguar's main memory:
+
+@table @code
+
+@item ajr [<cc>],<lab>
+    Same as the official @code{jr} instruction, but ensures that the opcode
+    is 32-bit aligned. Inserts a @code{nop} instruction when needed.
+
+@item ajump [<cc>],(<Rn>)
+    Same as the official @code{jump} instruction, but ensures that the opcode
+    is 32-bit aligned. Inserts a @code{nop} instruction when needed.
+
+@end table      
+
 
 @section Known Problems
 
@@ -121,9 +138,6 @@ compatibility with various syntax modules.
 @itemize @minus
 
 @item Encoding of @code{MOVEI} instruction in little-endian mode is unknown.
-@item The developer has to provide the necessary @code{NOP} instructions
-      after jumps, or @code{OR} instructions to work around hardware bugs,
-      her/himself.
 @item Some rare relocations are not perfectly supported. For example
       @code{LOAD Rn+x} or @code{ADDQ #x,Rn}, when external symbol @code{x}
       becomes 32.

@@ -134,9 +134,9 @@ static void write_output(FILE* file, section* firstSection, symbol* firstSymbol)
                     {
                         nreloc* reloc = listEntry->reloc;
 
-                        if (listEntry->type == REL_PC)
+                        if (STD_REL_TYPE(listEntry->type) == REL_PC)
                             pcRelativeValue = "true";
-                        else if (listEntry->type == REL_ABS)
+                        else if (STD_REL_TYPE(listEntry->type) == REL_ABS)
                             pcRelativeValue = "false";
                         else
                             pcRelativeValue = "?";

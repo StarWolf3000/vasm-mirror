@@ -1,11 +1,11 @@
 /* o65.c Andre Fachat's o65 relocatable binary format for vasm */
-/* (c) in 2021 by Frank Wille */
+/* (c) in 2021,2022,2024,2026 by Frank Wille */
 
 #include <time.h>
 #include "vasm.h"
 
 #if defined(OUTO65) && defined(VASM_CPU_650X)
-static char *out_copyright="vasm o65 output module 0.3 (c) 2021,2022,2024 Frank Wille";
+static char *out_copyright="vasm o65 output module 0.4 (c) 2021,2022,2024,2026 Frank Wille";
 
 #define S_ZERO (S_BSS+1)
 #define NSECS (S_ZERO+1)        /* o65 supports text, data, bss, zero */
@@ -388,12 +388,6 @@ static void do_relocs(int secno,taddr offs,atom *p)
       }
 
       switch (type) {
-        case 0x21:  /* 8-bit reference (zero page or immediate) */
-          if (a<-0xff || a>0xff)
-            output_atom_error(12,p,STD_REL_TYPE(rl->type),
-                              (unsigned long)r->mask,sym->name,
-                              (unsigned long)a,r->size);
-          type = 0x20;
         case 0x20:  /* address low-byte */
           patch_nreloc(p,rl,a&0xff,0);
           break;
@@ -403,6 +397,8 @@ static void do_relocs(int secno,taddr offs,atom *p)
         case 0xa0:  /* segment-byte of 24-bit address */
           patch_nreloc(p,rl,(a&0xff0000)>>16,0);
           break;
+        case 0x21:  /* 8-bit reference (zero page or immediate) */
+          type = 0x20;
         default:
           patch_nreloc(p,rl,a,0);
           break;
@@ -420,17 +416,16 @@ static void o65_writesection(FILE *f,section *sec)
   if (sec) {
     int secno = sec->idx;
     utaddr pc = sec->org;
-    utaddr npc;
     atom *a;
 
-    for (a=sec->first; a; a=a->next) {
-      npc = fwpcalign(f,a,sec,pc);
-      do_relocs(secno,npc-sec->org,a);
+    for (a=sec->first; a!=sec->end; a=a->next) {
+      pc = fwpcalign(f,a,sec,pc);
+      do_relocs(secno,pc-sec->org,a);
       if (a->type == DATA)
         fwdata(f,a->content.db->data,a->content.db->size);
       else if (a->type == SPACE)
         fwsblock(f,a->content.sb);
-      pc = npc + atom_size(a,sec,npc);
+      pc += atom_size(a,sec,pc);
     }
   }
 }

@@ -54,3 +54,6 @@ char *my_skip_macro_arg(char *);
 #define DATDWRD handle_d32
 #define SPCDWRD handle_spc32
 #endif
+
+/* overwrite non-standard operator token macros */
+#define T_EQ(s) ((*(s)=='=')?1+((s)[1]=='='):0)

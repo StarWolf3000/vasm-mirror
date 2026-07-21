@@ -1,10 +1,10 @@
 /* xfile.c Sharp X68000 Xfile output driver for vasm */
-/* (c) in 2018,2020,2021,2024 by Frank Wille */
+/* (c) in 2018,2020,2021,2024,2026 by Frank Wille */
 
 #include "vasm.h"
 #include "output_xfile.h"
 #if defined(OUTXFIL) && defined(VASM_CPU_M68K)
-static char *copyright="vasm xfile output module 0.4b (c) 2018,2020,2021,2024 Frank Wille";
+static char *copyright="vasm xfile output module 0.5 (c) 2018,2020,2021,2024,2026 Frank Wille";
 
 static char *exec_symname;
 static uint32_t exec_offs;
@@ -152,7 +152,7 @@ static void xfile_writesection(FILE *f,section *sec,taddr sec_align)
     utaddr pc;
     atom *a;
 
-    for (a=sec->first,pc=0; a; a=a->next) {
+    for (a=sec->first,pc=0; a!=sec->end; a=a->next) {
       pc = fwpcalign(f,a,sec,pc);
       do_relocs(sec,pc,a);
       if (a->type == DATA)
@@ -224,7 +224,7 @@ static size_t xfile_writerelocs(FILE *f,section *sec)
     atom *a;
     rlist *rl;
 
-    for (a=sec->first; a; a=a->next) {
+    for (a=sec->first; a!=sec->end; a=a->next) {
       int nrel = 0;
 
       pc = pcalign(a,pc);

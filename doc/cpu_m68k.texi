@@ -149,9 +149,11 @@ This module provides the following additional options:
         @code{FMUL #1/c,FPn}.
 
     @item -opt-jbra
-        @code{JMP} and @code{JSR} instructions to external labels will be
-        converted into @code{BRA.L} and @code{BSR.L}, when the selected
-        CPU is 68020 or higher (or CPU32).
+        All @code{JMP} and @code{JSR} instructions will be converted into
+        @code{BRA.L} and @code{BSR.L}, when the selected CPU is 68020
+        or higher (or CPU32). This does neither improve performance nor
+        size, but may save relocation entries on some systems and makes
+        the code position independent.
 
     @item -opt-lsl
         Allows optimization of @code{LSL #1} into @code{ADD}. It is also
@@ -247,8 +249,8 @@ This module provides the following additional options:
     @item -warnunaligned
         Show a warning, if the target address for absolute (16/32-bit) or
         16-bit PC-relative addressing modes is odd and the operation size
-        is not 8-bit. No warnings for accessing external symbols.
-        The warning may not make sense for all instructions (e.g. @code{LEA}).
+        is not 8-bit. No warning for accessing external symbols or
+        @code{LEA} and @code{PEA} instructions.
 @end table
 
 In its default setting (no @option{-devpac} or @option{-phxass} option)
@@ -273,6 +275,8 @@ vasm performs the following optimizations:
         All options are initially set to be Devpac compatible. Which means
         that all optimizations are disabled, no debugging symbols will be
         written and vasm will warn about any optimization being done.
+        Warn about word access with odd absolute instruction operands
+        (@code{opt e+}).
         When symbol output is enabled by @code{opt d+}, then the TOS symbol
         table defaults to standard DRI format (limited to 8 characters).
         Shift-right operations are performed using an unsigned 32-bit value.
@@ -548,10 +552,16 @@ directives:
         Include all symbols for debugging in the output file. May also
         generate line debugging information in some output formats.
         Default is off in Devpac-comptability mode, otherwise on.
+      @item e
+        Warn about instructions doing word-access to non-even addresses
+        (@code{opt e+} represents option @option{-warnunaligned}).
       @item l
         Generate a linkable object file. The default is defined by the
         selected output format via the assembler's @option{-F} option.
         This option was supported by Devpac-Amiga only.
+      @item m
+        Expand macros within the listing file. @code{m+} is the default
+        and @code{m-} will be ignored with current listing files.
       @item o
         Enable all optimizations (o1 to o12), or disable all optimizations.
         The default is that all are disabled in Devpac-compatibility mode
@@ -609,6 +619,10 @@ directives:
         For Atari TOS executables this will enable the extended (HiSoft)
         DRI symbol table format, which allows symbols with up to 22
         characters. DRI standard only supports 8 characters.
+      @item y
+        Was already obsolete in Devpac. Just for compatibility.
+      @item z
+        Generate pass 1 listing. Is ignored in vasm.
    @end table
 
    Devpac options without +/- suffix:
@@ -629,6 +643,10 @@ directives:
 
    Also the following Devpac3-style options are supported:
    @table @code
+      @item alink
+        Write a linkable object file.
+      @item amiga
+        Write an executable file, for output formats which support it.
       @item autopc
         Corresponds to @code{a+}.
       @item case
@@ -637,8 +655,24 @@ directives:
         Corresponds to @code{p+}.
       @item debug
         Corresponds to @code{d+}.
+      @item even
+        Corresponds to @code{e+}.
+      @item hcln
+        Generate source line numbers in HiSoft HCLN debug format.
+      @item inconce
+        Corresponds to option @option{-ignore-mult-inc}.
+      @item lattice
+        Corresponds to @code{y+}.
+      @item mex
+        Corresponds to @code{m+}.
+      @item line
+        Generate source line numbers in SAS/C LINE debug format.
+      @item list1
+        Corresponds to @code{z+}.
       @item symtab
         Corresponds to @code{s+}.
+      @item traceif
+        Corresponds to option @option{-ctrace}.
       @item type
         Corresponds to @code{t+}.
       @item warn
@@ -653,8 +687,22 @@ directives:
         Corresponds to @code{p-}.
       @item nodebug
         Corresponds to @code{d-}.
+      @item noeven
+        Corresponds to @code{e-}.
+      @item nohcln
+        Do not generate source line numbers (default).
+      @item noinconce
+        Deletes option @option{-ignore-mult-inc}.
+      @item noline
+        Do not generate source line numbers (default).
+      @item nolist1
+        Corresponds to @code{z-}.
+      @item nomex
+        Corresponds to @code{m-}.
       @item nosymtab
         Corresponds to @code{s-}.
+      @item notraceif
+        Deletes option @option{-ctrace}.
       @item notype
         Corresponds to @code{t-}.
       @item nowarn
@@ -671,7 +719,7 @@ directives:
         Automatically optimize absolute Apollo destination operands to
         PC-relative references (requires 68080 code-generation enabled).
       @item ob
-        Convert absolute jumps to external labels into long-branches
+        Convert all absolute jumps into long-branches
         (refer to @option{-opt-jbra}).
       @item oc
         Enable optimizations to @code{CLR} (refer to @option{-opt-clr}).
@@ -856,13 +904,13 @@ translations:
 @item @code{ADD.? #x,<ea>} optimized to @code{ADDQ.? #x,<ea>}, when @code{x} is
  between 1 and 8.
 
-@item @code{ADD.? #x,<ea>} optimized to @code{SUBQ.? #x,<ea>}, when @code{x} is
- between -1 and -8.
-
 @item @code{ADD.L #x,<ea>} optimized to @code{ADDIW.L #x,<ea>} for Apollo,
 when @code{x} is between -32768 and 32767.
 
 @item @code{ADDA.? #0,An} and @code{SUBA.? #0,An} will be deleted.
+
+@item @code{ADDA.? #x,An} optimized to @code{SUBQ.? #-x,An}, when @code{x} is
+ between -1 and -8.
 
 @item @code{ADDA.? #x,An} translated to @code{LEA (x,An),An}, when @code{x} is
  between -32768 and 32767.
@@ -1079,11 +1127,11 @@ and @code{NEG.L Dn} (@option{-opt-mul} and @option{-opt-speed}).
 @item @code{SUB.? #x,<ea>} optimized to @code{SUBQ.? #x,<ea>}, when @code{x} is
  between 1 and 8.
 
-@item @code{SUB.? #x,<ea>} optimized to @code{ADDQ.? #x,<ea>}, when @code{x} is
- between -1 and -8.
-
 @item @code{SUB.L #x,<ea>} optimized to @code{ADDIW.L #-x,<ea>} for Apollo,
 when @code{x} is between -32767 and 32768.
+
+@item @code{SUBA.? #x,An} optimized to @code{ADDQ.? #-x,An}, when @code{x} is
+ between -1 and -8.
 
 @item @code{SUBA.? #x,An} translated to @code{LEA (-x,An),An}, when @code{x} is
  between -32767 and 32768.
@@ -1186,4 +1234,7 @@ This module has the following error messages:
 @item 2072: bad FPU id %d for selected cpu type
 @item 2073: absolute k-factor without '#'
 @item 2074: %d-bit access to absolute address
+@item 2075: accessing odd address
+@item 2076: deprecated B<cc>.L on 68000 transformed into B<cc>.W
+
 @end itemize

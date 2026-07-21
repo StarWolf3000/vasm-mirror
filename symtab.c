@@ -72,7 +72,7 @@ void rem_hashentry(hashtable *ht,const char *name)
   hashentry *p,*last;
 
   for(p=ht->entries[i],last=NULL;p;p=p->next){
-    if(!strcmp(name,p->name)||(ht->nocase&&!stricmp(name,p->name))){
+    if(!strcmp(name,p->name)||(ht->nocase&&!cistrcmp(name,p->name))){
       if(last==NULL)
         ht->entries[i]=p->next;
       else
@@ -93,7 +93,7 @@ int find_name(hashtable *ht,const char *name,hashdata *result)
 
   if (ht->nocase){
     for(p=ht->entries[i];p;p=p->next){
-      if(!stricmp(name,p->name)){
+      if(!cistrcmp(name,p->name)){
         *result=p->data;
         return 1;
       }else
@@ -119,7 +119,7 @@ int find_namelen(hashtable *ht,const char *name,int len,hashdata *result)
 
   if(ht->nocase){
     for(p=ht->entries[i];p;p=p->next){
-      if(!strnicmp(name,p->name,len)&&p->name[len]==0){
+      if(!cistrncmp(name,p->name,len)&&p->name[len]==0){
         *result=p->data;
         return 1;
       }else

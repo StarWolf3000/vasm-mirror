@@ -13,7 +13,7 @@ const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
    behind the corresponding b<cc> in the mnemonic table */
 #define LBCCDIFF 3
 
-const char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5d (c)2020-2026 by Frank Wille";
+const char *cpu_copyright = "vasm 6809/6309/68hc12 cpu backend 0.5e (c)2020-2026 by Frank Wille";
 const char *cpuname = "6809";
 int bytespertaddr = 2;
 
@@ -74,7 +74,7 @@ static const int offs_postbyte_map12[] = {
 };
 static const int offs_postbyte_mapk[] = {
   /* D, X, Y, U, S, PC, W, V, A, B, CC, DP, 0, 0, E, F */
-  7,-1,-1,-1,-1,-1,-1,-1,0,1,-1,-1,-1,-1,-1,-1
+  7,2,3,5,6,-1,-1,-1,0,1,-1,-1,-1,-1,-1,-1
 };
 
 static const int bitm_postbyte_map[] = {
@@ -149,17 +149,17 @@ static int parse_reg(char **start,uint32_t avail)
   int i,len;
 
   p = s = *start;
-  while (isalnum((unsigned char)*p))
+  if (ISIDSTART(*p)) {
     p++;
+    while (ISIDCHAR(*p))
+      p++;
 
-  if (!(len = p - s))
-    return -1;
-
-  for (i=0; i<reg_cnt; i++) {
-    if ((registers[i].cpu & cpu_type) && (registers[i].avail & avail) &&
-        registers[i].len==len && !strnicmp(registers[i].name,s,len)) {
-      *start = p;
-      return i;
+    for (i=0,len=p-s; i<reg_cnt; i++) {
+      if ((registers[i].cpu & cpu_type) && (registers[i].avail & avail) &&
+          registers[i].len==len && !cistrncmp(registers[i].name,s,len)) {
+        *start = p;
+        return i;
+      }
     }
   }
   return -1;
@@ -528,7 +528,7 @@ char *parse_cpu_special(char *start)
     if (dotdirs && *name=='.')
       ++name;
 
-    if (s-name==5 && !strnicmp(name,"setdp",5)) {
+    if (s-name==5 && !cistrncmp(name,"setdp",5)) {
       utaddr dp;
       s = skip(s);
       dp = (utaddr)parse_constexpr(&s);
@@ -541,7 +541,7 @@ char *parse_cpu_special(char *start)
       eol(s);
       return skip_line(s);
     }
-    else if (s-name==6 && !strnicmp(name,"direct",6)) {
+    else if (s-name==6 && !cistrncmp(name,"direct",6)) {
       strbuf *buf;
       s = skip(s);
       if (buf = parse_identifier(0,&s)) {
@@ -1444,13 +1444,13 @@ int cpu_args(char *p)
     cpu_type = M6809;
   else if (!strcmp(p,"-6309"))
     cpu_type = HD6309;
-  else if (!stricmp(p,"-68hc12"))
+  else if (!cistrcmp(p,"-68hc12"))
     cpu_type = HC12;
-  else if (!stricmp(p,"-turbo9"))
+  else if (!cistrcmp(p,"-turbo9"))
     cpu_type = TURBO9;
-  else if (!stricmp(p,"-konami2"))
+  else if (!cistrcmp(p,"-konami2"))
     cpu_type = KONAMI2ORIG;
-  else if (!stricmp(p,"-konami2ext"))
+  else if (!cistrcmp(p,"-konami2ext"))
     cpu_type = KONAMI2EXT;
   else if (!strcmp(p,"-opt-offset"))
     opt_off = 1;

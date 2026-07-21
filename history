@@ -1,6 +1,64 @@
 vasm history
 =============
 
+- 2.0f (10.07.26)
+o Local symbols could become unavailable when defined after a PC-symbol
+  expression or a directive dealing with the current PC. Fixes a regression
+  from last version, V2.0e.
+o New option -ctrace to enable tracing of conditional assembly.
+o New option -iserror=<n> to turn a warning into an error message.
+o And-operations with a local label are allowed, as long as the constant is
+  less than the section's alignment where the label resides.
+o All output modules should handle uninitialized space properly.
+o Print relocation type name instead of the number in output module errors.
+o Fixed alignment of addresses which have their MSB set.
+o Fixed potential memory corruption bug with more than 32/64 sections while
+  referencing label1-label2 from a different section.
+o m68k: B<cc>.L is accepted with a warning as B<cc>.W in 68000 mode (for
+  compatibility with very old 68000 sources).
+o m68k: Command line option -opt-allbra must not be reset by the directive
+  opt o-. It should still be present after branch optimization is reenabled
+  with opt o1+.
+o m68k: Option -opt-jbra (directive: OPT ob+) should not be restricted to
+  convert external references only.
+o m68k: Fixed regression from V2.0: An optimization of an absolute
+  destination to 16-bit PC-relative was no longer detected (e.g. 68020+ CMP).
+o m68k: Added missing Devpac2/3 opt directives: e, y, z, alink, amiga,
+  even, hcln, inconce, line, list1, mex, traceif, where list1 and mex have
+  currently no function.
+o m68k: Devpac-compatibility mode has to report word-accesses with odd
+  absolute operands by default (-warnunaligned, opt e+).
+o m68k: -warnunaligned should not have any effect for LEA and PEA instructions.
+o m68k: Sections with <type>_P should cause an error with Devpac-compatbility.
+o m68k: Added missing optimization of adda/suba #-x,An to subq/addq #x,An,
+  when x is between -8 and -1.
+o m68k: -showopt and OPT ow+ print the total number of optimizations and
+  translations after the last pass.
+o m68k: Apollo: move.l Bm,An and Am,Bn should not be allowed.
+o jagrisc: Pseudo instructions AJR and AJUMP ensure that a JR or JUMP
+  instruction is 32-bit aligned (required for working with main memory).
+  Also -opt-jr works with AJR and translates into AJUMP when needed.
+o 6809: Konami2 ISA allows X, Y, S, U as the offset register for direct and
+  indirect addressing.
+o 6809: Fixed register parser to work with identifiers which start with a
+  register name.
+o mot-syntax: Allow FEQU without size extension.
+o mot-syntax: Fixed ODD directive. Finally.
+o std-syntax: Support infix operator ! for bitwise Or-Not (gas compatibility).
+o std-syntax: boolean true should be -1 not 1. But !0 is still 1.
+o oldstyle-syntax: Symbols with assignment directives may always be written
+  with leading whitespace in default mode. Only with -i (ignore trailing blanks
+  in operand) you have to use -spcequ to enable that feature.
+o madmac-syntax: New directives: du.b, du.w, du.l to declare uninitialized
+  space.
+o madmac-syntax: Added align directive from rmac, which can optionally
+  specify a 16-bit fill value.
+o madmac-syntax: Added a standard section directive for more flexibility.
+o hunk-output: New option -hcln, to select HiSoft HCLN line debug output,
+  instead of default SAS/C line debug.
+o tos-output: Fixed addends for SD- and PC-relative relocations in DRI objects.
+o o65-output: Better range-check for 8-bit absolute relocations.
+
 - 2.0e (24.02.26)
 o Fixed -nocase option for symbols, which was broken in last release.
 o New output module "aof" for the ARM/Acorn Object Format, used for example
@@ -159,9 +217,9 @@ o hunk-output: -linedebug: do not generate multiple entries per line.
 - 2.0 (13.10.24)
 o Support for architectures which have bytes with more than 8 bits.
 o Output formats bin, ihex, srec, test and vobj currently support >8-bit bytes.
-o New options -obe and -ole to define the endianess of target-bytes in
+o New options -obe and -ole to define the endianness of target-bytes in
   binary output.
-o New options -ibe and -ile to define the endianess of target-bytes in
+o New options -ibe and -ile to define the endianness of target-bytes in
   binary includes (incbin).
 o New option -underscore adds a leading underscore to all imported and
   exported symbol names.
@@ -202,7 +260,7 @@ o m68k: Command line options of the form -opt-<option> execute a
   Devpac-style option in the same way as an OPT directive at the top
   of the source text.
 o m68k: New options -warnabs16 and -warnabs32 to show a warning when
-  accessing absolute 16- oder 32-bit addresses.
+  accessing absolute 16- or 32-bit addresses.
 o m68k: Fixed assigning another register list symbol with REG/EQURL, which
   was broken since V1.9a.
 o m68k: REG/EQURL directives optionally allow to specify register lists as a
@@ -218,7 +276,7 @@ o m68k: New Apollo instructions: fmoverz, fmoveurz, moveiw, mov3q, movs,
 o m68k: Do not allow Bcc.B with branch distance -130 for Apollo, as it
   would encode as $6xff (opcode for 32-bit branch).
 o 6502: Added al/as/xl/xs as aliases for a16/a8/x16/x8 directives.
-  Added longa/longi as WDC-style aliases for theses directives (65816).
+  Added longa/longi as WDC-style aliases for these directives (65816).
 o 6502: Absolute 16-bit addressing modes ignore the bank by default for 65816.
 o 6502: Optionally allow alternative syntax with immediate operands for MVN,
   MVP and PEA (65816).
@@ -1578,7 +1636,7 @@ o mot-syntax: DR directive from AsmOne to build PC-relative data tables.
 o mot-syntax: New directives: ODD, PAGE, NOPAGE, IMAGE (same as INCBIN).
 o mot-syntax: Directives ENTRY, EXTRN and GLOBAL are recognized and are
   identical to XDEF.
-o mot-syntax: Some directives without any function just for compatbility:
+o mot-syntax: Some directives without any function just for compatibility:
   JUMPERR, MASK2, LLEN, SPC.
 
 - 1.4e (09.06.10)
@@ -1936,7 +1994,7 @@ o Assembler core supports include files.
 o Assembler core supports macros.
 o Option -D allows to define symbols from the command line.
 o Option -I defines include paths, which are searched in the order of
-  occurence on the command line.
+  occurrence on the command line.
 o Instructions are case-insensitive.
 o Memory optimizations. Free more data that is used only temporary.
 o Detailed error messages also show the file names and the names and lines
@@ -1979,7 +2037,7 @@ o elf-output: .note sections are supported. Any section which starts
   with ".note" gets the section type SHT_NOTE.
 o elf-output: Option -nosym strips all local symbols from the output file.
 o hunk-output: Section attributes 'C' and 'F' are recognized and converted
-  into the approriate CHIP and FAST memory flag in the hunk-type.
+  into the appropriate CHIP and FAST memory flag in the hunk-type.
 
 - 1.1e (26.06.05)
 o Parser could not handle a comment-character in the operand field for

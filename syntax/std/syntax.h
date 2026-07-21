@@ -16,7 +16,7 @@ char *chkidend(char *,char *);
 #endif
 
 /* result of a boolean operation */
-#define BOOLEAN(x) (x)
+#define BOOLEAN(x) -(x)
 
 #ifndef CPU_DEF_ALIGN
 #define CPU_DEF_ALIGN 2	 /* power2-alignment is default for .align */
@@ -33,3 +33,6 @@ char *macro_arg_opts(macro *,int,char *,char *);
 #define MACRO_PARAM_SEP(p) (*p==',' ? skip(p+1) : p)
 void my_exec_macro(source *);
 #define EXEC_MACRO(s) my_exec_macro(s)
+
+/* overwrite non-standard operator token macros */
+#define T_BORN(s) (*(s)=='!')

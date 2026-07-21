@@ -1,5 +1,5 @@
 /* error.c - error output and modification routines */
-/* (c) in 2002-2025 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2026 by Volker Barthelmann and Frank Wille */
 
 #include <stdarg.h>
 #include "vasm.h"
@@ -25,7 +25,7 @@ static struct err_out output_err_out[]={
 };
 static const int output_errors=sizeof(output_err_out)/sizeof(output_err_out[0]);
 
-int errors,warnings;  /* count */
+int errors,warnings,trans_cnt,optim_cnt;  /* counters */
 
 /* options */
 int max_errors=5;
@@ -69,23 +69,6 @@ static void print_source_line(FILE *f,source *src,int l)
 }
 
 
-static void print_source_file(FILE *f, source *src)
-{
-  if (src->srcfile) {
-    if (src->srcfile->incpath != NULL)
-      fprintf(f,"\"%s%s%s\"",
-              src->srcfile->compdir_based
-              ? compile_dir : emptystr,
-              src->srcfile->incpath->path,
-              src->srcfile->name);
-    else
-      fprintf(f,"\"%s\"",src->srcfile->name);
-  }
-  else
-    fprintf(f,"\"%s\"",src->name);
-}
-
-
 static void error(int n,va_list vl,struct err_out *errlist,int offset)
 {
   static source *last_err_source = NULL;
@@ -94,6 +77,10 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
   FILE *f;
   int flags=errlist[n].flags;
 
+  if (flags & CNT_TRANS)
+    trans_cnt++;
+  if (flags & CNT_OPTIM)
+    optim_cnt++;
   if ((flags&DISABLED) || ((flags&WARNING) && no_warn))
     return;
 
@@ -120,7 +107,7 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
     last_err_line = cur_src->line;
     last_err_no = n + offset;
   }
-  fprintf(f,"\n");
+  fputc('\n',f);
 
   if (cur_listing && (flags & ERROR))
     cur_listing->error = n + offset;
@@ -140,16 +127,16 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
   fprintf(f," %d",n+offset);
   if (!(flags & NOLINE) && cur_src!=NULL) {
     fprintf(f," in line %d of ",cur_src->line);
-    print_source_file(f,cur_src);
+    print_source_name(f,cur_src);
     if (cur_src->defsrc) {
       fprintf(f," (line %d of ",cur_src->defline+cur_src->line);
-      print_source_file(f,cur_src->defsrc);
+      print_source_name(f,cur_src->defsrc);
       fputc(')',f);
     }
   }
   fprintf(f,": ");
   vfprintf(f,errlist[n].text,vl);
-  fprintf(f,"\n");
+  fputc('\n',f);
 
   if (!(flags & NOLINE) && cur_src!=NULL && cur_src->line>0) {
     if (cur_src->parent != NULL) {
@@ -167,10 +154,10 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
           continue;
         }
         fprintf(f," from line %d of ",child->parent_line);
-        print_source_file(f,parent);
+        print_source_name(f,parent);
         if (parent->defsrc) {
           fprintf(f," (line %d of ",parent->defline+child->parent_line);
-          print_source_file(f,parent->defsrc);
+          print_source_name(f,parent->defsrc);
           fputc(')',f);
         }
 
@@ -190,7 +177,7 @@ static void error(int n,va_list vl,struct err_out *errlist,int offset)
           print_source_line(f,parent,child->parent_line);
         }
         else
-          fprintf(f,"\n");
+          fputc('\n',f);
         child = parent;
       }
     }
@@ -271,13 +258,12 @@ static void modify_errors(struct err_out *err,int flags,va_list vl)
 {
   int n;
 
-  while (n = va_arg(vl,int)) {
+  while (n = va_arg(vl,int))
     err[n].flags = flags;
-  }
 }
 
 
-void modify_gen_err(int flags,...)
+void modify_gen_errors(int flags,...)
 {
   va_list vl;
   va_start(vl,flags);
@@ -286,7 +272,7 @@ void modify_gen_err(int flags,...)
 }
 
 
-void modify_syntax_err(int flags,...)
+void modify_syntax_errors(int flags,...)
 {
   va_list vl;
   va_start(vl,flags);
@@ -295,7 +281,7 @@ void modify_syntax_err(int flags,...)
 }
 
 
-void modify_cpu_err(int flags,...)
+void modify_cpu_errors(int flags,...)
 {
   va_list vl;
   va_start(vl,flags);
@@ -304,40 +290,67 @@ void modify_cpu_err(int flags,...)
 }
 
 
-static void disable(int type,struct err_out *err,int errnum,int first,int max)
+static void err_change_flags(struct err_out *err,int errnum,int first,int max,
+                             int type,int flclr,int flset)
 {
   int n = errnum-first;
 
   if (n>=0 && n<max) {
     if (err[n].flags & type) {
-      err[n].flags |= DISABLED;
+      err[n].flags &= ~flclr;
+      err[n].flags |= flset;
       return;
     }
   }
-  general_error(33,errnum,type==WARNING?"warning":emptystr);
+  else {
+    char *typestr;
+
+    switch (type) {
+      case FATAL|ERROR:
+      case FATAL:
+        typestr = "fatal error ";
+        break;
+      case ERROR:
+        typestr = "error ";
+        break;
+      case WARNING:
+        typestr = "warning ";
+        break;
+      default:
+        typestr = emptystr;
+        break;
+    }
+    general_error(33,errnum,typestr);  /* invalid error message */
+  }
 }
 
 
-static void disable_type(int type,int n)
+static void change_flags(int n,int type,int flclr,int flset)
 {
   if (n >= FIRST_OUTPUT_ERROR)
-    disable(type,output_err_out,n,FIRST_OUTPUT_ERROR,output_errors);
+    err_change_flags(output_err_out,n,FIRST_OUTPUT_ERROR,output_errors,type,flclr,flset);
   else if (n >= FIRST_CPU_ERROR)
-    disable(type,cpu_err_out,n,FIRST_CPU_ERROR,cpu_errors);
+    err_change_flags(cpu_err_out,n,FIRST_CPU_ERROR,cpu_errors,type,flclr,flset);
   else if (n >= FIRST_SYNTAX_ERROR)
-    disable(type,syntax_err_out,n,FIRST_SYNTAX_ERROR,syntax_errors);
-  else if (n >= FIRST_GENERAL_ERROR)
-    disable(type,general_err_out,n,FIRST_GENERAL_ERROR,general_errors);
+    err_change_flags(syntax_err_out,n,FIRST_SYNTAX_ERROR,syntax_errors,type,flclr,flset);
+  else
+    err_change_flags(general_err_out,n,FIRST_GENERAL_ERROR,general_errors,type,flclr,flset);
 }
 
 
 void disable_message(int n)
 {
-  disable_type(MESSAGE,n);
+  change_flags(n,MESSAGE,0,DISABLED);
 }
 
 
 void disable_warning(int n)
 {
-  disable_type(WARNING,n);
+  change_flags(n,WARNING,0,DISABLED);
+}
+
+
+void warning_is_error(int n)
+{
+  change_flags(n,WARNING,WARNING,ERROR);
 }

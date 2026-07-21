@@ -82,6 +82,23 @@ void write_depends(FILE *f)
 }
 
 
+void print_source_name(FILE *f,source *src)
+{
+  if (src->srcfile) {
+    if (src->srcfile->incpath != NULL)
+      fprintf(f,"\"%s%s%s\"",
+              src->srcfile->compdir_based
+              ? compile_dir : emptystr,
+              src->srcfile->incpath->path,
+              src->srcfile->name);
+    else
+      fprintf(f,"\"%s\"",src->srcfile->name);
+  }
+  else
+    fprintf(f,"\"%s\"",src->name);
+}
+
+
 static FILE *open_path(char *compdir,char *path,const char *name,
                        const char *mode)
 {

@@ -395,8 +395,11 @@ symbol *new_labsym(section *sec,const char *name)
     new->align = 0;
   }
 
-  if (!is_local_symbol_name(name))
+  if (!strncmp(name," *tmp",5))
+    new->flags |= VASMINTERN;  /* new_tmplabel() */
+  else if (!is_local_symbol_name(name))
     last_global_label = new->name;
+  /* FIXME: we could set LOCAL here:  else new->flags |= LOCAL; */
 
   if (sec->flags & ABSOLUTE)
     new->flags |= ABSLABEL;

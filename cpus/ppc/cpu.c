@@ -12,10 +12,14 @@ mnemonic mnemonics[] = {
 
 const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-const char *cpu_copyright="vasm PowerPC cpu backend 3.2a (c) 2002-2019,2024,2025 Frank Wille";
+const char *cpu_copyright="vasm PowerPC cpu backend 3.2b (c) 2002-2019,2024-2026 Frank Wille";
 const char *cpuname = "PowerPC";
 int bytespertaddr = 4;
 int ppc_endianess = 1;
+
+const char *cpu_reloc_names[(LAST_CPU_RELOC+1)-FIRST_CPU_RELOC] = {
+  "sd2","sd21","sdi16","sd2i16","drel","brel"
+};
 
 static uint64_t cpu_type = CPU_TYPE_PPC | CPU_TYPE_ALTIVEC | CPU_TYPE_32 | CPU_TYPE_ANY;
 static int regnames = 1;
@@ -787,10 +791,7 @@ size_t cpu_reloc_size(rlist *rl)
 
 void cpu_reloc_print(FILE *f,rlist *rl)
 {
-  static const char *rname[(LAST_CPU_RELOC+1)-FIRST_CPU_RELOC] = {
-    "sd2","sd21","sdi16","drel","brel"
-  };
-  fprintf(f,"r%s",rname[rl->type-FIRST_CPU_RELOC]);
+  fprintf(f,"r%s",cpu_reloc_names[rl->type-FIRST_CPU_RELOC]);
   print_nreloc(f,rl->reloc,1);
 }
 

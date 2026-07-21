@@ -1,10 +1,10 @@
 /* tos.c Atari TOS executable output driver for vasm */
-/* (c) in 2009-2016,2020-2025 by Frank Wille */
+/* (c) in 2009-2016,2020-2026 by Frank Wille */
 
 #include "vasm.h"
 #include "output_tos.h"
 #if defined(OUTTOS) && defined(VASM_CPU_M68K)
-static char *copyright="vasm tos output module 2.4c (c) 2009-2016,2020-2025 Frank Wille";
+static char *copyright="vasm tos output module 2.5 (c) 2009-2016,2020-2026 Frank Wille";
 int tos_hisoft_dri = 1;
 int sozobonx_dri;
 
@@ -133,33 +133,45 @@ static void do_relocs(section *asec,taddr pc,atom *a)
   section *sec;
 
   while (rl) {
-    switch (std_reloc(rl)) {
-      case REL_SD:
-        checkdefined(rl,asec,pc,a);
-        patch_nreloc(a,rl,
-                     (tos_sym_value(((nreloc *)rl->reloc)->sym,1)
-                      + nreloc_real_addend(rl->reloc)) - sdabase,1);
-        break;
-      case REL_PC:
-        checkdefined(rl,asec,pc,a);
-        patch_nreloc(a,rl,
-                     (tos_sym_value(((nreloc *)rl->reloc)->sym,1)
-                     + nreloc_real_addend(rl->reloc)) -
-                     (secoffs[asec->idx] + pc +
-                      ((nreloc *)rl->reloc)->byteoffset),1);
-        break;
-      case REL_ABS:
-        checkdefined(rl,asec,pc,a);
-        sec = ((nreloc *)rl->reloc)->sym->sec;
-        if (!patch_nreloc(a,rl,
-                          secoffs[sec?sec->idx:0] +
-                          ((nreloc *)rl->reloc)->addend,1))
-          break;  /* field overflow */
-        if (((nreloc *)rl->reloc)->size == 32)
-          break;  /* only support 32-bit absolute */
-      default:
-        unsupp_reloc_error(a,rl);
-        break;
+    if (exec_out) {
+      /* execute relocations with known symbols */
+      switch (std_reloc(rl)) {
+        case REL_SD:
+          checkdefined(rl,asec,pc,a);
+          patch_nreloc(a,rl,
+                       (tos_sym_value(((nreloc *)rl->reloc)->sym,1)
+                        + nreloc_real_addend(rl->reloc)) - sdabase,1);
+          break;
+        case REL_PC:
+          checkdefined(rl,asec,pc,a);
+          patch_nreloc(a,rl,
+                       (tos_sym_value(((nreloc *)rl->reloc)->sym,1)
+                       + nreloc_real_addend(rl->reloc)) -
+                       (secoffs[asec->idx] + pc +
+                        ((nreloc *)rl->reloc)->byteoffset),1);
+          break;
+        case REL_ABS:
+          checkdefined(rl,asec,pc,a);
+          sec = ((nreloc *)rl->reloc)->sym->sec;
+          if (!patch_nreloc(a,rl,
+                            secoffs[sec?sec->idx:0] +
+                            ((nreloc *)rl->reloc)->addend,1))
+            break;  /* field overflow */
+          if (((nreloc *)rl->reloc)->size == 32)
+            break;  /* only support 32-bit absolute */
+        default:
+          unsupp_reloc_error(a,rl);
+          break;
+      }
+    }
+    else {
+      /* patch addend into the section for DRI object file */
+      switch (std_reloc(rl)) {
+        case REL_SD:
+        case REL_PC:
+          patch_nreloc(a,rl,nreloc_real_addend(rl->reloc),1);
+          break;
+      }
     }
     rcnt++;
     if (a->type == SPACE)
@@ -178,10 +190,9 @@ static void tos_writesection(FILE *f,section *sec,taddr sec_align)
     utaddr pc;
     atom *a;
 
-    for (a=sec->first,pc=0; a; a=a->next) {
+    for (a=sec->first,pc=0; a!=sec->end; a=a->next) {
       pc = fwpcalign(f,a,sec,pc);
-      if (exec_out)
-        do_relocs(sec,pc,a);
+      do_relocs(sec,pc,a);
       if (a->type == DATA)
         fwdata(f,a->content.db->data,a->content.db->size);
       else if (a->type == SPACE)
@@ -320,7 +331,7 @@ static int tos_writerelocs(FILE *f,section *sec)
     utaddr pc = 0;
     atom *a;
 
-    for (a=sec->first; a; a=a->next) {
+    for (a=sec->first; a!=sec->end; a=a->next) {
       int nrel;
 
       pc = pcalign(a,pc);
@@ -377,7 +388,7 @@ static void dri_writerelocs(FILE *f,section *sec,taddr sec_align)
        are indicated by a reloc-type in the least significant three
        bits (0-7). The remaining 13 bits are used as an optional index
        into the symbol table. */
-    for (npc=0,a=sec->first; a; a=a->next) {
+    for (npc=0,a=sec->first; a!=sec->end; a=a->next) {
       size_t offs = 0;
       int nrel,i,rtype;
 

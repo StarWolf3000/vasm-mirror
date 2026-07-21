@@ -442,6 +442,13 @@ static void handle_protected(char *s)
   do_visibility(s,3);  /* visibility STV_PROTECTED=3 */
 }
 
+static void handle_symdepend(char *s)
+{
+  add_atom(0,new_space_atom(number_expr(0),0,parse_expr(&s)));
+  eol(s);
+}
+
+
 static void do_align(taddr align,size_t width,expr *fill,taddr max)
 {
   atom *a = new_space_atom(number_expr(0),width,fill);
@@ -1172,6 +1179,7 @@ struct {
   "internal",handle_internal,
   "hidden",handle_hidden,
   "protected",handle_protected,
+  "needs",handle_symdepend,
 };
 
 static int dir_cnt=sizeof(directives)/sizeof(directives[0]);
@@ -1354,8 +1362,6 @@ void parse(void)
       add_atom(0,new_inst_atom(ip));
     }
   }
-
-  cond_check();
 }
 
 /* get defaults and qualifiers for a macro argument name specifier */
@@ -1366,12 +1372,12 @@ char *macro_arg_opts(macro *m,int argno,char *name,char *s)
   char *new = NULL;
 
   if (*s==':' && (end=skip_identifier(s+1))!=NULL) {
-    if (end-s==4 && !strnicmp(s+1,"req",3)) {
+    if (end-s==4 && !cistrncmp(s+1,"req",3)) {
       /* required argument: argname:req */
       req = 1;
       new = s = skip(s+4);
     }
-    else if (end-s==7 && !strnicmp(s+1,"vararg",6)) {
+    else if (end-s==7 && !cistrncmp(s+1,"vararg",6)) {
       /* define vararg position: argname:vararg */
       m->vararg = argno;
       new = s = skip(s+7);

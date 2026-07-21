@@ -1,5 +1,5 @@
 /* supp.h miscellaneous support routines */
-/* (c) in 2008-2024 by Frank Wille */
+/* (c) in 2008-2026 by Frank Wille */
 
 #ifndef SUPP_H
 #define SUPP_H
@@ -66,8 +66,8 @@ int fwpattern(FILE *,taddr,uint8_t *,int);
 taddr fwpcalign(FILE *,atom *,section *,taddr);
 size_t filesize(FILE *);
 
-int stricmp(const char *,const char *);
-int strnicmp(const char *,const char *,size_t);
+int cistrcmp(const char *,const char *);
+int cistrncmp(const char *,const char *,size_t);
 char *mystrdup(const char *);
 char *cnvstr(const char *,int);
 char *cutstr(strbuf *,const char *,size_t);
@@ -77,8 +77,8 @@ int str_is_graph(const char *);
 const char *trim(const char *);
 char *get_str_arg(const char *);
 
-taddr balign(taddr,taddr);
-taddr palign(taddr,int);
+taddr balign(utaddr,taddr);
+taddr palign(utaddr,int);
 taddr pcalign(atom *,taddr);
 int make_padding(taddr,uint8_t *,int);
 

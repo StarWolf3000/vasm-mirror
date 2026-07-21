@@ -18,7 +18,7 @@
 #define REC_ELA 4 /* extended linear address */
 #define REC_SLA 5 /* start linear address */
 
-static char *copyright = "vasm Intel HEX output module 0.3 (c) 2020 Rida Dzhaafar";
+static char *copyright = "vasm Intel HEX output module 0.4 (c) 2020 Rida Dzhaafar";
 
 static int ihex_fmt = I8HEX; /* default ihex format */
 
@@ -194,7 +194,7 @@ static void write_output(FILE *f, section *sec, symbol *sym)
   for (s = sec; s; s = s->next) {
     pc = s->org;
     addr = ((utaddr)pc) * octetsperbyte;
-    for (a = s->first; a; a = a->next) {
+    for (a = s->first; a!=s->end; a = a->next) {
       pc = mypcalign(f, s, a, pc);
       if (a->type == DATA) {
         for (i = 0; i < a->content.db->size; i++,pc++) {

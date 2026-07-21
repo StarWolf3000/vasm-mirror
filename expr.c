@@ -19,7 +19,7 @@ static expr *expression(void);
 int init_expr(void)
 {
   /* we always assume 8-bit bytes on the host system */
-  bitspertaddr = sizeof(taddr) * 8;
+  bitspertaddr = sizeof(taddr) * CHAR_BIT;
 
   /* maximum number of characters in expression strings */
   charspertaddr=bytespertaddr*BITSPERBYTE/8;
@@ -231,18 +231,8 @@ static expr *primary_expr(void)
     symbol *sym;    
     s=EXPSKIP(s);
     sym=find_symbol(buf->str);
-    if(!sym){
-#ifdef NARGSYM
-      int match = nocase?!stricmp(buf->str,NARGSYM):!strcmp(buf->str,NARGSYM);
-      if(match){
-        new=new_expr();
-        new->type=NUM;
-        new->c.val=cur_src->num_params; /*@@@ check for macro mode? */
-        return new;
-      }
-#endif
+    if(!sym)
       sym=new_import(buf->str);
-    }
     sym->flags|=USED;
     new=(sym->type!=EXPRESSION)?new_sym_expr(sym):copy_tree(sym->expr);
     return new;
@@ -298,9 +288,12 @@ static expr *unary_expr(void)
 {
   expr *new;
   int len,type;
+#if defined(EXT_UNARY_NAME) && defined(EXT_UNARY_TYPE)
   if(len=EXT_UNARY_NAME(s))
     type=EXT_UNARY_TYPE(s);
-  else if(len=T_PLUS(s)){
+  else
+#endif
+  if(len=T_PLUS(s)){
     s=EXPSKIP(s+len);
     return primary_expr();
   }else if(len=T_MINUS(s))  /* - */
@@ -361,11 +354,14 @@ static expr *exclusive_or_expr(void)
   int len;
   left=and_expr();
   s=EXPSKIP(s);
-  while(len=T_XOR(s)){  /* ^ */
-    s=EXPSKIP(s+len);
+  while((len=T_XOR(s))||(len=T_BORN(s))){  /* ^ or OR-NOT */
     new=new_expr();
-    new->type=XOR;
+    if(T_XOR(s))
+      new->type=XOR;
+    else
+      new->type=BORN;
     new->left=left;
+    s=EXPSKIP(s+len);
     new->right=and_expr();
     left=new;
   }
@@ -692,7 +688,7 @@ void simplify_expr(expr *tree)
         general_error(41);
         ival=0;
       }else if(tree->left->c.val==taddrmin&&tree->right->c.val==-1){
-        general_error(21,sizeof(taddr)*8);  /* target data type overflow */
+        general_error(21,sizeof(taddr)*CHAR_BIT); /* target data type overflow */
         ival=taddrmin;
       }else
         ival=(tree->left->c.val/tree->right->c.val);
@@ -702,7 +698,7 @@ void simplify_expr(expr *tree)
         general_error(41);
         ival=0;
       }else if(tree->left->c.val==taddrmin&&tree->right->c.val==-1){
-        general_error(21,sizeof(taddr)*8);  /* target data type overflow */
+        general_error(21,sizeof(taddr)*CHAR_BIT); /* target data type overflow */
         ival=taddrmin;
       }else
         ival=(tree->left->c.val%tree->right->c.val);
@@ -728,8 +724,11 @@ void simplify_expr(expr *tree)
     case XOR:
       ival=(tree->left->c.val^tree->right->c.val);
       break;
+    case BORN:
+      ival=(tree->left->c.val|~tree->right->c.val);
+      break;
     case NOT:
-      ival=BOOLEAN(!tree->left->c.val);
+      ival=!tree->left->c.val;  /* do not use BOOLEAN() here */
       break;
     case LSH:
       ival=lshift(tree->left->c.val,(int)tree->right->c.val);
@@ -827,8 +826,11 @@ void simplify_expr(expr *tree)
     case XOR:
       hval=hxor(lval,rval);
       break;
+    case BORN:
+      hval=hor(lval,hcpl(rval));
+      break;
     case NOT:
-      ival=BOOLEAN(hcmp(lval,huge_zero())==0);
+      ival=hcmp(lval,huge_zero())==0;  /* do not use BOOLEAN() here */
       type=NUM;
       break;
     case LSH:
@@ -976,8 +978,10 @@ void simplify_expr(expr *tree)
   tree->type=type;
 }
 
-static void add_dep(section *src, section *dest)
+static void add_dep(section *src,section *dest)
 {
+  if(!parse_finished)
+    return;
   if(num_secs&&src!=NULL&&src!=dest){
     if(debug&&(!dest->deps||!BTST(dest->deps,src->idx)))
       printf("sec %s might depend on %s\n",src->name,dest->name);
@@ -985,7 +989,7 @@ static void add_dep(section *src, section *dest)
       dest->deps=mymalloc(BVSIZE(num_secs));
       memset(dest->deps,0,BVSIZE(num_secs));
     }
-    BSET(dest->deps, src->idx);
+    BSET(dest->deps,src->idx);
   }
 }
 
@@ -997,13 +1001,13 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
 {
   taddr val,lval,rval;
   symbol *lsym,*rsym;
-  int cnst=1,lbok;
+  int cnst=1,lcnst,rcnst,lbok;
 
   if(!tree)
     ierror(0);
-  if(tree->left&&!eval_expr(tree->left,&lval,sec,pc))
+  if(tree->left&&!(lcnst=eval_expr(tree->left,&lval,sec,pc)))
     cnst=0;
-  if(tree->right&&!eval_expr(tree->right,&rval,sec,pc))
+  if(tree->right&&!(rcnst=eval_expr(tree->right,&rval,sec,pc)))
     cnst=0;
 
   switch(tree->type){
@@ -1022,19 +1026,8 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
         /* Difference between symbols from different sections or between an
            external symbol and a symbol from the current section can be
            represented by a REL_PC, so we calculate the addend. */
-        if((rsym->flags&ABSLABEL)&&(lsym->flags&ABSLABEL)){
-          add_dep(sec, lsym->sec);
-          add_dep(sec, rsym->sec);
-          cnst=1;  /* constant, when labels are from two ORG sections */
-        }else{
-          /* prepare a value which works with REL_PC */
-          val=(pc-rval+lval-(lsym->sec?lsym->sec->org:0));
-          break;
-        }
-      }else if(!lbok&&(rsym->flags&ABSLABEL)){
-        /* const-label is valid and yields a const in absolute ORG sections */
-        add_dep(sec, rsym->sec);
-        cnst=1;
+        val=(pc-rval+lval-(lsym->sec?lsym->sec->org:0));
+        break;
       }
     }
     val=(lval-rval);
@@ -1049,7 +1042,7 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
       val=0;
     }else if(lval==taddrmin&&rval==-1){
       if (final_pass)
-        general_error(21,sizeof(taddr)*8);  /* target data type overflow */
+        general_error(21,sizeof(taddr)*CHAR_BIT); /* target data type overflow */
       val=taddrmin;
     }else
       val=(lval/rval);
@@ -1061,7 +1054,7 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
       val=0;
     }else if(lval==taddrmin&&rval==-1){
       if (final_pass)
-        general_error(21,sizeof(taddr)*8);  /* target data type overflow */
+        general_error(21,sizeof(taddr)*CHAR_BIT); /* target data type overflow */
       val=taddrmin;
     }else
       val=(lval%rval);
@@ -1079,6 +1072,18 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     val=BOOLEAN(lval||rval);
     break;
   case BAND:
+    if(cnst==0){
+      if((rcnst&&find_base(tree->left,&lsym,sec,pc)==BASE_OK&&LOCREF(lsym)&&
+          (rval<lsym->sec->align&&rval>=0))||
+         (lcnst&&find_base(tree->right,&lsym,sec,pc)==BASE_OK&&LOCREF(lsym)&&
+          (lval<lsym->sec->align&&lval>=0))){
+        /* if the operation is with a local label and the section's
+           alignment is higher than the requested and-operation,
+           then the result can be assumed constant */
+        cnst=1;
+        add_dep(sec,lsym->sec);
+      }
+    }
     val=(lval&rval);
     break;
   case BOR:
@@ -1087,8 +1092,11 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
   case XOR:
     val=(lval^rval);
     break;
+  case BORN:
+    val=(lval|~rval);
+    break;
   case NOT:
-    val=BOOLEAN(!lval);
+    val=!lval;  /* do not use BOOLEAN() here */
     break;
   case LSH:
     val=lshift(lval,(int)rval);
@@ -1128,8 +1136,10 @@ int eval_expr(expr *tree,taddr *result,section *sec,taddr pc)
     }else if(LOCREF(lsym)){
       update_curpc(tree,sec,pc);
       val=lsym->pc;
-      cnst=lsym->sec==NULL?0:(lsym->sec->flags&UNALLOCATED)!=0;
-      if(lsym->flags&ABSLABEL) cnst=1;
+      if(lsym->flags&ABSLABEL)
+        cnst=1;
+      else
+        cnst=lsym->sec==NULL?0:(lsym->sec->flags&UNALLOCATED)!=0;
       if(cnst) add_dep(sec,lsym->sec);
     }else{
       /* IMPORT */
@@ -1226,8 +1236,11 @@ int eval_expr_huge(expr *tree,thuge *result)
   case XOR:
     val=hxor(lval,rval);
     break;
+  case BORN:
+    val=hor(lval,hcpl(rval));
+    break;
   case NOT:
-    val=huge_from_int(BOOLEAN(hcmp(lval,huge_zero())==0));
+    val=huge_from_int(hcmp(lval,huge_zero())==0); /* do not use BOOLEAN() here */
     break;
   case LSH:
     val=hshl(lval,huge_to_int(rval));
@@ -1410,8 +1423,7 @@ static int _find_base(expr *p,symbol **base,section *sec,taddr pc)
         *base=p->c.sym;  /* set base to symbol, also when BASE_ILLEGAL later */
       return BASE_OK;
     }
-  }
-  if(p->type==ADD){
+  }else if(p->type==ADD){
     taddr val;
     if(eval_expr(p->left,&val,sec,pc)&&
        _find_base(p->right,base,sec,pc)==BASE_OK)
@@ -1419,8 +1431,7 @@ static int _find_base(expr *p,symbol **base,section *sec,taddr pc)
     if(eval_expr(p->right,&val,sec,pc)&&
        _find_base(p->left,base,sec,pc)==BASE_OK)
       return BASE_OK;
-  }
-  if(p->type==SUB){
+  }else if(p->type==SUB){
     taddr val;
     symbol *pcsym;
     if(eval_expr(p->right,&val,sec,pc)&&

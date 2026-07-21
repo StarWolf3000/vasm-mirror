@@ -5,7 +5,7 @@
 #include "output_elf.h"
 #include "stabs.h"
 #if ELFCPU && defined(OUTELF)
-static char *copyright="vasm ELF output module 2.7c (c) 2002-2016,2020,2022,2026 Frank Wille";
+static char *copyright="vasm ELF output module 2.8 (c) 2002-2016,2020,2022,2026 Frank Wille";
 
 static int keep_empty_sects;
 
@@ -563,17 +563,12 @@ static void make_reloc_sections(section *sec,
   for (secp=sec; secp; secp=secp->next) {
     if (secp->idx) {
       atom *a;
-      utaddr npc;
 
-      for (a=secp->first,basero=roffset,pc=0; a; a=a->next) {
-        npc = pcalign(a,pc);
-        if (a->type == DATA)
-          roffset += make_relocs(a,a->content.db->relocs,npc,newsym,addrel);
-        if (a->type == SPACE)
-          roffset += make_relocs(a,a->content.sb->relocs,npc,newsym,addrel);
-        pc = npc + atom_size(a,secp,npc);
+      for (a=secp->first,basero=roffset,pc=0; a!=secp->end; a=a->next) {
+        pc = pcalign(a,pc);
+        roffset += make_relocs(a,get_relocs(a),pc,newsym,addrel);
+        pc += atom_size(a,secp,pc);
       }
-
       if (basero != roffset)  /* were there any relocations? */
         make_relsechdr(secp->name,basero,roffset-basero,secp->idx,makeshdr);
     }
@@ -613,19 +608,15 @@ static void write_section_data(FILE *f,section *sec)
   for (secp=sec; secp; secp=secp->next) {
     if (secp->idx && elf_sec_type(secp)!=SHT_NOBITS) {
       atom *a;
-      utaddr pc=0,npc;
+      utaddr pc;
 
-      for (a=secp->first; a; a=a->next) {
-        npc = fwpcalign(f,a,secp,pc);
-
-        if (a->type == DATA) {
+      for (a=secp->first,pc=0; a!=secp->end; a=a->next) {
+        pc = fwpcalign(f,a,secp,pc);
+        if (a->type == DATA)
           fwdata(f,a->content.db->data,a->content.db->size);
-        }
-        else if (a->type == SPACE) {
+        else if (a->type == SPACE)
           fwsblock(f,a->content.sb);
-        }
-
-        pc = npc + atom_size(a,secp,npc);
+        pc += atom_size(a,secp,pc);
       }
     }
   }

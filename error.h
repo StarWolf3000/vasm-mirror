@@ -20,6 +20,8 @@ struct err_out {
 #define FATAL      16
 #define MESSAGE    32
 #define DISABLED   64
-#define NOLINE    256
+#define NOLINE    128
+#define CNT_TRANS 256
+#define CNT_OPTIM 512
 
 #endif

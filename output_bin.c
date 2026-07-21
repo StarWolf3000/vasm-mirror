@@ -1,10 +1,10 @@
 /* bin.c binary output driver for vasm */
-/* (c) in 2002-2009,2013-2025 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2009,2013-2026 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
 #ifdef OUTBIN
-static char *copyright="vasm binary output module 2.3e (c) 2002-2025 Volker Barthelmann and Frank Wille";
+static char *copyright="vasm binary output module 2.4 (c) 2002-2026 Volker Barthelmann and Frank Wille";
 
 enum {
   BINFMT_RAW,           /* no header */
@@ -38,7 +38,7 @@ static int orgcmp(const void *sec1,const void *sec2)
 static void write_output(FILE *f,section *sec,symbol *sym)
 {
   section *s,**seclist,**slp;
-  unsigned long long pc=0,npc;
+  unsigned long long pc=0;
   size_t nsecs;
   long hdroffs;
   char *nptr;
@@ -164,7 +164,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
       fw8(f,0);
       nptr = outname;
       while (*nptr) {
-        if (!stricmp(nptr,".tap") || (nptr-outname)>=15)
+        if (!cistrcmp(nptr,".tap") || (nptr-outname)>=15)
           break;  /* remove .tap extension, no more than 15 characters */
         fw8(f,toupper((unsigned char)*nptr++));
       }
@@ -174,12 +174,6 @@ static void write_output(FILE *f,section *sec,symbol *sym)
 
   for (slp=seclist; nsecs>0; nsecs--) {
     s = *slp++;
-
-    /* strip uninitialized space atoms from section */
-    if (s->last)
-      s->last->next = NULL;
-    else
-      s->first = NULL;
 
     /* write optional section header or pad to next section start */
     switch (binfmt) {
@@ -224,16 +218,14 @@ static void write_output(FILE *f,section *sec,symbol *sym)
         break;
     }
 
-    /* write section contents */
-    for (p=s->first,pc=(unsigned long long)s->org; p; p=p->next) {
-      npc = fwpcalign(f,p,s,pc);
-
+    /* write initialized section contents */
+    for (p=s->first,pc=(unsigned long long)s->org; p!=s->end; p=p->next) {
+      pc = fwpcalign(f,p,s,pc);
       if (p->type == DATA)
         fwdblock(f,p->content.db);
       else if (p->type == SPACE)
         fwsblock(f,p->content.sb);
-
-      pc = npc + atom_size(p,s,npc);
+      pc += atom_size(p,s,pc);
     }
   }
 

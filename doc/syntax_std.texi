@@ -70,6 +70,17 @@ numbers starting with a non-zero digit are decimal, e.g. @code{1239}.
 C-like escape characters in string constants are allowed by default,
 unless disabled by @option{-noesc}.
 
+
+@section Operators
+
+The following operators are new to vasm's standard:
+@table @code
+@item !
+      Bitwise Or-Not (infix operator). @code{a!b} corresponds to
+      @code{a|~b} using standard operators.
+@end table
+
+
 @section Directives
 
 All directives are case-insensitive.
@@ -364,7 +375,7 @@ See @code{.string}.
       Restore the top section from the internal section-stack.
       Also refer to @code{.pushsection}.
 
-@item .protcted <symbol>[,<symbol>...]
+@item .protected <symbol>[,<symbol>...]
       Overrides the symbol's ELF default visibility and sets it to "protected",
       which means that any references to the symbols from within the
       components that defines them must be resolved to the definition in

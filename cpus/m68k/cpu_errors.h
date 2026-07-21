@@ -47,13 +47,13 @@
   "link.w changed to link.l",WARNING,                                /* 45 */
   "branch out of range changed to jmp",WARNING,
   "lea-displacement out of range, changed into move/add",WARNING,
-  "translated (A%d) into (0,A%d) for movep",WARNING,
-  "operand optimized: %s",MESSAGE,
-  "operand translated: %s",MESSAGE,                                  /* 50 */
-  "instruction optimized: %s",MESSAGE,
-  "instruction translated: %s",MESSAGE,
-  "branch optimized into: b<cc>.%c",MESSAGE,
-  "branch translated into: b<cc>.%c",MESSAGE,
+  "translated (A%d) into (0,A%d) for movep",WARNING|CNT_TRANS,
+  "operand optimized: %s",MESSAGE|CNT_OPTIM,
+  "operand translated: %s",MESSAGE|CNT_TRANS,                        /* 50 */
+  "instruction optimized: %s",MESSAGE|CNT_OPTIM,
+  "instruction translated: %s",MESSAGE|CNT_TRANS,
+  "branch optimized into: b<cc>.%c",MESSAGE|CNT_OPTIM,
+  "branch translated into: b<cc>.%c",MESSAGE|CNT_TRANS,
   "basereg A%d already in use",ERROR,                                /* 55 */
   "basereg A%d is already free",WARNING,
   "short-branch to following instruction turned into a nop",WARNING,
@@ -75,3 +75,4 @@
   "absolute k-factor without '#'",WARNING,
   "%d-bit access to absolute address",WARNING,
   "accessing odd address",WARNING,
+  "deprecated B<cc>.L on 68000 transformed into B<cc>.W",WARNING,    /* 75 */

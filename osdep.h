@@ -2,7 +2,7 @@
 /* (c) in 2018,2020,2024 by Frank Wille */
 
 #if defined(AMIGA) || defined(MSDOS) || defined(ATARI) || defined(_WIN32)
-#define filenamecmp(a,b) stricmp(a,b)
+#define filenamecmp(a,b) cistrcmp(a,b)
 #else
 #define filenamecmp(a,b) strcmp(a,b)
 #endif

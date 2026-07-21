@@ -13,7 +13,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm madmac syntax module 0.7b (c) 2015-2026 Frank Wille";
+const char *syntax_copyright="vasm madmac syntax module 0.8 (c) 2015-2026 Frank Wille";
 hashtable *dirhash;
 char commentchar = ';';
 int dotdirs;
@@ -243,6 +243,40 @@ static void do_section(char *s,char *name,char *type)
 }
 
 
+static void handle_section(char *s)
+{
+  char *name,*attr=NULL;
+  strbuf *buf;
+
+  if (buf = parse_name(0,&s))
+    name = buf->str;
+  else
+    return;
+
+  s = skip(s);
+  if (*s == ',') {
+    strbuf *attrbuf;
+
+    s = skip(s+1);
+    if (attrbuf = get_raw_string(&s,'\"')) {
+      attr = attrbuf->str;
+      s = skip(s);
+    }
+  }
+  if (attr == NULL) {
+    if (!strcmp(name,text_name) || !strcmp(name,text_name+1))
+      attr = text_type;
+    else if (!strcmp(name,data_name) || !strcmp(name,data_name+1))
+      attr = data_type;
+    else if (!strcmp(name,bss_name) || !strcmp(name,bss_name+1))
+      attr = bss_type;
+    else attr = defsecttype;
+  }
+
+  do_section(s,name,attr);
+}
+
+
 static void handle_text(char *s)
 {
   do_section(s,text_name,text_type);
@@ -258,18 +292,6 @@ static void handle_data(char *s)
 static void handle_bss(char *s)
 {
   do_section(s,bss_name,bss_type);
-}
-
-
-static void handle_org(char *s)
-{
-  if (current_section!=NULL &&
-      (!(current_section->flags & ABSOLUTE) ||
-        (current_section->flags & IN_RORG)))
-    start_rorg(parse_constexpr(&s));
-  else
-    set_section(new_org(parse_constexpr(&s)));
-  eol(s);
 }
 
 
@@ -386,19 +408,28 @@ static void handle_i32(char *s)
 }
 
 
-static void do_space(int size,expr *cnt,expr *fill)
+static atom *do_space(int size,expr *cnt,expr *fill)
 {
   atom *a;
 
   a = new_space_atom(cnt,size>>3,fill);
   a->align = DATA_ALIGN(size);
   add_atom(0,a);
+  return a;
 }
 
 
 static void handle_space(char *s,int size)
 {
   do_space(size,parse_expr_tmplab(&s),0);
+  eol(s);
+}
+
+
+static void handle_uspace(char *s,int size)
+{
+  atom *a = do_space(size,parse_expr_tmplab(&s),0);
+  a->content.sb->flags |= SPC_UNINITIALIZED;
   eol(s);
 }
 
@@ -418,6 +449,24 @@ static void handle_spc16(char *s)
 static void handle_spc32(char *s)
 {
   handle_space(s,32);
+}
+
+
+static void handle_uspc8(char *s)
+{
+  handle_uspace(s,8);
+}
+
+
+static void handle_uspc16(char *s)
+{
+  handle_uspace(s,16);
+}
+
+
+static void handle_uspc32(char *s)
+{
+  handle_uspace(s,32);
 }
 
 
@@ -451,6 +500,27 @@ static void handle_blk16(char *s)
 static void handle_blk32(char *s)
 {
   handle_block(s,32);
+}
+
+
+static void handle_org(char *s)
+{
+  if (*s == '*') {    /*  "org * + <expr>" reserves bytes */
+    s = skip(s+1);
+    if (*s == '+')
+      handle_uspace(skip(s+1),8);
+    else
+      syntax_error(10);  /* identifier expected */
+  }
+  else {
+    if (current_section!=NULL &&
+        (!(current_section->flags & ABSOLUTE) ||
+         (current_section->flags & IN_RORG)))
+      start_rorg(parse_constexpr(&s));
+    else
+      set_section(new_org(parse_constexpr(&s)));
+    eol(s);
+  }
 }
 
 
@@ -502,6 +572,26 @@ static void handle_qphrase(char *s)
 {
   do_alignment(32,number_expr(0),1,NULL);
   eol(s);
+}
+
+
+static void handle_align(char *s)
+{
+  taddr a = parse_constexpr(&s);
+  expr *fill = NULL;
+
+  if (a > 1) {
+    s = skip(s);
+    if (*s == ',') {
+      /* optional 16-bit fill value */
+      ++s;
+      fill = parse_expr(&s);
+    }
+    do_alignment(a,number_expr(0),(a&1)?1:2,(a&1)?NULL:fill);
+    eol(s);
+  }
+  else
+    syntax_error(11,(long)a);  /* alignment ignored, makes no sense */
 }
 
 
@@ -699,6 +789,7 @@ struct {
   "endm",handle_endm,
   "exitm",handle_exitm,
   "macundef",handle_macundef,
+  "section",handle_section,
   "text",handle_text,
   "data",handle_data,
   "bss",handle_bss,
@@ -720,12 +811,17 @@ struct {
   "ds.b",handle_spc8,
   "ds.w",handle_spc16,
   "ds.l",handle_spc32,
+  "du",handle_uspc16,
+  "du.b",handle_uspc8,
+  "du.w",handle_uspc16,
+  "du.l",handle_uspc32,
   "end",handle_end,
   "even",handle_even,
   "long",handle_long,
   "phrase",handle_phrase,
   "dphrase",handle_dphrase,
   "qphrase",handle_qphrase,
+  "align",handle_align,
   "include",handle_include,
   "incbin",handle_incbin,
   "list",handle_list,
@@ -871,7 +967,7 @@ again:
       s = inst;
     }
 
-    if (!strnicmp(s,".iif",4) || !(strnicmp(s,"iif",3))) {
+    if (!cistrncmp(s,".iif",4) || !(cistrncmp(s,"iif",3))) {
       /* immediate conditional assembly: parse line after ',' when true */
       s = skip(*s=='.'?s+4:s+3);
       if (do_cond(&s)) {
@@ -956,8 +1052,6 @@ again:
       add_atom(0,new_inst_atom(ip));
     }
   }
-
-  cond_check();  /* check for open conditional blocks */
 }
 
 
@@ -1105,7 +1199,7 @@ int init_syntax(void)
   esc_sequences = 1;
 
   /* assertion errors are only a warning */
-  modify_gen_err(WARNING,47,0);
+  modify_gen_errors(WARNING,47,0);
 
   return 1;
 }

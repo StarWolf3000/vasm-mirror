@@ -1,6 +1,6 @@
 /*
 ** cpu.c 650x/65C02/6280/45gs02/65816 cpu-description file
-** (c) in 2002,2006,2008-2012,2014-2025 by Frank Wille
+** (c) in 2002,2006,2008-2012,2014-2026 by Frank Wille
 */
 
 #include "vasm.h"
@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-const char *cpu_copyright="vasm 6502 cpu backend 1.0b (c) 2002,2006,2008-2012,2014-2025 Frank Wille";
+const char *cpu_copyright="vasm 6502 cpu backend 1.0c (c) 2002,2006,2008-2012,2014-2026 Frank Wille";
 const char *cpuname = "6502";
 int bytespertaddr = 2;
 
@@ -91,9 +91,9 @@ static int set_cpu_type(const char *n)
 {
   int bpt = 2;
 
-  if (!strnicmp(n,"ill",3) || !strnicmp(n,"6502i",5))
+  if (!cistrncmp(n,"ill",3) || !cistrncmp(n,"6502i",5))
     cpu_type |= ILL;
-  else if (!strnicmp(n,"dtv",3) || !strnicmp(n,"c64dtv",6)) {
+  else if (!cistrncmp(n,"dtv",3) || !cistrncmp(n,"c64dtv",6)) {
     cpu_type &= ILL;
     cpu_type |= M6502 | DTV;
   }
@@ -101,15 +101,15 @@ static int set_cpu_type(const char *n)
     cpu_type &= ILL;
     cpu_type |= M6502;
   }
-  else if (!stricmp(n,"65c02") || !stricmp(n,"c02"))
+  else if (!cistrcmp(n,"65c02") || !cistrcmp(n,"c02"))
     cpu_type = M6502 | M65C02;
-  else if (!stricmp(n,"wdc02") || !stricmp(n,"wdc65c02"))
+  else if (!cistrcmp(n,"wdc02") || !cistrcmp(n,"wdc65c02"))
     cpu_type = M6502 | M65C02 | WDC02 | WDC02ALL;
-  else if (!stricmp(n,"ce02") || !stricmp(n,"65ce02"))
+  else if (!cistrcmp(n,"ce02") || !cistrcmp(n,"65ce02"))
     cpu_type = M6502 | M65C02 | WDC02 | WDC02ALL | CSGCE02;
-  else if (!strcmp(n,"mega65") || !strnicmp(n,"m45",3) || !strncmp(n,"45",2))
+  else if (!strcmp(n,"mega65") || !cistrncmp(n,"m45",3) || !strncmp(n,"45",2))
     cpu_type = M6502 | M65C02 | WDC02 | CSGCE02 | M45GS02 | M45GS02Q;
-  else if (!strcmp(n,"6280") || !stricmp(n,"hu6280")) {
+  else if (!strcmp(n,"6280") || !cistrcmp(n,"hu6280")) {
     cpu_type = M6502 | M65C02 | WDC02 | WDC02ALL | HU6280;
     dpage = 0x2000;
   }
@@ -389,9 +389,9 @@ static char *handle_xsize16(char *s)
 
 static char *handle_longa(char *s)
 {
-  if (!strnicmp(s,"on",2))
+  if (!cistrncmp(s,"on",2))
     return handle_asize16(s+2);
-  else if (!strnicmp(s,"off",3))
+  else if (!cistrncmp(s,"off",3))
     return handle_asize8(s+3);
   cpu_error(9);  /* bad operand */
   return s;
@@ -399,9 +399,9 @@ static char *handle_longa(char *s)
 
 static char *handle_longi(char *s)
 {
-  if (!strnicmp(s,"on",2))
+  if (!cistrncmp(s,"on",2))
     return handle_xsize16(s+2);
-  else if (!strnicmp(s,"off",3))
+  else if (!cistrncmp(s,"off",3))
     return handle_xsize8(s+3);
   cpu_error(9);  /* bad operand */
   return s;
@@ -463,7 +463,7 @@ int parse_cpu_label(char *labname,char **start)
     if (dotdirs && *dir=='.')
       dir++;
 
-    if (s-dir==3 && !strnicmp(dir,"ezp",3)) {
+    if (s-dir==3 && !cistrncmp(dir,"ezp",3)) {
       /* label EZP <expression> */
       symbol *sym;
 
@@ -581,7 +581,7 @@ size_t instruction_size(instruction *ip,section *sec,taddr pc)
 }
 
 
-static void rangecheck(symbol *base,taddr val,operand *op)
+static void rangecheck(taddr val,operand *op)
 {
   switch (op->type) {
     case ABS:
@@ -592,7 +592,7 @@ static void rangecheck(symbol *base,taddr val,operand *op)
     case INDIRX:
     case LINDIR:
     case RELJMP:
-      if (base==NULL && (val<0 || val>0xffff))
+      if (val<0 || val>0xffff)
         cpu_error(5,16); /* operand doesn't fit into 16 bits */
       break;
     case DPAGE:
@@ -607,7 +607,7 @@ static void rangecheck(symbol *base,taddr val,operand *op)
     case LDPINDY:
     case QDPINDZ:
     case DPIND:
-      if (base==NULL && (val<0 || val>0xff))
+      if (val<0 || val>0xff)
         cpu_error(11);   /* operand not in zero/direct page */
       break;
     case SR:
@@ -724,7 +724,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                   val -= base->pc;  /* take symbol's offset out of the addend */
               }
               else
-                type = REL_ABS;
+                type = REL_ABS|REL_MOD_U;  /* addresses are unsigned */
               add = val;
 
               switch (optype) {
@@ -763,7 +763,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                 case LDPIND:
                 case LDPINDY:
                   if (dp_offset)
-                    type = REL_SECOFF;  /* 8-bit offset to DP-section */
+                    type = REL_SECOFF|REL_MOD_U; /* 8-bit offset to DP-section */
                   if (!dp_offset || (op->flags & OF_LO))
                     mask = 0xff;
                   if (op->flags & (OF_HI|OF_WA))
@@ -782,6 +782,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                   size = 8;
                   break;
                 case IMMED8:
+                  type &= ~(REL_MOD_U|REL_MOD_S); /* immediate can be anything */
                   if (op->flags & OF_PC) {
                     type = REL_PC;
                     add += offs;
@@ -804,6 +805,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                   size = 8;
                   break;
                 case IMMED16:
+                  type &= ~(REL_MOD_U|REL_MOD_S); /* immediate can be anything */
                   if (op->flags & OF_PC) {
                     type = REL_PC;
                     val += offs;
@@ -825,12 +827,12 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
                   size = 16;
                   break;
                 case REL8:
-                  type = REL_PC;
+                  type = REL_PC|REL_MOD_S;
                   size = 8;
                   add -= 1;  /* 6502 addend correction */
                   break;
                 case REL16:
-                  type = REL_PC;
+                  type = REL_PC|REL_MOD_S;
                   size = 16;
                   add -= 2;  /* 6502 addend correction */
                   break;
@@ -927,7 +929,8 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
           }
         }
 
-        rangecheck(base,val,op);
+        if (base == NULL)  /* do not check reloc addends */
+          rangecheck(val,op);
 
         /* write operand data */
         switch (optype) {
@@ -1049,7 +1052,7 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
           ((nreloc *)rl->reloc)->mask = 0xff0000;
         val = (val >> 16) & 0xff;
       }
-      if (val<-0x80 || val>0xff)
+      if (rl==NULL && (val<-0x80||val>0xff))
         cpu_error(5,8);  /* operand doesn't fit into 8 bits */
       break;
 
@@ -1069,7 +1072,7 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
           ((nreloc *)rl->reloc)->mask = 0xffff0000;
         val = (val >> 16) & 0xffff;
       }
-      if (val<-0x8000 || val>0xffff)
+      if (rl==NULL && (val<-0x8000||val>0xffff))
         cpu_error(5,16);  /* operand doesn't fit into 16 bits */
       break;
 
@@ -1089,7 +1092,7 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
           ((nreloc *)rl->reloc)->mask = ~0xffff;  /* @@@ */
         val = (val >> 16) & 0xffffff;
       }
-      if (val<-0x800000 || val>0xffffff)
+      if (rl==NULL && (val<-0x800000||val>0xffffff))
         cpu_error(5,24);  /* operand doesn't fit into 24 bits */
       break;
 

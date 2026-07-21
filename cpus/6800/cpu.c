@@ -50,7 +50,7 @@ cpu_args(char *p)
 					 */
 					return 0;
 			}
-		} else if (!stricmp(p, "hc11"))
+		} else if (!cistrcmp(p, "hc11"))
 			cpu_type = M68HC11;
 		else
 			return 0;

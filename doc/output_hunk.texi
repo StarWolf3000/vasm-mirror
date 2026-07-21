@@ -4,7 +4,7 @@ selected with the @option{-Fhunk} option to generate objects and with the
 
 @section Legal
 
-    This module is written in 2002-2025 by Frank Wille and
+    This module is written in 2002-2026 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -17,6 +17,9 @@ selected with the @option{-Fhunk} option to generate objects and with the
     @item -dbg-local
         Adds all local labels with their original name to the debug
         symbol hunk. The default is to write global labels only.
+    @item -hcln
+        Select HiSoft HCLN line debugging format, instead of the default
+        SAS/C LINE debug.
     @item -hunkpad=<code>
         Sets a two-byte code used for aligning a code hunk to the
         next 32-bit border. Defaults to 0x4e71 for M68k code sections, to
@@ -33,9 +36,9 @@ selected with the @option{-Fhunk} option to generate objects and with the
         16-bit relocation offsets in hunks and rejects 32-bit PC-relative
         relocations.
     @item -linedebug
-        Automatically generate an SAS/C-compatible LINE DEBUG hunk for
-        the input source. Overrides any line debugging directives from
-        the source text.
+        Automatically generate a source level debugging hunk for the given
+        input source. The format defaults to SAS/C-compatible LINE DEBUG.
+        Overrides any line debugging directives from the source text.
     @item -noabspath
         Do not make absolute paths from source file names for the
         LINE DEBUG format. Except the path was already specified as
@@ -116,13 +119,13 @@ them in a @code{BSS} section. Use a real linker for that.
 This module has the following error messages:
 
 @itemize @minus
-@item 3001: multiple sections not supported by this format
-@item 3002: output module doesn't support cpu <name>
+@item 3001: sections <%s>:%llx-%llx and <%s>:%llx-%llx must not overlap
+@item 3002: output module doesn't support cpu %s
 @item 3003: write error
-@item 3004: section attributes <attr> not supported
-@item 3005: reloc type <m>, size <n>, mask <mask> (symbol <sym> + <offset>) not supported
-@item 3006: reloc type <n> not supported
-@item 3009: undefined symbol <%s> at %s+%#lx, reloc type %d
+@item 3004: section attributes <%s> not supported
+@item 3005: reloc type %s, size %u, mask %#lx (symbol %s + %#lx) not supported
+@item 3006: reloc type %s not supported
+@item 3009: undefined symbol <%s> at %s+%#lx, reloc type %s
 @item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
 @item 3011: weak symbol <%s> not supported by output format, treating as global
 @item 3014: data definition following a databss space directive
@@ -133,5 +136,6 @@ This module has the following error messages:
 @item 3023: unaligned relocation offset at %s+%#lx
 @item 3024: section <%s>: maximum size of %#llx bytes exceeded (%#llx)
 @item 3025: section <%s>: memory flags %#lx have been ignored
+@item 3028: cannot refer to common symbol <%s> from section with uninitialized data: <%s>
 
 @end itemize

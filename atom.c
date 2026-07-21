@@ -252,6 +252,8 @@ static size_t roffs_size(reloffs *roffs,section *sec,taddr pc)
 
 static void internal_add_atom(section *sec,atom *a)
 {
+  if (sec->end)
+    ierror(0);  /* adding atoms after end-marker makes no sense */
   a->changes = 0;
   a->src = cur_src;
   a->line = cur_src!=NULL ? cur_src->line : 0;
@@ -383,13 +385,18 @@ void print_atom(FILE *f,atom *p)
       print_instruction(f,p->content.inst);
       break;
     case SPACE:
-      fprintf(f,"space(%lu,fill=",
+      fprintf(f,"space(%lu,",
               (unsigned long)(p->content.sb->space*p->content.sb->size));
-      for (i=0; i<OCTETS(p->content.sb->size); i++)
-        fprintf(f,"%02x%c",(unsigned char)p->content.sb->fill[i],
-                (i==OCTETS(p->content.sb->size)-1)?')':' ');
-      for (rl=p->content.sb->relocs; rl; rl=rl->next)
-        print_reloc(f,rl);
+      if (!(p->content.sb->flags & SPC_UNINITIALIZED)) {
+        fprintf(f,"fill=");
+        for (i=0; i<OCTETS(p->content.sb->size); i++)
+          fprintf(f,"%02x%c",(unsigned char)p->content.sb->fill[i],
+                  (i==OCTETS(p->content.sb->size)-1)?')':' ');
+        for (rl=p->content.sb->relocs; rl; rl=rl->next)
+          print_reloc(f,rl);
+      }
+      else
+        fprintf(f,"uninitialized)");
       break;
     case DATADEF:
       fprintf(f,"datadef(%lu bits)",(unsigned long)p->content.defb->bitsize);
@@ -489,8 +496,8 @@ void atom_printexpr(printexpr *pexp,section *sec,taddr pc)
         putchar((v & (1LL<<i)) ? '1' : '0');
       break;
     case PEXP_ASC:
-      for (i=((pexp->size+7)>>3)-1; i>=0; i--) {
-        unsigned char c = (v>>(i*8))&0xff;
+      for (i=((pexp->size+(CHAR_BIT-1))/CHAR_BIT)-1; i>=0; i--) {
+        unsigned char c = (v>>(i*CHAR_BIT)) & 0xff;
         putchar(isprint(c) ? c : '.');
       }
       break;
@@ -689,7 +696,7 @@ atom *new_expr_atom(expr *exp,int type,int size)
 
   new->content.pexpr = mymalloc(sizeof(*new->content.pexpr));
   if (exp==NULL || type<PEXP_HEX || type>PEXP_ASC || size<1
-      || size>sizeof(long long)*8)
+      || size>sizeof(long long)*CHAR_BIT)
     ierror(0);
   new->content.pexpr->print_exp = exp;
   new->content.pexpr->type = type;

@@ -15,7 +15,7 @@
 
 
 #if defined(OUTCOFF) && (defined(VASM_CPU_X86) || defined(VASM_CPU_ARM) || defined(VASM_CPU_M68K) || defined(VASM_CPU_PPC))
-static char* copyright = "vasm coff output module 0.5 by Jean-Paul Mari";
+static char* copyright = "vasm coff output module 0.5a by Jean-Paul Mari";
 static uint16_t fmagic = 0xffff;
 
 /* Get the magic's header */
@@ -142,7 +142,7 @@ static void write_output(FILE* f, section* sec, symbol* sym)
     /* Calculate relocations size */
     for (s = sec; s; s = s->next) {
         atom* p;
-        for (p = s->first; p; p = p->next) {
+        for (p = s->first; p!=s->end; p = p->next) {
             if (p->type == DATA || p->type == SPACE) {
                 rlist* current_reloc = get_relocs(p);
                 while (current_reloc != NULL) {
@@ -202,7 +202,7 @@ static void write_output(FILE* f, section* sec, symbol* sym)
 
         /* Get the number of relocations in the section */
         nrelocs = 0;
-        for (p = s->first; p; p = p->next) {
+        for (p = s->first; p!=s->end; p = p->next) {
             if (p->type == DATA || p->type == SPACE) {
                 /* Count each relocation */
                 rlist* current_reloc = get_relocs(p);
@@ -249,7 +249,7 @@ static void write_output(FILE* f, section* sec, symbol* sym)
         atom* a;
         utaddr pc = 0, npc;
 
-        for (a = s->first; a; a = a->next) {
+        for (a = s->first; a!=s->end; a = a->next) {
             npc = pcalign(a, pc);
 
             if (a->type == DATA || a->type == SPACE) {
@@ -395,7 +395,7 @@ static void write_output(FILE* f, section* sec, symbol* sym)
         atom* a;
         utaddr pc = 0, npc;
 
-        for (a = s->first; a; a = a->next) {
+        for (a = s->first; a!=s->end; a = a->next) {
             npc = fwpcalign(f, a, s, pc);
 
             if (a->type == DATA) {

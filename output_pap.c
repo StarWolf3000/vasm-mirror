@@ -2,7 +2,7 @@
 
 #ifdef OUTPAP
 
-static char *copyright = "vasm MOS paper tape output module 0.1 (c) 2024 Dimitri Theulings";
+static char *copyright = "vasm MOS paper tape output module 0.2 (c) 2024 Dimitri Theulings";
 
 static uint8_t *buffer;       /* output buffer for data records */
 static uint8_t buffer_s = 24; /* default buffer size */
@@ -98,7 +98,7 @@ static void write_output(FILE *f, section *sec, symbol *sym)
 
   for (s = sec; s; s = s->next) {
     addr = (utaddr)s->org;
-    for (a = s->first; a; a = a->next) {
+    for (a = s->first; a!=s->end; a = a->next) {
       if (a->type == DATA) {
         for (i = 0; i < a->content.db->size; i++) {
           buffer_data(f, a->content.db->data[i]);

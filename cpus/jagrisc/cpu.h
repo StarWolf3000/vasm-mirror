@@ -1,6 +1,6 @@
 /*
 ** cpu.h Jaguar RISC cpu-description header-file
-** (c) in 2014-2017,2025 by Frank Wille
+** (c) in 2014-2017,2025-2026 by Frank Wille
 */
 
 extern int jag_big_endian;
@@ -80,13 +80,14 @@ typedef struct {
 #define DSP 2
 #define ANY GPU|DSP
 
-#define EXTRA32 64      /* instruction followed by a 32-bit word */
-#define OPSWAP 128      /* swapped operands in instruction word encoding */
+#define JALIGN      32  /* automatic 32-bit alignment for jr and jump */
+#define EXTRA32     64  /* instruction followed by a 32-bit word */
+#define OPSWAP      128 /* swapped operands in instruction word encoding */
 
 /* Register symbols */
 #define HAVE_REGSYMS
-#define RTYPE_R      0  /* R0-R31 */
-#define RTYPE_CC     1  /* condition codes (0-31) */
+#define RTYPE_R     0   /* R0-R31 */
+#define RTYPE_CC    1   /* condition codes (0-31) */
 
 /* Prototypes */
 int cpu_available(int);

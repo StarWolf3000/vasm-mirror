@@ -1,10 +1,10 @@
 /* vobj format output driver for vasm */
-/* (c) in 2002-2025 by Volker Barthelmann */
+/* (c) in 2002-2026 by Volker Barthelmann */
 
 #include "vasm.h"
 
 #ifdef OUTVOBJ
-static char *copyright="vasm vobj output module 2.1 (c) 2002-2025 Volker Barthelmann";
+static char *copyright="vasm vobj output module 2.3 (c) 2002-2026 Volker Barthelmann";
 static unsigned char version;
 #define VOBJ2 (1<<2)
 #define VOBJ3 (2<<2)
@@ -151,7 +151,7 @@ static void get_section_sizes(section *sec,taddr *rsize,taddr *rdata,taddr *rnre
   size_t i;
 
   sec->pc=0;
-  for(p=sec->first;p;p=p->next){
+  for(p=sec->first;p!=sec->end;p=p->next){
     sec->pc=pcalign(p,sec->pc);
     sec->pc+=atom_size(p,sec,sec->pc);
     if(p->type==DATA){
@@ -178,7 +178,7 @@ static void write_data(FILE *f,section *sec,utaddr data)
 {
   atom *p;
   sec->pc=0;
-  for(p=sec->first;p;p=p->next){
+  for(p=sec->first;p!=sec->end;p=p->next){
     if((utaddr)sec->pc>=data)
       return;
     sec->pc=fwpcalign(f,p,sec,sec->pc);
@@ -239,12 +239,9 @@ static void write_relocs(FILE *f,section *sec)
 {
   atom *p;
   sec->pc=0;
-  for(p=sec->first;p;p=p->next){
+  for(p=sec->first;p!=sec->end;p=p->next){
     sec->pc=pcalign(p,sec->pc);
-    if(p->type==DATA)
-      write_rlist(f,sec,p->content.db->relocs);
-    else if(p->type==SPACE)
-      write_rlist(f,sec,p->content.sb->relocs);
+    write_rlist(f,sec,get_relocs(p));
     sec->pc+=atom_size(p,sec,sec->pc);
   }
 }
@@ -326,7 +323,7 @@ static void write_output(FILE *f,section *sec,symbol *sym)
     write_string(f,secp->attr);
     write_number(f,secp->flags);
     if(version>=VOBJ3&&(secp->flags&ABSOLUTE))
-      write_number(f,0);  /* @@@ FIXME! NOW! @@@ */
+      write_number(f,secp->org);
     write_number(f,secp->align);
     get_section_sizes(secp,&size,&data,&nrelocs);
     write_number(f,size);

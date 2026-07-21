@@ -6,7 +6,7 @@
 /* Note: NUM, HUG, FLT and SYM *must* be the first types! In this order! */
 enum {
   NUM=1,HUG,FLT,SYM,
-  ADD,SUB,MUL,DIV,MOD,NEG,CPL,LAND,LOR,BAND,BOR,XOR,NOT,LSH,RSH,RSHU,
+  ADD,SUB,MUL,DIV,MOD,NEG,CPL,LAND,LOR,BAND,BOR,XOR,BORN,NOT,LSH,RSH,RSHU,
   LT,GT,LEQ,GEQ,NEQ,EQ
 };
 #define LAST_EXP_TYPE EQ
@@ -35,7 +35,7 @@ struct expr {
 #define T_LAND(s) ((*(s)=='&'&&(s)[1]=='&')?2:0)
 #endif
 #ifndef T_EQ
-#define T_EQ(s) ((*(s)=='=')?1+((s)[1]=='='):0)
+#define T_EQ(s) ((*(s)=='='&&(s)[1]=='=')?2:0)
 #endif
 #ifndef T_NEQ
 #define T_NEQ(s) ((*(s)=='!'&&(s)[1]=='=')||(*(s)=='<'&&(s)[1]=='>')?2:0)
@@ -62,16 +62,19 @@ struct expr {
 #define T_MUL(s) (*(s)=='*')
 #endif
 #ifndef T_DIV
-#define T_DIV(s) (*(s)=='/'&&(s)[1]!='/')
+#define T_DIV(s) (*(s)=='/')
 #endif
 #ifndef T_MOD
-#define T_MOD(s) ((*(s)=='%'||(*(s)=='/'&&(s)[1]=='/'))?1+(*(s)=='/'):0)
+#define T_MOD(s) (*(s)=='%')
 #endif
 #ifndef T_BOR
-#define T_BOR(s) ((*(s)=='|'&&(s)[1]!='|')||(*(s)=='!'&&(s)[1]!='='))
+#define T_BOR(s) (*(s)=='|'&&(s)[1]!='|')
 #endif
 #ifndef T_XOR
-#define T_XOR(s) (*(s)=='^'||*(s)=='~')
+#define T_XOR(s) (*(s)=='^')
+#endif
+#ifndef T_BORN
+#define T_BORN(s) 0
 #endif
 #ifndef T_BAND
 #define T_BAND(s) (*(s)=='&'&&(s)[1]!='&')
@@ -82,6 +85,7 @@ struct expr {
 #ifndef T_RSH
 #define T_RSH(s) ((*(s)=='>'&&(s)[1]=='>')?2:0)
 #endif
+/* unary, prefix operator macros */
 #ifndef T_PLUS
 #define T_PLUS(s) (*(s)=='+')
 #endif
@@ -93,15 +97,6 @@ struct expr {
 #endif
 #ifndef T_CPL
 #define T_CPL(s) (*(s)=='~')
-#endif
-
-/* Macros for extending the unary operation types (e.g. '<' and '>' for 6502).
-   Cpu module has to define EXT_UNARY_EVAL(type,val,res,c) for evaluation. */
-#ifndef EXT_UNARY_NAME
-#define EXT_UNARY_NAME(s) 0
-#endif
-#ifndef EXT_UNARY_TYPE
-#define EXT_UNARY_TYPE(s) NOT
 #endif
 
 /* syntax modules may optionally transform character constants */

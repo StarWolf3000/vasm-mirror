@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 const int mnemonic_cnt = sizeof(mnemonics) / sizeof(mnemonics[0]);
 
-const char *cpu_copyright = "vasm sweet16 cpu backend 0.1 (c)2026 Frank Wille";
+const char *cpu_copyright = "vasm sweet16 cpu backend 0.1a (c)2026 Frank Wille";
 const char *cpuname = "sweet16";
 int bytespertaddr = 2;
 
@@ -79,18 +79,16 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
         else  /* external label or different section */
           add_extnreloc(&db->relocs,base,val-1,REL_PC|REL_MOD_S,0,8,1);
       }
-      if (!base && (val<-0x80 || val>=0x7f))
+      else if (val<-0x80 || val>=0x7f)
         cpu_error(1);  /* branch destination out of range */
       db->data[1] = val;
     }
     else if (ip->op[0]->mode==MREG || ip->op[0]->mode==MRIN) {
       /* register direct or register indirect addressing mode */
-      if (base == NULL) {
-        if (val<0 || val>15)
-          cpu_error(4,(int)val);  /* cannot be a register */
-      }
-      else  /* externally defined register */
+      if (base)  /* externally defined register */
         add_extnreloc(&db->relocs,base,val,REL_ABS|REL_MOD_U,0,4,0);
+      else if (val<0 || val>15)
+        cpu_error(4,(int)val);  /* cannot be a register */
       db->data[0] |= val & 15;
     }
     else
@@ -142,16 +140,17 @@ dblock *eval_data(operand *op,size_t bitsize,section *sec,taddr pc)
     else
       general_error(38);  /* illegal relocation */
   }
-
-  if (bitsize < 16) {
-    if (val<-0x80 || val>0xff)
-      cpu_error(3,8);   /* data doesn't fit into 8-bits */
-  } else if (bitsize < 24) {
-    if (val<-0x8000 || val>0xffff)
-      cpu_error(3,16);  /* data doesn't fit into 16-bits */
-  } else if (bitsize < 32) {
-    if (val<-0x800000 || val>0xffffff)
-      cpu_error(3,24);  /* data doesn't fit into 24-bits */
+  else {
+    if (bitsize < 16) {
+      if (val<-0x80 || val>0xff)
+        cpu_error(3,8);   /* data doesn't fit into 8-bits */
+    } else if (bitsize < 24) {
+      if (val<-0x8000 || val>0xffff)
+        cpu_error(3,16);  /* data doesn't fit into 16-bits */
+    } else if (bitsize < 32) {
+      if (val<-0x800000 || val>0xffffff)
+        cpu_error(3,24);  /* data doesn't fit into 24-bits */
+    }
   }
 
   setval(0,db->data,db->size,val);

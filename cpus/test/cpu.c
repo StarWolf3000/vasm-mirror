@@ -171,7 +171,7 @@ static unsigned char *fill_operand(operand *p,section *sec,taddr pc,unsigned cha
     if (find_base(p->offset,&base,sec,pc)!=BASE_OK)
       general_error(38);
     else
-      add_nreloc(relocs,base,0,REL_ABS,16,roffset*8);
+      add_nreloc(relocs,base,0,REL_ABS,16,roffset*CHAR_BIT);
   }
   *d++=val>>24;
   *d++=val>>16;

@@ -140,7 +140,7 @@ static size_t get_symbols(symbol **symlist,uint32_t flags)
 
 static int namecmp(const void *s1,const void *s2)
 {
-  return nocase ? stricmp((*(symbol **)s1)->name,(*(symbol **)s2)->name) :
+  return nocase ? cistrcmp((*(symbol **)s1)->name,(*(symbol **)s2)->name) :
                   strcmp((*(symbol **)s1)->name,(*(symbol **)s2)->name);
 }
 
@@ -306,8 +306,8 @@ static void write_listing_old(char *listname,section *first_section)
       for(symo=first_symbol;symo;symo=symo->next){
         cur=0;
         for(sym=first_symbol;sym;sym=sym->next){
-          if(!last||stricmp(sym->name,last->name)>0)
-            if(!cur||stricmp(sym->name,cur->name)<0)
+          if(!last||cistrcmp(sym->name,last->name)>0)
+            if(!cur||cistrcmp(sym->name,cur->name)<0)
               cur=sym;
         }
         if(cur){
@@ -612,7 +612,7 @@ void set_listformat(const char *fmtname)
   int i;
 
   for (i=0; i<sizeof(list_format_table)/sizeof(list_format_table[0]); i++) {
-    if (!stricmp(fmtname,list_format_table[i].fmtname)) {
+    if (!cistrcmp(fmtname,list_format_table[i].fmtname)) {
       listformat = i;
       return;
     }

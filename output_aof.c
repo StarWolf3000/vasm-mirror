@@ -1,10 +1,10 @@
 /* aof.c Acorn/ARM Object Format output driver for vasm */
-/* (c) in 2025 by Frank Wille */
+/* (c) in 2025,2026 by Frank Wille */
 
 #include "vasm.h"
 #if defined(OUTAOF) && defined(VASM_CPU_ARM)
 #include "output_aof.h"
-static char *copyright="vasm AOF output module 0.1 (c) 2025 Frank Wille";
+static char *copyright="vasm AOF output module 0.2 (c) 2025,2026 Frank Wille";
 
 /* chunks */
 static struct aof_chunk *first_chunk,*last_chunk;
@@ -72,7 +72,7 @@ static void add_areahdr(struct area_hdr *hdr)
 
 static void bad_reloc(atom *a,int type,nreloc *r)
 {
-  output_atom_error(4,a,STD_REL_TYPE(type),
+  output_atom_error(4,a,reloc_name(type),
                     r->size,(unsigned long)r->mask,
                     r->sym->name,
                     (unsigned long)r->addend);
@@ -157,7 +157,7 @@ static int make_areas(section *sec)
     hdr.relocs = NULL;
 
     /* scan for relocs and store them as AOF relocs */
-    for (pc=sec->org,thumb=-1,a=sec->first; a; a=a->next) {
+    for (pc=sec->org,thumb=-1,a=sec->first; a!=sec->end; a=a->next) {
       rlist *rl;
       int type;
 
@@ -374,7 +374,7 @@ static void write_areas(FILE *f,int en,struct area_hdr *area,int areacnt)
       int rcnt;
 
       /* section data */
-      for (pc=area->base_addr,a=sec->first; a; a=a->next) {
+      for (pc=area->base_addr,a=sec->first; a!=sec->end; a=a->next) {
         pc = pcalign(a,pc);
         if (a->type == DATA)
           fwdblock(f,a->content.db);

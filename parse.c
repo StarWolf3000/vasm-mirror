@@ -82,7 +82,7 @@ char *escape(char *s,char *code)
       *code=0;
       cnt=0;
       while (*s>='0' && *s<='9' && ++cnt<=3) {
-        *code = *code*8 + *s-'0';
+        *code = *code * CHAR_BIT + (*s - '0');
         s++;
       }
       return s;
@@ -425,7 +425,7 @@ static size_t dirlist_match(char *s,char *e,struct namelen *list)
       nlen--;
     }
     if (slen>=nlen && (isspace((unsigned char)s[nlen]) || s[nlen]=='\0')) {
-      if (nc ? !strnicmp(s,name,nlen) : !strncmp(s,name,nlen))
+      if (nc ? !cistrncmp(s,name,nlen) : !strncmp(s,name,nlen))
         return nlen;  /* matches directive from list */
     }
   }
@@ -597,7 +597,7 @@ macro *new_macro(char *name,struct namelen *maclist,struct namelen *endmlist,
       int idx;
 
       for (idx=data.idx;
-           idx<mnemonic_cnt && !stricmp(mnemonics[idx].name,name); idx++) {
+           idx<mnemonic_cnt && !cistrcmp(mnemonics[idx].name,name); idx++) {
         if (MNEMONIC_VALID(idx)) {
           m->text = NULL;
           general_error(51);  /* name conflicts with mnemonic */
@@ -799,6 +799,9 @@ int execute_macro(char *name,int name_len,char **q,int *q_len,int nq,
     n = maxmacparams;
   }
   src->num_params = n;      /* >=0 indicates macro source */
+#ifdef NARGSYM
+  set_internal_abs(NARGSYM,n);
+#endif
 
   for (n=0; n<maxmacparams; n++) {
     if (src->param[n] == NULL) {
@@ -1082,6 +1085,9 @@ char *read_next_line(void)
           symbol *carg = internal_abs(CARGSYM);
           carg->expr = cur_src->cargexp;  /* restore parent CARG */
         }
+#endif
+#ifdef NARGSYM
+        set_internal_abs(NARGSYM,cur_src->num_params); /* restore parent NARG */
 #endif
 #ifdef REPTNSYM
         set_internal_abs(REPTNSYM,cur_src->reptn);  /* restore parent REPTN */

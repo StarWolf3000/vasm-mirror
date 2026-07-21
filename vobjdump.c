@@ -120,7 +120,7 @@ static taddr read_number(int is_signed)
 
   if (n >= 0xc0) {  /* version 2 negative numbers */
     n -= 0xc0;
-    for (i=0,val=~makemask(n*8); n--; i+=8)
+    for (i=0,val=~makemask(n*CHAR_BIT); n--; i+=CHAR_BIT)
       val |= (taddr)*p++ << i;
   }
   else {
@@ -160,7 +160,7 @@ static int print_nreloc(const char *relname,struct vobj_section *vsect,
 {
   const char *basesym;
 
-  if (offs<0 || offs+((bpos+bsiz-1)/bpb)>=vsect->dsize) {
+  if (offs<0 || (bsiz && offs+((bpos+bsiz-1)/bpb)>=vsect->dsize)) {
     printf("offset %#llx is outside of section!\n",
             BPTMASK(offs+(bpos+bsiz-1)/bpb));
     return 0;
@@ -513,7 +513,7 @@ int main(int argc,char *argv[])
       fprintf(stderr,"Cannot open \"%s\" for reading!\n",argv[1]);
   }
   else
-    fprintf(stderr,"vobjdump V0.8\nWritten by Frank Wille\n"
+    fprintf(stderr,"vobjdump V0.8a\nWritten by Frank Wille\n"
             "Usage: %s <file name>\n",argv[0]);
 
   return rc;

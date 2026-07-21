@@ -9,5 +9,5 @@
   "invalid data operand",ERROR,
   "print format corrupted",ERROR,
   "identifier expected",ERROR,                                       /* 10 */
-  "",WARNING,
+  "alignment %ld ignored",WARNING,
   "unexpected \"%s\" without \"%s\"",ERROR,

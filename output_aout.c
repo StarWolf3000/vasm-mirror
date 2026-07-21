@@ -480,15 +480,16 @@ static uint32_t aout_addrelocs(int be,int secid,struct list *rlst,
 /* creates a.out relocations for a single section (.text or .data) */
 {
   uint32_t rtabsize=0;
+  section *sec;
 
-  if (sections[secid]) {
+  if (sec = sections[secid]) {
     atom *a;
     taddr pc;
 
-    for (a=sections[secid]->first,pc=0; a; a=a->next) {
+    for (a=sec->first,pc=0; a!=sec->end; a=a->next) {
       pc = pcalign(a,pc);
       rtabsize += aout_convert_rlist(be,a,secid,rlst,pc,getrinfo);
-      pc += atom_size(a,sections[secid],pc);
+      pc += atom_size(a,sec,pc);
     }
   }
   return rtabsize;
@@ -521,7 +522,7 @@ static void aout_writesection(FILE *f,section *sec,taddr sec_align)
     atom *a;
     taddr pc;
 
-    for (a=sec->first,pc=0; a; a=a->next) {
+    for (a=sec->first,pc=0; a!=sec->end; a=a->next) {
       pc = fwpcalign(f,a,sec,pc);
       if (a->type == DATA)
         fwdata(f,a->content.db->data,a->content.db->size);
@@ -543,7 +544,7 @@ static void aout_writeorg(FILE *f,section *sec,taddr sec_align)
   for (; sec; sec=sec->next) {
     if (sec->flags & ABSOLUTE) {
       fwalign(f,pc,sec->align);
-      for (a=sec->first; a; a=a->next) {
+      for (a=sec->first; a!=sec->end; a=a->next) {
         pc = fwpcalign(f,a,sec,pc);
         if (a->type == DATA)
           fwdata(f,a->content.db->data,a->content.db->size);

@@ -1,5 +1,5 @@
 /* syntax.h  syntax header file for vasm */
-/* (c) in 2002,2005,2009-2015,2017
+/* (c) in 2002,2005,2009-2015,2017,2026
    by Volker Barthelmann and Frank Wille */
 
 /* macros to recognize identifiers */
@@ -38,3 +38,10 @@ char *exp_skip(char *);
 #define SKIP_MACRO_ARGNAME(p) (NULL)
 void my_exec_macro(source *);
 #define EXEC_MACRO(s) my_exec_macro(s)
+
+/* overwrite non-standard operator token macros */
+#define T_EQ(s) ((*(s)=='=')?1+((s)[1]=='='):0)
+#define T_DIV(s) (*(s)=='/'&&(s)[1]!='/')
+#define T_MOD(s) ((*(s)=='%'||(*(s)=='/'&&(s)[1]=='/'))?1+(*(s)=='/'):0)
+#define T_BOR(s) ((*(s)=='|'&&(s)[1]!='|')||(*(s)=='!'&&(s)[1]!='='))
+#define T_XOR(s) (*(s)=='^'||*(s)=='~')

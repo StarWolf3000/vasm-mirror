@@ -69,6 +69,12 @@ Other options:
 
 @table @option
 
+@item -ctrace
+        Enable tracing of conditional assembly while parsing. Prints all
+        lines with conditional directives to stderr, preceded by a number
+        of arrows representing the conditional nesting level and a flag
+        (0/1) whether the following block will be assembled.
+
 @item -depend=<type>
         Print all dependencies while assembling the source with the given
         options. No output is generated. @code{<type>} may be the word @option{list}
@@ -122,6 +128,10 @@ Other options:
 @item -ile
         Use little-endian order when reading target-bytes with more than
         8 bits per byte from the host's file system.
+
+@item -iserror=<n>
+        Turn warning message @code{<n>} into an error.
+        @code{<n>} has to be the number of a valid warning message.
 
 @item -Lall
         List all symbols, including unused equates. Default is to list
@@ -443,6 +453,13 @@ have to be implemented in the syntax module.
 @section Conditional Assembly
 
 Has to be provided completely by the syntax module.
+
+@section Uninitialized Space
+
+Some syntax modules allow the declaration of uninitialized space, either by
+special directives or by assignment of the program counter (for example:
+@code{*=*+n} or @code{org *+n}). Depending on the output module, this space
+is usually not written to an output file.
 
 @section Known Problems
 

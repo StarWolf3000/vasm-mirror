@@ -8,7 +8,7 @@
 @setfilename index.texi
 @settitle vasm manual
 @setchapternewpage odd
-@set UPDATED February 2026
+@set UPDATED July 2026
 
 @ifinfo
 
@@ -55,6 +55,14 @@ selected CPU, are included in the vasm binary and you have to make sure to
 choose the output file format you need (refer to the next chapter and look for
 the @code{-F} option). The default is a test output format, only useful for
 debugging or analyzing the output.
+
+@section AI Disclaimer
+
+vasm is human-made software, and at the moment it is our goal to preserve
+this characteristic. Please keep this in mind if you consider contributing
+(especially regarding use of generative AI).
+If your contribution might contain code not written by yourself,
+please consult us beforehand to check whether we consider it admissible.
 
 
 @section Legal

@@ -38,6 +38,6 @@ It supports 26- and 32-bit ARM architectures up to AA4, including Thumb mode.
 This module has the following error messages:
 
 @itemize @minus
-@item 3005: reloc type %d, size %d, mask 0x%lx (symbol %s + 0x%lx) not supported
+@item 3005: reloc type %s, size %d, mask 0x%lx (symbol %s + 0x%lx) not supported
 @item 3024: section <%s>: maximum size of 0x%llx bytes exceeded (0x%llx)
 @end itemize

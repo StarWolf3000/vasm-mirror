@@ -1,5 +1,5 @@
 /* cond.h - conditional assembly support routines */
-/* (c) in 2015,2023 by Frank Wille */
+/* (c) in 2015,2023,2026 by Frank Wille */
 
 #ifndef COND_H
 #define COND_H
@@ -10,7 +10,7 @@
 #endif
 
 /* global variables */
-extern int clev;
+extern int clev,cond_trace;
 
 /* functions */
 void cond_init(void);

@@ -1,5 +1,5 @@
 /* reloc.h  reloc header file for vasm */
-/* (c) in 2002,2005-11,2016,2023-2025 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002,2005-11,2016,2023-2026 by Volker Barthelmann and Frank Wille */
 
 #ifndef RELOC_H
 #define RELOC_H
@@ -75,17 +75,21 @@ rlist *add_extnreloc_masked(rlist **,symbol *,taddr,int,size_t,size_t,
 #define add_nreloc_masked(r,y,a,t,s,o,m) \
   add_extnreloc_masked(r,y,a,t,(o)%BITSPERBYTE,s,(o)/BITSPERBYTE,m)
 
-#ifndef LAST_CPU_RELOC
-#define cpu_reloc_size(r) 0
-#endif
 int is_pc_reloc(symbol *,section *);
 int std_reloc(rlist *);
 #define is_std_reloc(r) (std_reloc(r)>=0)
+#ifndef LAST_CPU_RELOC
+#define cpu_reloc_size(r) 0
+#define reloc_type(r) std_reloc(r)
+#else
+int reloc_type(rlist *);
+#endif
 #define is_nreloc(r) (std_reloc(r)>=0 || cpu_reloc_size(r)==0)
 void do_pic_check(rlist *);
 taddr nreloc_real_addend(nreloc *);
 void unsupp_reloc_error(atom *,rlist *);
 void checkdefined(rlist *,section *,taddr,atom *);
+const char *reloc_name(int);
 void print_nreloc(FILE *,nreloc *,int);
 void print_reloc(FILE *,rlist *);
 rlist *get_relocs(atom *);

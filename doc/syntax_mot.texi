@@ -4,7 +4,7 @@ M68k and ColdFire families of CPUs, which is available with the extension
 
 @section Legal
 
-    This module is written in 2002-2025 by Frank Wille and
+    This module is written in 2002-2026 by Frank Wille and
     is covered by the vasm copyright without modifications.
 
 @section Additional options for this module
@@ -137,6 +137,21 @@ Numbers starting with @code{@@} are assumed to be octal numbers, e.g.
 @code{1239}.
 
 
+@section Operators
+
+The following operators are changed from vasm's standard:
+@table @code
+@item =
+      Boolean Equality. Additional to standard @code{==}.
+@item //
+      Modulo. Additional to standard @code{%}.
+@item !
+      Bitwise Or. Additional to standard @code{|}.
+@item ~
+      Bitwise Exclusive Or. Additional to standard @code{^}.
+@end table
+
+
 @section Directives
 
 The following directives are supported by this syntax module (provided the
@@ -147,16 +162,16 @@ CPU- and output-module support them):
       Equivalent to @code{<symbol> equ <expression>}.
 
 @item <symbol> =.s <expression>
-      Equivalent to @code{<symbol> fequ.s <expression>}. PhxAss compatibility.
+      Equivalent to @code{<symbol> fequ <expression>}. PhxAss compatibility.
 
 @item <symbol> =.d <expression>
-      Equivalent to @code{<symbol> fequ.d <expression>}. PhxAss compatibility.
+      Equivalent to @code{<symbol> fequ <expression>}. PhxAss compatibility.
 
 @item <symbol> =.x <expression>
-      Equivalent to @code{<symbol> fequ.x <expression>}. PhxAss compatibility.
+      Equivalent to @code{<symbol> fequ <expression>}. PhxAss compatibility.
 
 @item <symbol> =.p <expression>
-      Equivalent to @code{<symbol> fequ.p <expression>}. PhxAss compatibility.
+      Equivalent to @code{<symbol> fequ <expression>}. PhxAss compatibility.
 
 @item align <bitcount>
       Insert as many zero bytes as required to reach an address where
@@ -430,16 +445,16 @@ CPU- and output-module support them):
       an error.
 
 @item <symbol> equ.s <expression>
-      Equivalent to @code{<symbol> fequ.s <expression>}. PhxAss compatibility.
+      Equivalent to @code{<symbol> fequ <expression>}. PhxAss compatibility.
 
 @item <symbol> equ.d <expression>
-      Equivalent to @code{<symbol> fequ.d <expression>}. PhxAss compatibility.
+      Equivalent to @code{<symbol> fequ <expression>}. PhxAss compatibility.
 
 @item <symbol> equ.x <expression>
-      Equivalent to @code{<symbol> fequ.x <expression>}. PhxAss compatibility.
+      Equivalent to @code{<symbol> fequ <expression>}. PhxAss compatibility.
 
 @item <symbol> equ.p <expression>
-      Equivalent to @code{<symbol> fequ.p <expression>}. PhxAss compatibility.
+      Equivalent to @code{<symbol> fequ <expression>}. PhxAss compatibility.
 
 @item erem
       Ends an outcommented block. Assembly will continue.
@@ -451,20 +466,23 @@ CPU- and output-module support them):
       Show an error message including the <message> string. Do not generate
       an output file.
 
-@item <symbol> fequ.s <expression>
+@item <symbol> fequ <expression>
       Define a new program symbol with the name <symbol> and assign to it
       the floating point value of <expression>. Defining <symbol> twice
-      will cause an error. The extension is for Devpac-compatibility, but
+      causes an error. The size extension is for Devpac-compatibility, but
       will be ignored.
 
+@item <symbol> fequ.s <expression>
+      Equivalent to @code{<symbol> fequ <expression>}.
+
 @item <symbol> fequ.d <expression>
-      Equivalent to @code{<symbol> fequ.s <expression>}.
+      Equivalent to @code{<symbol> fequ <expression>}.
 
 @item <symbol> fequ.x <expression>
-      Equivalent to @code{<symbol> fequ.s <expression>}.
+      Equivalent to @code{<symbol> fequ <expression>}.
 
 @item <symbol> fequ.p <expression>
-      Equivalent to @code{<symbol> fequ.s <expression>}.
+      Equivalent to @code{<symbol> fequ <expression>}.
 
 @item <label> fo.<size> <expression>
       Assigns the current value of the stack-frame offset counter to <label>.
@@ -682,9 +700,7 @@ foo IIF bar equ 42
       in PhxAss-compatibility mode.
 
 @item odd
-      Aligns to an odd address. Equivalent to @code{cnop 1,2}.
-      Bugs: Note that this is not a real @code{odd} directive, as it
-      wastes two bytes when the address is already odd.
+      Aligns to an odd address. Inserts a zero-byte if address is even.
 
 @item offset [<expression>]
       Switches to a special offset-section, similar to a @code{section}
@@ -792,7 +808,8 @@ foo IIF bar equ 42
       keywords @code{chip} (for Chip-RAM) or @code{fast} (for Fast-RAM).
       Optionally it is also possible to attach the suffix @code{_C}, @code{_F}
       or @code{_P} to the @code{<sec_type>} argument for defining the memory
-      type.
+      type. @code{_P} is for compatibility only and even causes an error
+      in Devpac-compatibility mode.
 
 @item <symbol> set <expression>
       Create a new symbol with the name <symbol> and assign
@@ -860,7 +877,6 @@ foo IIF bar equ 42
 
 @itemize @minus
 
-@item @code{odd} directive wastes two bytes, when address is already odd.
 @item Some listing file directives have no effect.
 @item Macro parameter replacement is also done when a line is
       commented out. This is a problem for special codes which modify the

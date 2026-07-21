@@ -275,7 +275,7 @@ struct optype optypes[] = {
 /* CFMN      (ColdFire) FMOVEM src-ea, 2,5,7.2 */
   _(0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0),0,0,0,
 
-/* ND        (Apollo) all except Dn, 1-6,7.0-4 */
+/* ND        (Apollo) all except Dn, 1-6,7.0-4 - check APOLLO_PCDEST() macro! */
   _(0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0),0,0,0,
 
 /* NI        (Apollo) all except immediate, 0-6,7.0-3 */
@@ -292,6 +292,8 @@ struct optype optypes[] = {
 
 /* BJ        (Apollo) all except Dn/An & immediate, 0-6,7.0-3, An -> Bn */
   _(0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0),FL_BnReg,0,0,
+
+/* Check APOLLO_PCDEST() macro when adding new Apollo operand types here! */
 
 /* OF_       (Apollo) optional FPU register FPn */
   _(0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0),OTF_OPT,0,0,
@@ -359,6 +361,9 @@ struct optype optypes[] = {
 };
 
 #undef _
+
+/* operand type allows PC-relative destination in Apollo CPUs (opidx, optype) */
+#define APOLLO_PCDEST(i,t) ((i)!=0 && (t)>=ND && (t)<=BJ)
 
 
 /* special operand insertion functions */

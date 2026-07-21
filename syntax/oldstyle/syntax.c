@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-const char *syntax_copyright="vasm oldstyle syntax module 0.22 (c) 2002-2026 Frank Wille";
+const char *syntax_copyright="vasm oldstyle syntax module 0.22a (c) 2002-2026 Frank Wille";
 hashtable *dirhash;
 int dotdirs;
 
@@ -1537,7 +1537,7 @@ static char *parse_label_field(char **start,int *asntype)
         s = skip(s+1);
         spaced = 0;
       }
-      else if (spaced && !spcequ)
+      else if (spaced && igntrail && !spcequ)
         return NULL;  /* a spaced identifier is not a label, unless -spcequ */
 
       if (*s == '=') {
@@ -1552,7 +1552,7 @@ static char *parse_label_field(char **start,int *asntype)
 
         if (!dotdirs || (dotdirs && *p++=='.')) {
           for (i=ASN_EQ2; i<ASN_NUM; i++) {
-            if (!strnicmp(p,symassigns[i].asn_name,symassigns[i].asn_len)) {
+            if (!cistrncmp(p,symassigns[i].asn_name,symassigns[i].asn_len)) {
               char *q = p + symassigns[i].asn_len;
 
               if (isspace((unsigned char)*q)) {
@@ -1568,8 +1568,7 @@ static char *parse_label_field(char **start,int *asntype)
 
         if (i < ASN_NUM) {
           /* assignment directive confirmed - remember it */
-          if (!igntrail)
-            spaced = 0;
+          spaced = 0;
           if (asntype)
             *asntype = i;
         }
@@ -1703,10 +1702,10 @@ void parse(void)
         else
           ierror(0);
       }
-      else if (!strnicmp(s,macroname+!dotdirs,3+dotdirs) &&
+      else if (!cistrncmp(s,macroname+!dotdirs,3+dotdirs) &&
                (isspace((unsigned char)*(s+3+dotdirs)) ||
                 *(s+3+dotdirs)=='\0') ||
-               !strnicmp(s,macroname+!dotdirs,5+dotdirs) &&
+               !cistrncmp(s,macroname+!dotdirs,5+dotdirs) &&
                (isspace((unsigned char)*(s+5+dotdirs)) ||
                 *(s+5+dotdirs)=='\0')) {
         /* macro definition */
@@ -1828,8 +1827,6 @@ void parse(void)
       add_atom(0,new_inst_atom(ip));
     }
   }
-
-  cond_check();
   if (dsect_active)
     syntax_error(15);  /* missing dend */
 }

@@ -30,7 +30,7 @@ This module has the following error messages:
 
 @itemize @minus
 
-@iten 2001: trailing garbage in operand
+@item 2001: trailing garbage in operand
 @item 2002: branch destination out of range
 @item 2003: data size %d not supported
 @item 2004: data expression doesn't fit into %d bits

@@ -127,7 +127,7 @@ int parse_operand(char *p,int len,operand *op,int required)
     for (i=ACCU; i<DATAOP; i++) {
       size_t rlen = reglengths[i];
 
-      if (!strnicmp(p,regnames[i],rlen)) {
+      if (!cistrncmp(p,regnames[i],rlen)) {
         char *q = skip(p+rlen);
 
         if (*q == '\0') {
@@ -334,7 +334,7 @@ int parse_cpu_label(char *labname,char **start)
     if (dotdirs && *dir=='.')
       dir++;
 
-    if (s-dir==4 && !strnicmp(dir,"equd",3)) {
+    if (s-dir==4 && !cistrncmp(dir,"equd",3)) {
       /* label EQUD <expression> */
       symbol *sym;
 

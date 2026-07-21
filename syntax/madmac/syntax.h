@@ -12,3 +12,6 @@
 
 /* overwrite macro defaults */
 #define MAXMACPARAMS 64
+
+/* overwrite non-standard operator token macros */
+#define T_EQ(s) (*(s)=='='&&(s)[1]!='=')

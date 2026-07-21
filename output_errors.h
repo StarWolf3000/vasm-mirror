@@ -3,15 +3,15 @@
   "output module doesn't support cpu %s",ERROR|NOLINE,
   "write error",FATAL|ERROR|NOLINE,
   "section attributes <%s> not supported",ERROR|NOLINE,
-  "reloc type %d, size %u, mask %#lx (symbol %s + %#lx) not supported",ERROR,
-  "reloc type %d not supported",ERROR,                              /* 05 */
+  "reloc type %s, size %u, mask %#lx (symbol %s + %#lx) not supported",ERROR,
+  "reloc type %s not supported",ERROR,                              /* 05 */
   "undefined symbol <%s>",ERROR|NOLINE,
   "output module doesn't allow multiple sections of the same type (%s)",FATAL|ERROR|NOLINE,
-  "undefined symbol <%s> at %s+%#lx, reloc type %d",ERROR,
+  "undefined symbol <%s> at %s+%#lx, reloc type %s",ERROR,
   "section <%s>: alignment padding (%lu) not a multiple of %lu at %#llx",WARNING|NOLINE,
   "weak symbol <%s> not supported by output format, treating as global",WARNING|NOLINE, /* 10 */
   "address %#llx out of range for selected format",ERROR|NOLINE,
-  "reloc type %d, mask %#lx to symbol %s + %#lx does not fit into %u bits",ERROR,
+  "reloc type %s, mask %#lx to symbol %s + %#lx does not fit into %u bits",ERROR,
   "data definition following a databss space directive",WARNING,
   "file option %d max size exceeded: %lu",WARNING|NOLINE,
   "absolute file path exceeds maximum size of %d characters",FATAL|ERROR|NOLINE, /* 15 */
@@ -26,3 +26,5 @@
   "section <%s>: memory flags %#lx have been ignored",WARNING|NOLINE,
   "output module requires option %s to support %s",ERROR|NOLINE,    /* 25 */
   "symbol indirection from <%s> to <%s> has non-zero addend",ERROR|NOLINE,
+  "cannot refer to common symbol <%s> from section with uninitialized "
+    " data: <%s>",FATAL|ERROR|NOLINE,

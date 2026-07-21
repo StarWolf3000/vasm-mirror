@@ -106,15 +106,15 @@ int parse_operand(char *p,int len,operand *op,int required)
         if (p >= start + len)
             return PO_MATCH;
 
-        if (strnicmp("asr", p, 3) == 0)
+        if (cistrncmp("asr", p, 3) == 0)
             op->flags = 044;
-        else if (strnicmp("lsl", p, 3) == 0)
+        else if (cistrncmp("lsl", p, 3) == 0)
             op->flags = 050;
-        else if (strnicmp("lsr", p, 3) == 0)
+        else if (cistrncmp("lsr", p, 3) == 0)
             op->flags = 054;
-        else if (strnicmp("rol", p, 3) == 0)
+        else if (cistrncmp("rol", p, 3) == 0)
             op->flags = 060;
-        else if (strnicmp("ror", p, 3) == 0)
+        else if (cistrncmp("ror", p, 3) == 0)
             op->flags = 064;
         else
             cpu_error(2); /* unrecognized shift operand */
@@ -206,19 +206,19 @@ int parse_operand(char *p,int len,operand *op,int required)
   }
 
   if (required & MONOFF) {
-      if (strnicmp(p, "on", 2) == 0) {
+      if (cistrncmp(p, "on", 2) == 0) {
         op->value = number_expr(1);
         op->mode = MONOFF;
       }
-      else if (strnicmp(p, "irq", 3) == 0) {
+      else if (cistrncmp(p, "irq", 3) == 0) {
         op->value = number_expr(1);
         op->mode = MONOFF;
       }
-      else if (strnicmp(p, "fiq", 3) == 0) {
+      else if (cistrncmp(p, "fiq", 3) == 0) {
         op->value = number_expr(2);
         op->mode = MONOFF;
       }
-      else if (strnicmp(p, "off", 3) == 0) {
+      else if (cistrncmp(p, "off", 3) == 0) {
         op->value = number_expr(0);
         op->mode = MONOFF;
       } else {

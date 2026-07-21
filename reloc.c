@@ -1,7 +1,13 @@
 /* reloc.c - relocation support functions */
-/* (c) in 2010-2016,2020,2022-2025 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2016,2020,2022-2026 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
+
+static const char *reloc_names[LAST_STANDARD_RELOC+1] = {
+  "none","abs","pc","got","gotrel","gotoff","globdat","plt","pltrel",
+  "pltoff","sd","uabs","localpc","loadrel","copy","jmpslot","secoff",
+  "memid"
+};
 
 
 nreloc *new_nreloc(void)
@@ -89,6 +95,21 @@ int std_reloc(rlist *rl)
 }
 
 
+#ifdef LAST_CPU_RELOC
+int reloc_type(rlist *rl)
+/* return the pure reloc type without any modifiers - also returns cpu relocs */
+{
+  if (rl->type<FIRST_CPU_RELOC &&
+      STD_REL_TYPE(rl->type) >= FIRST_STANDARD_RELOC &&
+      STD_REL_TYPE(rl->type) <= LAST_STANDARD_RELOC)
+    return STD_REL_TYPE(rl->type);
+  if (rl->type>=FIRST_CPU_RELOC && rl->type<=LAST_CPU_RELOC)
+    return rl->type;
+  return -1;
+}
+#endif
+
+
 void do_pic_check(rlist *rl)
 /* generate an error on a non-PC-relative relocation */
 {
@@ -126,13 +147,13 @@ void unsupp_reloc_error(atom *a,rlist *rl)
     nreloc *r = (nreloc *)rl->reloc;
 
     /* reloc type not supported */
-    output_atom_error(4,a,STD_REL_TYPE(rl->type),
+    output_atom_error(4,a,reloc_name(rl->type),
                       r->size,(unsigned long)r->mask,
                       r->sym->name,
                       (unsigned long)r->addend);
   }
   else
-    output_atom_error(5,a,rl->type);
+    output_atom_error(5,a,reloc_name(rl->type));
 }
 
 
@@ -143,10 +164,23 @@ void checkdefined(rlist *rl,section *sec,taddr pc,atom *a)
 
     if (EXTREF(r->sym))
       output_atom_error(8,a,r->sym->name,sec->name,
-                        (unsigned long)pc+r->byteoffset,rl->type);
+                        (unsigned long)pc+r->byteoffset,reloc_name(rl->type));
   }
   else
     ierror(0);
+}
+
+
+const char *reloc_name(int rtype)
+{
+  if (rtype<FIRST_CPU_RELOC && STD_REL_TYPE(rtype)>=FIRST_STANDARD_RELOC &&
+      STD_REL_TYPE(rtype)<=LAST_STANDARD_RELOC)
+    return reloc_names[STD_REL_TYPE(rtype)];
+#ifdef LAST_CPU_RELOC
+  else if (rtype>=FIRST_CPU_RELOC && rtype<=LAST_CPU_RELOC)
+    return cpu_reloc_names[rtype-FIRST_CPU_RELOC];
+#endif
+  return "???";
 }
 
 
@@ -169,12 +203,7 @@ void print_reloc(FILE *f,rlist *rl)
   int type;
 
   if ((type = std_reloc(rl)) >= 0) {
-    static const char *rname[LAST_STANDARD_RELOC+1] = {
-      "none","abs","pc","got","gotrel","gotoff","globdat","plt","pltrel",
-      "pltoff","sd","uabs","localpc","loadrel","copy","jmpslot","secoff",
-      "memid"
-    };
-    fprintf(f,"r%s",rname[type]);
+    fprintf(f,"r%s",reloc_names[type]);
     print_nreloc(f,rl->reloc,type!=REL_NONE);
   }
 #ifdef LAST_CPU_RELOC
@@ -239,7 +268,7 @@ int patch_nreloc(atom *a,rlist *rl,taddr val,int be)
   nrel = (nreloc *)rl->reloc;
 
   if (reloc_field_overflow(rl->type,nrel->size,val)) {
-    output_atom_error(12,a,rl->type,(unsigned long)nrel->mask,
+    output_atom_error(12,a,reloc_name(rl->type),(unsigned long)nrel->mask,
                       nrel->sym->name,(unsigned long)nrel->addend,nrel->size);
     return 0;
   }

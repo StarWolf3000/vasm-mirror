@@ -99,6 +99,6 @@ This module has the following error messages:
 @item 3001: sections <%s>:%llx-%llx and <%s>:%llx-%llx must not overlap
 @item 3007: undefined symbol <%s>
 @item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
-@item 3013: reloc type %d, mask 0x%lx to symbol %s + 0x%lx does not fit into %u bits
+@item 3013: reloc type %s, mask 0x%lx to symbol %s + 0x%lx does not fit into %u bits
 @item 3021: all sections are absolute, nothing to relocate
 @end itemize

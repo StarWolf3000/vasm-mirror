@@ -31,6 +31,9 @@ This syntax module provides the following additional options:
  Ignore everything after a blank in the operand field and treat it as a
  comment. This option is only available when the backend does not separate
  its operands with blanks as well.
+ Note, that assignment directives (like @code{=}, @code{EQU}, etc.) for symbols
+ which do not start on the first column, are no longer possible for
+ compatibility reasons, unless explicitly enabled by option @option{-spcequ}.
 
 @item -ldots
  Allow dots (@code{.}) within all identifiers.
@@ -50,7 +53,7 @@ This syntax module provides the following additional options:
 
 @item -spcequ
  Allow assignment directives (like @code{=}, @code{EQU}, etc.) for symbols
- which do not start on the first column.
+ which do not start on the first column, even with option @option{-i}.
 
 @end table
 
@@ -128,6 +131,15 @@ expressions. Not optional for strings.
 
 The current-PC symbols is @code{*}, unless redefined by a CPU backend
 (e.g. Z80 sets @code{$}).
+
+
+@section Operators
+
+The following operators are changed from vasm's standard:
+@table @code
+@item =
+      Boolean Equality. Additional to standard @code{==}.
+@end table
 
 @section Directives
 
